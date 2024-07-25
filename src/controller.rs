@@ -54,8 +54,8 @@ impl Controller {
 }
 
 fn freq_dist_best(runtime_results: &Vec<u64>) -> u64 {
-    let min = *runtime_results.iter().min().unwrap();
-    let max = *runtime_results.iter().max().unwrap();
+    let min = *runtime_results.iter().filter(|&&x| x > 0).min().unwrap();
+    let max = *runtime_results.iter().filter(|&&x| x > 0).max().unwrap();
     let dist_size = (max - min) / 5;
 
     let dist_max = vec![
@@ -68,8 +68,9 @@ fn freq_dist_best(runtime_results: &Vec<u64>) -> u64 {
     let mut distributions = vec![Vec::<u64>::new(); 5];
     for &x in runtime_results {
         for (i, &dmax) in dist_max.iter().enumerate() {
-            if x < dmax {
+            if x > 0 && x < dmax {
                 distributions[i].push(x);
+                break;
             }
         }
     }
