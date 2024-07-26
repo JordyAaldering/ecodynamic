@@ -1,11 +1,30 @@
 pub struct Controller {
-    max_threads: i32,
     n: i32,
     t1: u64,
     t_last: u64,
     step_size: i32,
-    step_direction: i32,
+    step_direction: Direction,
+    // Settings
+    max_threads: i32,
     corridor_scale: u64,
+}
+
+#[repr(i32)]
+#[derive(Clone, Copy)]
+enum Direction {
+    Up = 1,
+    Down = -1
+}
+
+impl std::ops::Neg for Direction {
+    type Output = Direction;
+
+    fn neg(self) -> Direction {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Down => Direction::Up,
+        }
+    }
 }
 
 impl Controller {
@@ -16,7 +35,7 @@ impl Controller {
             t1: 0,
             t_last: 0,
             step_size: 8,
-            step_direction: -1,
+            step_direction: Direction::Down,
             corridor_scale: 2,
         }
     }
@@ -28,13 +47,13 @@ impl Controller {
     }
 
     pub fn adjust_threads(&mut self, runtime_results: &Vec<u64>) -> i32 {
-        self.n += self.step_direction * self.step_size;
+        self.n += self.step_direction as i32 * self.step_size;
         self.n = i32::clamp(self.n, 1, self.max_threads);
         let tn = freq_dist_best(runtime_results);
 
         let improvement = self.t1 / tn;
         if improvement < self.n as u64 / self.corridor_scale {
-            self.step_direction = -1;
+            self.step_direction = Direction::Down;
             self.step_size = i32::max(self.n / 2, 1);
         } else {
             if improvement > self.n as u64 {
