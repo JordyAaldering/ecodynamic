@@ -1,8 +1,8 @@
-pub(super) trait SelectionAlgorithm {
+pub trait SelectionAlgorithm {
     fn find_best_time(&self, samples: Vec<u64>) -> u64;
 }
 
-pub(super) struct Median {}
+pub struct Median {}
 
 impl SelectionAlgorithm for Median {
     fn find_best_time(&self, samples: Vec<u64>) -> u64 {
@@ -13,7 +13,7 @@ impl SelectionAlgorithm for Median {
     }
 }
 
-pub(super) struct Average {}
+pub struct Average {}
 
 impl SelectionAlgorithm for Average {
     fn find_best_time(&self, samples: Vec<u64>) -> u64 {
@@ -22,8 +22,8 @@ impl SelectionAlgorithm for Average {
     }
 }
 
-pub(super) struct FrequencyDist {
-    pub(super) num_ranges: usize,
+pub struct FrequencyDist {
+    pub num_ranges: usize,
 }
 
 impl SelectionAlgorithm for FrequencyDist {

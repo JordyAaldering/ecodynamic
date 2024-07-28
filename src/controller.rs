@@ -31,11 +31,12 @@ impl Controller {
     }
 
     pub fn adjust_threads(&mut self, runtime_results: Vec<u64>) -> i32 {
+        let tn = self.selection_algorithm.find_best_time(runtime_results);
+
         if let Some(t1) = self.t1 {
             // Update
             self.n += self.step_direction as i32 * self.step_size;
             self.n = i32::clamp(self.n, 1, self.max_threads);
-            let tn = self.selection_algorithm.find_best_time(runtime_results);
 
             let improvement = t1 as f64 / tn as f64;
             if improvement < self.n as f64 * self.corridor_width {
@@ -52,15 +53,12 @@ impl Controller {
 
                 self.step_size = i32::max(self.step_size / 2, 1);
             }
-
-            self.t_last = tn;
         } else {
             // Init
-            let tn = self.selection_algorithm.find_best_time(runtime_results);
             self.t1 = Some(tn * self.n as u64);
-            self.t_last = tn;
         }
 
+        self.t_last = tn;
         self.n
     }
 }

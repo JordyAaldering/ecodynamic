@@ -1,6 +1,6 @@
 #[repr(i32)]
 #[derive(Clone, Copy)]
-pub(super) enum Direction {
+pub enum Direction {
     Up = 1,
     Down = -1
 }
