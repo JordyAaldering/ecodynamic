@@ -32,12 +32,7 @@ impl SelectionAlgorithm for FrequencyDist {
             }
         }
 
-        println!("{:?}", distributions.iter().map(|x| x.len()).collect::<Vec<usize>>());
         let biggest = distributions.iter().max_by_key(|x| x.len()).unwrap();
-        println!("{:?}", &biggest);
-        let best = *biggest.iter().min().unwrap();
-        println!("{}", best);
-
-        best
+        *biggest.iter().min().unwrap()
     }
 }
