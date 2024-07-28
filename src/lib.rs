@@ -22,6 +22,10 @@ pub extern "C" fn MTDcreateController(num_threads: i32, controller_out: *mut *mu
 
 #[no_mangle]
 pub extern "C" fn MTDupdateController(controller: *mut &mut Controller, letterbox: *mut &mut crate::Letterbox, runtime_nanos: u64) {
+    if runtime_nanos == 0 {
+        return;
+    }
+
     let letterbox = unsafe { std::ptr::read(letterbox) };
 
     letterbox.runtimes.push(runtime_nanos);

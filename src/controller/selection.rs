@@ -25,7 +25,7 @@ impl SelectionAlgorithm for FrequencyDist {
         let mut distributions = vec![Vec::<u64>::new(); self.num_ranges];
         for &x in samples {
             for (i, &dmax) in dist_max.iter().enumerate() {
-                if x > 0 && x < dmax {
+                if x < dmax {
                     distributions[i].push(x);
                     break;
                 }
