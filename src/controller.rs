@@ -23,14 +23,14 @@ impl Controller {
             n: max_threads,
             t1: None,
             t_last: 0,
-            step_size: 8,
+            step_size: i32::max(max_threads / 2, 1),
             step_direction: Direction::Down,
             corridor_width: 0.5,
             selection_algorithm: Box::new(FrequencyDist { num_ranges: 5 })
         }
     }
 
-    pub fn adjust_threads(&mut self, runtime_results: &Vec<u64>) -> i32 {
+    pub fn adjust_threads(&mut self, runtime_results: Vec<u64>) -> i32 {
         if let Some(t1) = self.t1 {
             // Update
             self.n += self.step_direction as i32 * self.step_size;

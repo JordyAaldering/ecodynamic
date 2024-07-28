@@ -27,17 +27,13 @@ pub extern "C" fn MTDupdateController(controller: *mut &mut Controller, letterbo
     }
 
     let letterbox = unsafe { std::ptr::read(letterbox) };
+    let len = letterbox.push(runtime_nanos);
 
-    letterbox.runtimes.push(runtime_nanos);
-
-    if letterbox.runtimes.len() >= 20 {
+    if len >= 20 {
         let controller = unsafe { std::ptr::read(controller) };
-
-        let num_threads = controller.adjust_threads(&letterbox.runtimes);
+        let num_threads = controller.adjust_threads(letterbox.take());
         println!("Controller num threads from {} to {}", letterbox.num_threads, num_threads);
         letterbox.num_threads = num_threads;
-
-        letterbox.runtimes.clear();
     }
 }
 
