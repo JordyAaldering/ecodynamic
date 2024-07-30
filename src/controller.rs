@@ -2,7 +2,7 @@ mod direction;
 mod selection;
 
 use direction::Direction;
-use selection::{SelectionAlgorithm, FrequencyDist};
+use selection::{Average, SelectionAlgorithm};
 
 pub struct Controller {
     n: i32,
@@ -26,7 +26,7 @@ impl Controller {
             step_size: i32::max(max_threads / 2, 1),
             step_direction: Direction::Down,
             corridor_width: 0.5,
-            selection_algorithm: Box::new(FrequencyDist { num_ranges: 5 })
+            selection_algorithm: Box::new(Average { })
         }
     }
 
