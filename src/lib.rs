@@ -8,6 +8,7 @@ use controller::Controller;
 
 pub struct MTDynamic {
     max_threads: i32,
+    num_measurements_per_adjustment: usize,
     controllers: HashMap<String, (Controller, Letterbox)>,
 }
 
@@ -15,6 +16,7 @@ pub struct MTDynamic {
 pub extern "C" fn MTDcreate(max_threads: i32, mtd_out: *mut *mut MTDynamic) {
     let mtd = MTDynamic {
         max_threads,
+        num_measurements_per_adjustment: 20,
         controllers: HashMap::new(),
     };
     unsafe {
@@ -24,6 +26,10 @@ pub extern "C" fn MTDcreate(max_threads: i32, mtd_out: *mut *mut MTDynamic) {
 
 #[no_mangle]
 pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, runtime_nanos: u64) {
+    if runtime_nanos == 0 {
+        return;
+    }
+
     let mtd = unsafe { std::ptr::read(mtd) };
 
     let funname = unsafe { CStr::from_ptr(funname) };
@@ -37,9 +43,8 @@ pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, ru
 
     let (ref mut controller, ref mut letterbox) = mtd.controllers.get_mut(&funname).unwrap();
 
-    let len = letterbox.push(runtime_nanos);
-
-    if len >= 20 {
+    let num_measurements = letterbox.push(runtime_nanos);
+    if num_measurements >= mtd.num_measurements_per_adjustment {
         let num_threads = controller.adjust_threads(letterbox.take());
         println!("{} nr. threads from {} to {}", &funname, letterbox.num_threads, num_threads);
         letterbox.num_threads = num_threads;
@@ -48,9 +53,10 @@ pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, ru
 
 #[no_mangle]
 pub extern "C" fn MTDgetNumThreads(mtd: *mut &mut MTDynamic, funname: *const c_char) -> i32 {
-    let mtd = unsafe { std::ptr::read(mtd) };
     let funname = unsafe { CStr::from_ptr(funname) };
     let funname = funname.to_str().unwrap().to_string();
+
+    let mtd = unsafe { std::ptr::read(mtd) };
     if let Some((_, letterbox)) = mtd.controllers.get(&funname) {
         letterbox.num_threads
     } else {
