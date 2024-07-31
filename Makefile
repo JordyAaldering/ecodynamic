@@ -1,11 +1,18 @@
-TARGET=target/debug
-INC=/usr/local/include
-LIB=/usr/local/lib
+RELEASE=target/release
+LOCAL=$(HOME)/.local
 
-install:
-	cp $(TARGET)/mtdynamic.h $(INC)
-	cp $(TARGET)/libmtdynamic.a $(LIB)
+all: debug
+
+debug:
+	cargo build
+
+release:
+	cargo build --release
+
+install: release
+	cp $(RELEASE)/mtdynamic.h $(LOCAL)/include/
+	cp $(RELEASE)/libmtdynamic.so $(LOCAL)/lib/
 
 uninstall:
-	$(RM) $(INC)/mtdynamic.h
-	$(RM) $(LIB)/libmtdynamic.a
+	$(RM) $(LOCAL)/include/mtdynamic.h
+	$(RM) $(LOCAL)/lib/libmtdynamic.so
