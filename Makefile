@@ -9,7 +9,7 @@ debug:
 release:
 	cargo build --release
 
-install: release
+install: debug release
 	cp $(RELEASE)/mtdynamic.h $(LOCAL)/include/
 	cp $(RELEASE)/libmtdynamic.so $(LOCAL)/lib/
 
