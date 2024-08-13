@@ -11,18 +11,14 @@ pub struct MTDynamic {
     max_threads: i32,
     num_measurements_per_adjustment: usize,
     controllers: HashMap<String, (Controller, Letterbox)>,
-    // Debugging
-    results: HashMap<String, Vec<(u64, u64)>>,
 }
 
 #[no_mangle]
-pub extern "C" fn MTDcreate(max_threads: i32, mtd_out: *mut *mut MTDynamic) {
+pub extern "C" fn MTDcreate(max_threads: i32, num_measurements_per_adjustment: usize, mtd_out: *mut *mut MTDynamic) {
     let mtd = MTDynamic {
         max_threads,
-        num_measurements_per_adjustment: 20,
+        num_measurements_per_adjustment,
         controllers: HashMap::new(),
-        // Debugging
-        results: HashMap::new(),
     };
     unsafe {
         *mtd_out = Box::into_raw(Box::new(mtd));
@@ -44,15 +40,11 @@ pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, ru
         let controller = Controller::new(mtd.max_threads);
         let letterbox = Letterbox::new(mtd.max_threads);
         mtd.controllers.insert(funname.clone(), (controller, letterbox));
-
-        mtd.results.insert(funname.clone(), Vec::new());
     }
-
-    mtd.results.get_mut(&funname).unwrap().push((runtime_ns, energy_uj));
 
     let (ref mut controller, ref mut letterbox) = mtd.controllers.get_mut(&funname).unwrap();
 
-    let num_measurements = letterbox.push(energy_uj * (runtime_ns / 1000));
+    let num_measurements = letterbox.push(runtime_ns, energy_uj);
     if num_measurements >= mtd.num_measurements_per_adjustment {
         let num_threads = controller.adjust_threads(letterbox.take());
         println!("{} nr. threads from {} to {}", &funname, letterbox.num_threads, num_threads);
@@ -61,7 +53,7 @@ pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, ru
 }
 
 #[no_mangle]
-pub extern "C" fn MTDgetNumThreads(mtd: *mut &mut MTDynamic, funname: *const c_char) -> i32 {
+pub extern "C" fn MTDnumThreads(mtd: *mut &mut MTDynamic, funname: *const c_char) -> i32 {
     let funname = unsafe { CStr::from_ptr(funname) };
     let funname = funname.to_str().unwrap().to_string();
 
@@ -76,6 +68,8 @@ pub extern "C" fn MTDgetNumThreads(mtd: *mut &mut MTDynamic, funname: *const c_c
 #[no_mangle]
 pub extern "C" fn MTDfree(mtd: *mut MTDynamic) {
     let mtd = unsafe { std::ptr::read(mtd) };
-    println!("{:?}", mtd.results);
+    for (name, (_, letterbox)) in &mtd.controllers {
+        println!("{}: {:?}", name, letterbox.samples);
+    }
     drop(mtd);
 }

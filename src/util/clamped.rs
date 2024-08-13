@@ -13,7 +13,7 @@ impl<T: Copy + PartialOrd> Clamped<T> {
         Clamped { value, min, max }
     }
 
-    pub fn get(self) -> T {
+    pub fn into(self) -> T {
         self.value
     }
 }
@@ -21,9 +21,9 @@ impl<T: Copy + PartialOrd> Clamped<T> {
 impl<T: Copy + PartialOrd + Add<Output = T>> Add<T> for Clamped<T> {
     type Output = Clamped<T>;
 
-    fn add(self, value: T) -> Self::Output {
+    fn add(self, rhs: T) -> Self::Output {
         Clamped {
-            value: clamp(self.value + value, self.min, self.max),
+            value: clamp(self.value + rhs, self.min, self.max),
             min: self.min,
             max: self.max,
         }
@@ -31,17 +31,17 @@ impl<T: Copy + PartialOrd + Add<Output = T>> Add<T> for Clamped<T> {
 }
 
 impl<T: Copy + PartialOrd + Add<Output = T>> AddAssign<T> for Clamped<T> {
-    fn add_assign(&mut self, value: T) {
-        self.value = clamp(self.value + value, self.min, self.max);
+    fn add_assign(&mut self, rhs: T) {
+        self.value = clamp(self.value + rhs, self.min, self.max);
     }
 }
 
 impl<T: Copy + PartialOrd + Div<Output = T>> Div<T> for Clamped<T> {
     type Output = Clamped<T>;
 
-    fn div(self, value: T) -> Self::Output {
+    fn div(self, rhs: T) -> Self::Output {
         Clamped {
-            value: clamp(self.value / value, self.min, self.max),
+            value: clamp(self.value / rhs, self.min, self.max),
             min: self.min,
             max: self.max,
         }
@@ -49,8 +49,8 @@ impl<T: Copy + PartialOrd + Div<Output = T>> Div<T> for Clamped<T> {
 }
 
 impl<T: Copy + PartialOrd + Div<Output = T>> DivAssign<T> for Clamped<T> {
-    fn div_assign(&mut self, value: T) {
-        self.value = clamp(self.value / value, self.min, self.max);
+    fn div_assign(&mut self, rhs: T) {
+        self.value = clamp(self.value / rhs, self.min, self.max);
     }
 }
 

@@ -1,24 +1,28 @@
 pub trait SelectionAlgorithm {
-    fn find_best_time(&self, samples: Vec<u64>) -> u64;
+    fn find_best(&self, samples: Vec<(u64, u64)>) -> u64;
 }
 
 pub struct Median {}
 
 impl SelectionAlgorithm for Median {
-    fn find_best_time(&self, samples: Vec<u64>) -> u64 {
+    fn find_best(&self, samples: Vec<(u64, u64)>) -> u64 {
         let idx = samples.len() / 2;
-        let mut samples = samples;
-        samples.sort();
-        samples[idx]
+        let mut energies = samples.into_iter()
+            .map(|(_runtime, energy)| energy)
+            .collect::<Vec<u64>>();
+        energies.sort();
+        energies[idx]
     }
 }
 
 pub struct Average {}
 
 impl SelectionAlgorithm for Average {
-    fn find_best_time(&self, samples: Vec<u64>) -> u64 {
+    fn find_best(&self, samples: Vec<(u64, u64)>) -> u64 {
         let len = samples.len() as u64;
-        samples.into_iter().sum::<u64>() / len
+        samples.into_iter()
+            .map(|(_runtime, energy)| energy)
+            .sum::<u64>() / len
     }
 }
 
@@ -44,14 +48,16 @@ impl FrequencyDist {
 }
 
 impl SelectionAlgorithm for FrequencyDist {
-    fn find_best_time(&self, samples: Vec<u64>) -> u64 {
-        let mut samples = samples;
-        samples.sort();
+    fn find_best(&self, samples: Vec<(u64, u64)>) -> u64 {
+        let mut energies = samples.into_iter()
+            .map(|(_runtime, energy)| energy)
+            .collect::<Vec<u64>>();
+        energies.sort();
 
-        let dist_max = self.get_distribution_maximums(&samples);
+        let dist_max = self.get_distribution_maximums(&energies);
         let mut dist = vec![Vec::new(); self.num_ranges];
         let mut dist_index = 0;
-        for x in samples {
+        for x in energies {
             while x > dist_max[dist_index] {
                 dist_index += 1;
             }
