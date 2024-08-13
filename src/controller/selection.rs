@@ -12,7 +12,7 @@ impl SelectionAlgorithm for Median {
     fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let idx = samples.len() / 2;
         let mut samples = samples.into_iter()
-            .map(|sample| sample.energy_uj)
+            .map(|sample| sample.energy_estimate())
             .collect::<Vec<u64>>();
         samples.sort();
         samples[idx]
@@ -25,7 +25,7 @@ impl SelectionAlgorithm for Average {
     fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let len = samples.len() as u64;
         samples.into_iter()
-            .map(|(sample)| sample.energy_uj)
+            .map(|sample| sample.energy_estimate())
             .sum::<u64>() / len
     }
 }
@@ -70,7 +70,7 @@ impl FrequencyDist {
 impl SelectionAlgorithm for FrequencyDist {
     fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let mut samples = samples.into_iter()
-            .map(|sample| sample.usertime_ns)
+            .map(|sample| sample.energy_estimate())
             .collect::<Vec<u64>>();
         samples.sort();
 
