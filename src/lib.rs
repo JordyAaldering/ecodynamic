@@ -3,7 +3,7 @@ mod letterbox;
 
 use std::{collections::HashMap, ffi::{c_char, CStr}};
 
-use letterbox::Letterbox;
+use letterbox::{Letterbox, Sample};
 use controller::Controller;
 
 pub struct MTDynamic {
@@ -43,7 +43,7 @@ pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, re
 
     let (ref mut controller, ref mut letterbox) = mtd.controllers.get_mut(&funname).unwrap();
 
-    let num_measurements = letterbox.push(realtime_ns, usertime_ns, energy_uj);
+    let num_measurements = letterbox.push(Sample::new(realtime_ns, usertime_ns, energy_uj));
     if num_measurements >= mtd.num_measurements_per_adjustment {
         let num_threads = controller.adjust_threads(letterbox.take());
         println!("{} nr. threads from {} to {}", &funname, letterbox.num_threads, num_threads);

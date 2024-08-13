@@ -4,6 +4,8 @@ mod selection;
 use direction::Direction;
 use selection::*;
 
+use crate::letterbox::Sample;
+
 pub struct Controller {
     n: i32,
     t1: Option<f64>,
@@ -31,7 +33,7 @@ impl Controller {
         }
     }
 
-    pub fn adjust_threads(&mut self, samples: Vec<(u64, u64, u64)>) -> i32 {
+    pub fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
 
         if let Some(t1) = self.t1 {
             // Update

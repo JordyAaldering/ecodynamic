@@ -1,16 +1,18 @@
 use std::cmp::Ordering;
 
+use crate::letterbox::Sample;
+
 pub trait SelectionAlgorithm {
-    fn find_best(&self, samples: Vec<(u64, u64, u64)>) -> u64;
+    fn find_best(&self, samples: Vec<Sample>) -> u64;
 }
 
 pub struct Median {}
 
 impl SelectionAlgorithm for Median {
-    fn find_best(&self, samples: Vec<(u64, u64, u64)>) -> u64 {
+    fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let idx = samples.len() / 2;
         let mut samples = samples.into_iter()
-            .map(|(_, _, energy)| energy)
+            .map(|sample| sample.energy_uj)
             .collect::<Vec<u64>>();
         samples.sort();
         samples[idx]
@@ -20,10 +22,10 @@ impl SelectionAlgorithm for Median {
 pub struct Average {}
 
 impl SelectionAlgorithm for Average {
-    fn find_best(&self, samples: Vec<(u64, u64, u64)>) -> u64 {
+    fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let len = samples.len() as u64;
         samples.into_iter()
-            .map(|(_realtime, _usertime, energy)| energy)
+            .map(|(sample)| sample.energy_uj)
             .sum::<u64>() / len
     }
 }
@@ -31,12 +33,12 @@ impl SelectionAlgorithm for Average {
 pub struct Pareto {}
 
 impl SelectionAlgorithm for Pareto {
-    fn find_best(&self, samples: Vec<(u64, u64, u64)>) -> u64 {
-        let usertime_max = samples.iter().max_by(|(_, a, _), (_, b, _)| a.partial_cmp(b).unwrap_or(Ordering::Equal)).unwrap().0 as f64;
-        let energy_max = samples.iter().max_by(|(_, _, a), (_, _, b)| a.partial_cmp(b).unwrap_or(Ordering::Equal)).unwrap().1 as f64;
+    fn find_best(&self, samples: Vec<Sample>) -> u64 {
+        let usertime_max = samples.iter().max_by(|a, b| a.usertime_ns.partial_cmp(&b.usertime_ns).unwrap_or(Ordering::Equal)).unwrap().usertime_ns as f64;
+        let energy_max = samples.iter().max_by(|a, b| a.energy_uj.partial_cmp(&b.energy_uj).unwrap_or(Ordering::Equal)).unwrap().energy_uj as f64;
 
         let l2_min = samples.into_iter()
-            .map(|(_realtime, usertime, energy)| f64::sqrt(f64::powi(f64::abs(usertime as f64 / usertime_max - energy as f64 / energy_max), 2)))
+            .map(|sample| f64::sqrt(f64::powi(f64::abs(sample.usertime_ns as f64 / usertime_max - sample.energy_uj as f64 / energy_max), 2)))
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
             .unwrap();
         l2_min as u64
@@ -66,9 +68,9 @@ impl FrequencyDist {
 }
 
 impl SelectionAlgorithm for FrequencyDist {
-    fn find_best(&self, samples: Vec<(u64, u64, u64)>) -> u64 {
+    fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let mut samples = samples.into_iter()
-            .map(|(_, usertime, _)| usertime)
+            .map(|sample| sample.usertime_ns)
             .collect::<Vec<u64>>();
         samples.sort();
 
