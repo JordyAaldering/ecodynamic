@@ -1,6 +1,5 @@
 mod controller;
 mod letterbox;
-mod util;
 
 use std::{collections::HashMap, ffi::{c_char, CStr}};
 
@@ -26,7 +25,7 @@ pub extern "C" fn MTDcreate(max_threads: i32, num_measurements_per_adjustment: u
 }
 
 #[no_mangle]
-pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, runtime_ns: u64, energy_uj: u64) {
+pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, realtime_ns: u64, usertime_ns: u64, energy_uj: u64) {
     if energy_uj == 0 {
         return;
     }
@@ -44,7 +43,7 @@ pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, ru
 
     let (ref mut controller, ref mut letterbox) = mtd.controllers.get_mut(&funname).unwrap();
 
-    let num_measurements = letterbox.push(runtime_ns, energy_uj);
+    let num_measurements = letterbox.push(realtime_ns, usertime_ns, energy_uj);
     if num_measurements >= mtd.num_measurements_per_adjustment {
         let num_threads = controller.adjust_threads(letterbox.take());
         println!("{} nr. threads from {} to {}", &funname, letterbox.num_threads, num_threads);
@@ -69,7 +68,7 @@ pub extern "C" fn MTDnumThreads(mtd: *mut &mut MTDynamic, funname: *const c_char
 pub extern "C" fn MTDfree(mtd: *mut MTDynamic) {
     let mtd = unsafe { std::ptr::read(mtd) };
     for (name, (_, letterbox)) in &mtd.controllers {
-        println!("{}: {:?}", name, letterbox.samples);
+        println!("{}: {:?}", name, letterbox.history);
     }
     drop(mtd);
 }

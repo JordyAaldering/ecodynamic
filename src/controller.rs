@@ -2,17 +2,16 @@ mod direction;
 mod selection;
 
 use direction::Direction;
-use selection::{FrequencyDist, SelectionAlgorithm};
-
-use crate::util::Clamped;
+use selection::*;
 
 pub struct Controller {
-    n: Clamped<i32>,
+    n: i32,
     t1: Option<f64>,
     t_last: f64,
-    step_size: Clamped<i32>,
+    step_size: i32,
     step_direction: Direction,
     // Settings
+    max_threads: i32,
     corridor_width: f64,
     selection_algorithm: Box<dyn SelectionAlgorithm>,
 }
@@ -20,44 +19,55 @@ pub struct Controller {
 impl Controller {
     pub fn new(max_threads: i32) -> Controller {
         Controller {
-            n: Clamped::new(max_threads, 1, max_threads),
+            n: max_threads,
             t1: None,
             t_last: 0.0,
-            step_size: Clamped::new(max_threads / 2, 1, max_threads / 2),
+            step_size: max_threads / 2,
             step_direction: Direction::Down,
+            // Settings
+            max_threads,
             corridor_width: 0.5,
-            selection_algorithm: Box::new(FrequencyDist::new(5))
+            selection_algorithm: Box::new(FrequencyDist::new(5)),
         }
     }
 
-    pub fn adjust_threads(&mut self, energy_consumed: Vec<(u64, u64)>) -> i32 {
-        let tn = self.selection_algorithm.find_best(energy_consumed) as f64;
+    pub fn adjust_threads(&mut self, samples: Vec<(u64, u64, u64)>) -> i32 {
 
         if let Some(t1) = self.t1 {
             // Update
-            self.n += self.step_direction * self.step_size.into();
+            self.n += self.step_direction * self.step_size;
+            self.n = i32::max(1, i32::min(self.max_threads, self.n));
 
-            let improvement = t1 / tn;
-            if improvement < self.n.into() as f64 * (1.0 - self.corridor_width) {
+            let tn = self.selection_algorithm.find_best(samples) as f64;
+
+            if t1 / tn < (1.0 - self.corridor_width) * self.n as f64 {
                 self.step_direction = Direction::Down;
-                self.step_size = self.n / 2;
+                self.step_size = i32::max(1, self.n / 2);
             } else {
-                if improvement > self.n.into() as f64 {
-                    self.t1 = Some(tn * self.n.into() as f64);
+                if t1 / tn > self.n as f64 {
+                    self.t1 = Some(tn * self.n as f64);
                 }
 
                 if tn > self.t_last {
                     self.step_direction = -self.step_direction;
                 }
 
-                self.step_size /= 2;
+                self.step_size = i32::max(1, self.step_size / 2);
             }
+
+            self.t_last = tn;
+            self.n
         } else {
             // Init
-            self.t1 = Some(tn * self.n.into() as f64);
+            self.n = self.max_threads;
+            let tn = self.selection_algorithm.find_best(samples) as f64;
+            self.t1 = Some(tn * self.n as f64);
+            self.t_last = tn;
+            self.step_direction = Direction::Down;
+            self.step_size = self.max_threads / 2;
+
+            self.n
         }
 
-        self.t_last = tn;
-        self.n.into()
     }
 }
