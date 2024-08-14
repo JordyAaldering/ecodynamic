@@ -43,6 +43,7 @@ impl Controller {
 
         let speedup = self.t1 / tn;
         if speedup < (1.0 - self.corridor_width)/* * self.n as f64*/ {
+            // We have fallen outside the corridor
             self.step_direction = Direction::Down;
             self.step_size = i32::max(1, self.n / 2);
         } else {
@@ -56,9 +57,9 @@ impl Controller {
 
             if tn > self.t_last {
                 self.step_direction = -self.step_direction;
-            } else {
-                self.step_size = i32::max(1, self.step_size / 2);
             }
+
+            self.step_size = i32::max(1, self.step_size / 2);
         }
 
         self.n += self.step_direction * self.step_size;

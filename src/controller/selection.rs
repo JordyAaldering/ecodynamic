@@ -12,7 +12,7 @@ impl SelectionAlgorithm for Median {
     fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let idx = samples.len() / 2;
         let mut samples = samples.into_iter()
-            .map(|sample| sample.energy_estimate())
+            .map(|sample| sample.energy_uj)
             .collect::<Vec<u64>>();
         samples.sort();
         samples[idx]
@@ -25,7 +25,7 @@ impl SelectionAlgorithm for Average {
     fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let len = samples.len() as u64;
         samples.into_iter()
-            .map(|sample| sample.energy_estimate())
+            .map(|sample| sample.energy_uj)
             .sum::<u64>() / len
     }
 }
@@ -35,11 +35,11 @@ pub struct Pareto {}
 impl SelectionAlgorithm for Pareto {
     fn find_best(&self, samples: Vec<Sample>) -> u64 {
         //let realtime_max = samples.iter().map(|x| x.realtime_ns).max().unwrap() as f64;
-        //let energy_max = samples.iter().map(|x| x.energy_estimate()).max().unwrap() as f64;
+        //let energy_max = samples.iter().map(|x| x.energy_uj).max().unwrap() as f64;
 
         let l2_min = samples.into_iter()
             .map(|sample|
-                f64::sqrt(f64::powi(f64::abs(sample.usertime_ns as f64 / sample.realtime_ns as f64 - sample.energy_estimate() as f64), 2) as f64)
+                f64::sqrt(f64::powi(f64::abs(sample.usertime_ns as f64 / sample.realtime_ns as f64 - sample.energy_uj as f64), 2) as f64)
             )
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
             .unwrap();
@@ -72,7 +72,7 @@ impl FrequencyDist {
 impl SelectionAlgorithm for FrequencyDist {
     fn find_best(&self, samples: Vec<Sample>) -> u64 {
         let mut samples = samples.into_iter()
-            .map(|sample| sample.energy_estimate())
+            .map(|sample| sample.energy_uj)
             .collect::<Vec<u64>>();
         samples.sort();
 

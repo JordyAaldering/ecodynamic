@@ -10,27 +10,11 @@ impl Sample {
     pub fn new(realtime_ns: u64, usertime_ns: u64, energy_uj: u64) -> Self {
         Sample { realtime_ns, usertime_ns, energy_uj, num_threads: -1 }
     }
-
-    pub fn energy_estimate(&self) -> u64 {
-        if self.usertime_ns >= self.realtime_ns {
-            self.energy_uj
-        } else {
-            // Percentage of time spent actually doing something
-            let frac = self.usertime_ns as f64 / self.realtime_ns as f64;
-            let user_energy_uj = self.energy_uj as f64 * frac;
-            //user_energy_uj as u64
-
-            // Penalize if we spend a lot of time doing nothing
-            let factor = self.realtime_ns as f64 / self.usertime_ns as f64;
-            let penalized_energy_uj = user_energy_uj as f64 * factor;
-            penalized_energy_uj as u64
-        }
-    }
 }
 
 impl std::fmt::Debug for Sample {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("({}, {}, {}, {}, {})", self.realtime_ns, self.usertime_ns, self.energy_uj, self.energy_estimate(), self.num_threads))
+        f.write_fmt(format_args!("({}, {}, {}, {})", self.realtime_ns, self.usertime_ns, self.energy_uj, self.num_threads))
     }
 }
 
@@ -74,7 +58,8 @@ impl std::fmt::Debug for Letterbox {
         let real_time: u64 = self.history.iter().map(|sample| sample.realtime_ns).sum();
         let user_time: u64 = self.history.iter().map(|sample| sample.usertime_ns).sum();
         let energy: u64 = self.history.iter().map(|sample| sample.energy_uj).sum();
-        f.write_fmt(format_args!("{:?}", self.history))?;
-        f.write_fmt(format_args!("Real time: {}, user time: {}, energy: {}", real_time, user_time, energy))
+        f.write_fmt(format_args!(
+            "{:?}\n\tReal time ms: {}, user time ms: {}, energy mJ: {}",
+            self.history, real_time / 1_000_000, user_time / 1_000_000, energy / 1_000))
     }
 }
