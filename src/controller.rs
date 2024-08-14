@@ -49,9 +49,6 @@ impl Controller {
             self.n
         } else {
             // Update
-            self.n += self.step_direction * self.step_size;
-            self.n = i32::max(1, i32::min(self.max_threads, self.n));
-
             let tn = self.selection_algorithm.find_best(samples) as f64;
             let t1 = *self.t1.last().unwrap();
 
@@ -61,6 +58,7 @@ impl Controller {
             } else {
                 let t1_new = tn * self.n as f64;
                 if t1_new < t1 {
+                    println!("Approximation of t1 updated from {} to {}", t1, t1_new);
                     self.t1.push(t1_new);
                 }
 
@@ -70,6 +68,9 @@ impl Controller {
 
                 self.step_size = i32::max(1, self.step_size / 2);
             }
+
+            self.n += self.step_direction * self.step_size;
+            self.n = i32::max(1, i32::min(self.max_threads, self.n));
 
             self.t_last = tn;
             self.n
