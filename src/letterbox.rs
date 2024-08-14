@@ -31,7 +31,7 @@ pub struct Letterbox {
     samples: Option<Vec<Sample>>,
     pub num_threads: i32,
     // Debugging
-    pub history: Vec<Sample>,
+    history: Vec<Sample>,
 }
 
 impl Letterbox {
@@ -58,5 +58,11 @@ impl Letterbox {
 
     pub fn take(&mut self) -> Vec<Sample> {
         self.samples.take().unwrap()
+    }
+}
+
+impl std::fmt::Debug for Letterbox {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{:?}", self.history))
     }
 }

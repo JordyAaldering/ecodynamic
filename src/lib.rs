@@ -45,7 +45,8 @@ pub extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, re
 
     let num_measurements = letterbox.push(Sample::new(realtime_ns, usertime_ns, energy_uj));
     if num_measurements >= mtd.num_measurements_per_adjustment {
-        let num_threads = controller.adjust_threads(letterbox.take());
+        let samples = letterbox.take();
+        let num_threads = controller.adjust_threads(samples);
         println!("{} nr. threads from {} to {}", &funname, letterbox.num_threads, num_threads);
         letterbox.num_threads = num_threads;
     }
@@ -68,7 +69,7 @@ pub extern "C" fn MTDnumThreads(mtd: *mut &mut MTDynamic, funname: *const c_char
 pub extern "C" fn MTDfree(mtd: *mut MTDynamic) {
     let mtd = unsafe { std::ptr::read(mtd) };
     for (name, (_, letterbox)) in &mtd.controllers {
-        println!("{}: {:?}", name, letterbox.history);
+        println!("{}: {:?}", name, letterbox);
     }
     drop(mtd);
 }
