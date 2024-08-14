@@ -1,12 +1,11 @@
 mod direction;
 mod selection;
 
-use core::f64;
-
+use crate::letterbox::Sample;
 use direction::Direction;
 use selection::*;
 
-use crate::letterbox::Sample;
+use core::f64;
 
 pub struct Controller {
     n: i32,
@@ -31,10 +30,7 @@ impl Controller {
             // Settings
             max_threads,
             corridor_width: 0.5,
-            // TODO: maybe just have a function U -> V to get the best,
-            // and a preceding function T -> U that selects a field from the samples
             selection_algorithm: Box::new(FrequencyDist::new(5)),
-            //selection_algorithm: Box::new(Pareto { }),
         }
     }
 
@@ -42,12 +38,11 @@ impl Controller {
         let tn = self.selection_algorithm.find_best(samples) as f64;
 
         let speedup = self.t1 / tn;
-        if speedup < (1.0 - self.corridor_width)/* * self.n as f64*/ {
+        if speedup < (1.0 - self.corridor_width) {
             // We have fallen outside the corridor
             self.step_direction = Direction::Down;
             self.step_size = i32::max(1, self.n / 2);
         } else {
-            //let t1_new = tn * self.n as f64;
             if tn < self.t1 {
                 // In the initial iteration t1 and t_last as f64::MAX so we
                 // reach this condition, an initialize t1 with a real value
@@ -64,7 +59,6 @@ impl Controller {
 
         self.n += self.step_direction * self.step_size;
         self.n = i32::max(1, i32::min(self.max_threads, self.n));
-
         self.t_last = tn;
         self.n
     }

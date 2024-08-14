@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use crate::letterbox::Sample;
 
 pub trait SelectionAlgorithm {
@@ -30,29 +28,11 @@ impl SelectionAlgorithm for Average {
     }
 }
 
-pub struct Pareto {}
-
-impl SelectionAlgorithm for Pareto {
-    fn find_best(&self, samples: Vec<Sample>) -> u64 {
-        //let realtime_max = samples.iter().map(|x| x.realtime_ns).max().unwrap() as f64;
-        //let energy_max = samples.iter().map(|x| x.energy_uj).max().unwrap() as f64;
-
-        let l2_min = samples.into_iter()
-            .map(|sample|
-                f64::sqrt(f64::powi(f64::abs(sample.usertime_ns as f64 / sample.realtime_ns as f64 - sample.energy_uj as f64), 2) as f64)
-            )
-            .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
-            .unwrap();
-        l2_min as u64
-    }
-}
-
 pub struct FrequencyDist {
     num_ranges: usize,
 }
 
 impl FrequencyDist {
-    #[allow(dead_code)]
     pub fn new(num_ranges: usize) -> Self {
         FrequencyDist { num_ranges }
     }
@@ -87,7 +67,6 @@ impl SelectionAlgorithm for FrequencyDist {
             dist[dist_index].push(x);
         }
 
-        //println!("{:?}", dist);
         let biggest_dist = dist.into_iter().max_by_key(Vec::len).unwrap();
         biggest_dist[0]
     }
