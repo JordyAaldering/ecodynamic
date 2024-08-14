@@ -34,11 +34,13 @@ pub struct Pareto {}
 
 impl SelectionAlgorithm for Pareto {
     fn find_best(&self, samples: Vec<Sample>) -> u64 {
-        let usertime_max = samples.iter().max_by(|a, b| a.usertime_ns.partial_cmp(&b.usertime_ns).unwrap_or(Ordering::Equal)).unwrap().usertime_ns as f64;
-        let energy_max = samples.iter().max_by(|a, b| a.energy_uj.partial_cmp(&b.energy_uj).unwrap_or(Ordering::Equal)).unwrap().energy_uj as f64;
+        //let realtime_max = samples.iter().map(|x| x.realtime_ns).max().unwrap() as f64;
+        //let energy_max = samples.iter().map(|x| x.energy_estimate()).max().unwrap() as f64;
 
         let l2_min = samples.into_iter()
-            .map(|sample| f64::sqrt(f64::powi(f64::abs(sample.usertime_ns as f64 / usertime_max - sample.energy_uj as f64 / energy_max), 2)))
+            .map(|sample|
+                f64::sqrt(f64::powi(f64::abs(sample.usertime_ns as f64 / sample.realtime_ns as f64 - sample.energy_estimate() as f64), 2) as f64)
+            )
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
             .unwrap();
         l2_min as u64
@@ -85,6 +87,7 @@ impl SelectionAlgorithm for FrequencyDist {
             dist[dist_index].push(x);
         }
 
+        //println!("{:?}", dist);
         let biggest_dist = dist.into_iter().max_by_key(Vec::len).unwrap();
         biggest_dist[0]
     }

@@ -32,6 +32,7 @@ impl Controller {
             // TODO: maybe just have a function U -> V to get the best,
             // and a preceding function T -> U that selects a field from the samples
             selection_algorithm: Box::new(FrequencyDist::new(5)),
+            //selection_algorithm: Box::new(Pareto { }),
         }
     }
 
@@ -41,10 +42,10 @@ impl Controller {
             // Init
             self.n = self.max_threads;
             let tn = self.selection_algorithm.find_best(samples) as f64;
-            self.t1.push(tn * self.n as f64);
+            self.t1.push(tn/* * self.n as f64*/);
             self.t_last = tn;
             self.step_direction = Direction::Down;
-            self.step_size = self.max_threads / 2;
+            self.step_size = self.max_threads;
 
             self.n
         } else {
@@ -52,11 +53,11 @@ impl Controller {
             let tn = self.selection_algorithm.find_best(samples) as f64;
             let t1 = *self.t1.last().unwrap();
 
-            if t1 / tn < (1.0 - self.corridor_width) * self.n as f64 {
+            if t1 / tn < (1.0 - self.corridor_width)/* * self.n as f64*/ {
                 self.step_direction = Direction::Down;
                 self.step_size = i32::max(1, self.n / 2);
             } else {
-                let t1_new = tn * self.n as f64;
+                let t1_new = tn/* * self.n as f64*/;
                 if t1_new < t1 {
                     println!("Approximation of t1 updated from {} to {}", t1, t1_new);
                     self.t1.push(t1_new);

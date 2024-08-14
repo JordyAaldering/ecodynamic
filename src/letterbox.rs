@@ -8,16 +8,21 @@ pub struct Sample {
 
 impl Sample {
     pub fn new(realtime_ns: u64, usertime_ns: u64, energy_uj: u64) -> Self {
-        Sample { realtime_ns, usertime_ns, energy_uj, num_threads: 0 }
+        Sample { realtime_ns, usertime_ns, energy_uj, num_threads: -1 }
     }
 
     pub fn energy_estimate(&self) -> u64 {
-        if self.usertime_ns > self.realtime_ns {
+        if self.usertime_ns >= self.realtime_ns {
             self.energy_uj
         } else {
-            let frac = self.usertime_ns as f64 / self.realtime_ns as f64;
-            let energy_uj = self.energy_uj as f64 * frac;
-            energy_uj as u64
+            self.energy_uj
+            //// Percentage of time spent actually doing something
+            //let frac = self.usertime_ns as f64 / self.realtime_ns as f64;
+            //let user_energy_uj = self.energy_uj as f64 * frac;
+            //// Penalize if we spend a lot of time doing nothing
+            //let factor = self.realtime_ns as f64 / self.usertime_ns as f64;
+            //let penalized_energy_uj = user_energy_uj as f64 * factor;
+            //penalized_energy_uj as u64
         }
     }
 }
