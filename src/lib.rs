@@ -68,8 +68,8 @@ pub extern "C" fn MTDnumThreads(mtd: *mut &mut MTDynamic, funname: *const c_char
 #[no_mangle]
 pub extern "C" fn MTDfree(mtd: *mut MTDynamic) {
     let mtd = unsafe { std::ptr::read(mtd) };
-    for (name, (controller, letterbox)) in &mtd.controllers {
-        println!("{}:\n\t{:?}\n\t{:?}", name, controller.t1, letterbox);
+    for (name, (_, letterbox)) in &mtd.controllers {
+        println!("{}: {:?}", name, letterbox);
     }
     drop(mtd);
 }
