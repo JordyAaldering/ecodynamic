@@ -1,17 +1,12 @@
-use crate::letterbox::Sample;
-
 pub trait SelectionAlgorithm {
-    fn find_best(&self, samples: Vec<Sample>) -> u64;
+    fn find_best(&self, samples: Vec<u64>) -> u64;
 }
 
 pub struct Median {}
 
 impl SelectionAlgorithm for Median {
-    fn find_best(&self, samples: Vec<Sample>) -> u64 {
+    fn find_best(&self, mut samples: Vec<u64>) -> u64 {
         let idx = samples.len() / 2;
-        let mut samples = samples.into_iter()
-            .map(|sample| sample.energy_uj)
-            .collect::<Vec<u64>>();
         samples.sort();
         samples[idx]
     }
@@ -20,11 +15,10 @@ impl SelectionAlgorithm for Median {
 pub struct Average {}
 
 impl SelectionAlgorithm for Average {
-    fn find_best(&self, samples: Vec<Sample>) -> u64 {
+    fn find_best(&self, samples: Vec<u64>) -> u64 {
         let len = samples.len() as u64;
-        samples.into_iter()
-            .map(|sample| sample.energy_uj)
-            .sum::<u64>() / len
+        let total = samples.into_iter().sum::<u64>();
+        total / len
     }
 }
 
@@ -50,10 +44,7 @@ impl FrequencyDist {
 }
 
 impl SelectionAlgorithm for FrequencyDist {
-    fn find_best(&self, samples: Vec<Sample>) -> u64 {
-        let mut samples = samples.into_iter()
-            .map(|sample| sample.energy_uj)
-            .collect::<Vec<u64>>();
+    fn find_best(&self, mut samples: Vec<u64>) -> u64 {
         samples.sort();
 
         let dist_max = self.get_distribution_maximums(&samples);
