@@ -20,9 +20,10 @@ impl std::fmt::Debug for Sample {
 
 pub struct Letterbox {
     samples: Option<Vec<Sample>>,
-    pub num_threads: i32,
-    // Debugging
+    num_threads: i32,
+    // Debugging and analysis
     history: Vec<Sample>,
+    speedups: Vec<(i32, f64)>,
 }
 
 impl Letterbox {
@@ -30,7 +31,9 @@ impl Letterbox {
         Letterbox {
             samples: None,
             num_threads: max_threads,
+            // Debugging and analysis
             history: Vec::new(),
+            speedups: Vec::new(),
         }
     }
 
@@ -48,6 +51,15 @@ impl Letterbox {
         }
     }
 
+    pub fn update_threads(&mut self, num_threads: i32, speedup: f64) {
+        self.speedups.push((num_threads, speedup));
+        self.num_threads = num_threads;
+    }
+
+    pub fn num_threads(&self) -> i32 {
+        self.num_threads
+    }
+
     pub fn take(&mut self) -> Vec<Sample> {
         self.samples.take().unwrap()
     }
@@ -59,7 +71,11 @@ impl std::fmt::Debug for Letterbox {
         let user_time: u64 = self.history.iter().map(|sample| sample.usertime_ns).sum();
         let energy: u64 = self.history.iter().map(|sample| sample.energy_uj).sum();
         f.write_fmt(format_args!(
-            "{:?}\n\tReal time ms: {}, user time ms: {}, energy mJ: {}",
-            self.history, real_time / 1_000_000, user_time / 1_000_000, energy / 1_000))
+            "{:?}\n\tSpeedups: {:?}\n\tReal time ms: {}, user time ms: {}, energy mJ: {}",
+            self.history,
+            self.speedups,
+            real_time / 1_000_000,
+            user_time / 1_000_000,
+            energy / 1_000))
     }
 }

@@ -34,8 +34,9 @@ impl Controller {
         }
     }
 
-    pub fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
-        let tn = self.find_tn(samples);
+    pub fn adjust_threads(&mut self, samples: Vec<Sample>) -> (i32, f64) {
+        let samples = samples.into_iter().map(self.sample_value_selector).collect();
+        let tn = self.selection_algorithm.find_best(samples);
 
         let speedup = self.t1 as f64 / tn as f64;
         if speedup < 1.0 - self.corridor_width {
@@ -51,23 +52,49 @@ impl Controller {
             }
 
             if tn > self.t_last {
+                // The previous iteration performed better; reverse direction
                 self.step_direction = -self.step_direction;
             }
 
             self.step_size = i32::max(1, self.step_size / 2);
         }
 
+        self.n = self.next_n();
         self.t_last = tn;
-        self.n = self.step_n();
-        self.n
+        (self.n, speedup)
     }
 
-    fn find_tn(&self, samples: Vec<Sample>) -> u64 {
-        let samples = samples.into_iter().map(self.sample_value_selector).collect();
-        self.selection_algorithm.find_best(samples)
+    #[allow(dead_code)]
+    pub fn adjust_threads_runtime(&mut self, samples: Vec<Sample>) -> (i32, f64) {
+        let samples = samples.into_iter().map(|sample| sample.realtime_ns).collect();
+        let tn = self.selection_algorithm.find_best(samples);
+
+        let speedup = self.t1 as f64 / tn as f64;
+        if speedup < (1.0 - self.corridor_width) * self.n as f64 {
+            // We have fallen outside the corridor
+            self.step_direction = Direction::Down;
+            self.step_size = i32::max(1, self.n / 2);
+        } else {
+            if speedup > self.n as f64 {
+                // In the initial iteration t1 and t_last as u64::MAX so we
+                // reach this condition, an initialize t1 with a real value
+                println!("Approximation of t1 updated to {}", tn * self.n as u64);
+                self.t1 = tn * self.n as u64;
+            }
+
+            if tn > self.t_last {
+                self.step_direction = -self.step_direction;
+            }
+
+            self.step_size = i32::max(1, self.step_size / 2);
+        }
+
+        self.n = self.next_n();
+        self.t_last = tn;
+        (self.n, speedup)
     }
 
-    fn step_n(&self) -> i32 {
+    fn next_n(&self) -> i32 {
         let n = self.n + self.step_direction * self.step_size;
         i32::max(1, i32::min(self.max_threads, n))
     }
