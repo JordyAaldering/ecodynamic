@@ -3,11 +3,12 @@ pub struct Sample {
     pub realtime_ns: u64,
     pub usertime_ns: u64,
     pub energy_uj: u64,
+    num_threads: i32,
 }
 
 impl Sample {
     pub fn new(realtime_ns: u64, usertime_ns: u64, energy_uj: u64) -> Self {
-        Sample { realtime_ns, usertime_ns, energy_uj }
+        Sample { realtime_ns, usertime_ns, energy_uj, num_threads: 0 }
     }
 
     pub fn energy_estimate(&self) -> u64 {
@@ -23,7 +24,7 @@ impl Sample {
 
 impl std::fmt::Debug for Sample {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("({}, {}, {}, {})", self.realtime_ns, self.usertime_ns, self.energy_uj, self.energy_estimate()))
+        f.write_fmt(format_args!("({}, {}, {}, {}, {})", self.realtime_ns, self.usertime_ns, self.energy_uj, self.energy_estimate(), self.num_threads))
     }
 }
 
@@ -43,7 +44,8 @@ impl Letterbox {
         }
     }
 
-    pub fn push(&mut self, sample: Sample) -> usize {
+    pub fn push(&mut self, mut sample: Sample) -> usize {
+        sample.num_threads = self.num_threads;
         self.history.push(sample.clone());
 
         if let Some(vec) = &mut self.samples {
