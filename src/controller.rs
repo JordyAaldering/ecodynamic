@@ -50,8 +50,8 @@ impl Controller {
             self.n
         } else {
             // Update
-            let tn = self.selection_algorithm.find_best(samples) as f64;
             let t1 = *self.t1.last().unwrap();
+            let tn = self.selection_algorithm.find_best(samples) as f64;
 
             if t1 / tn < (1.0 - self.corridor_width)/* * self.n as f64*/ {
                 self.step_direction = Direction::Down;

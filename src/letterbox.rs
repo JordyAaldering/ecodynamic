@@ -15,14 +15,15 @@ impl Sample {
         if self.usertime_ns >= self.realtime_ns {
             self.energy_uj
         } else {
-            self.energy_uj
-            //// Percentage of time spent actually doing something
-            //let frac = self.usertime_ns as f64 / self.realtime_ns as f64;
-            //let user_energy_uj = self.energy_uj as f64 * frac;
-            //// Penalize if we spend a lot of time doing nothing
-            //let factor = self.realtime_ns as f64 / self.usertime_ns as f64;
-            //let penalized_energy_uj = user_energy_uj as f64 * factor;
-            //penalized_energy_uj as u64
+            // Percentage of time spent actually doing something
+            let frac = self.usertime_ns as f64 / self.realtime_ns as f64;
+            let user_energy_uj = self.energy_uj as f64 * frac;
+            //user_energy_uj as u64
+
+            // Penalize if we spend a lot of time doing nothing
+            let factor = self.realtime_ns as f64 / self.usertime_ns as f64;
+            let penalized_energy_uj = user_energy_uj as f64 * factor;
+            penalized_energy_uj as u64
         }
     }
 }
