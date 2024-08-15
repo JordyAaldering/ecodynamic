@@ -17,7 +17,6 @@ pub struct Controller {
     // Settings
     max_threads: i32,
     corridor_width: f64,
-    sample_value_selector: fn(Sample) -> u64,
     selection_algorithm: Box<dyn SelectionAlgorithm>,
 }
 
@@ -26,20 +25,19 @@ impl Controller {
         Controller {
             n: max_threads,
             t_best: u64::MAX,
-            t_best_thread_count: u64::MAX,
+            t_best_thread_count: max_threads as u64,
             t_last: u64::MAX,
             step_size: max_threads,
             step_direction: Direction::Down,
             // Settings
             max_threads,
             corridor_width: 0.5,
-            sample_value_selector: |sample| sample.energy_uj,
             selection_algorithm: Box::new(FrequencyDist::new(5)),
         }
     }
 
-    pub fn adjust_threads(&mut self, samples: Vec<Sample>) -> (i32, f64) {
-        let samples = samples.into_iter().map(self.sample_value_selector).collect();
+    pub fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
+        let samples = samples.into_iter().map(|sample| sample.energy_uj).collect();
         let tn = self.selection_algorithm.find_best(samples);
 
         let speedup = self.t_best as f64 / tn as f64;
@@ -53,7 +51,8 @@ impl Controller {
         } else {
             if speedup > 1.0 / (1.0 - self.corridor_width) {
                 println!("Went above the corridor (speedup = {})", speedup);
-                self.step_size = i32::max(1, self.n / 2);
+                // Will be n / 2 at the end of this block
+                self.step_size = self.n;
             }
 
             if tn < self.t_best {
@@ -74,11 +73,12 @@ impl Controller {
 
         self.n = self.next_n();
         self.t_last = tn;
-        (self.n, speedup)
+        self.n
     }
 
+    // The original runtime-based implementation, we use this for comparison
     #[allow(dead_code)]
-    pub fn adjust_threads_runtime(&mut self, samples: Vec<Sample>) -> (i32, f64) {
+    pub fn adjust_threads_runtime(&mut self, samples: Vec<Sample>) -> i32 {
         let samples = samples.into_iter().map(|sample| sample.realtime_ns).collect();
         let tn = self.selection_algorithm.find_best(samples);
 
@@ -104,17 +104,11 @@ impl Controller {
 
         self.n = self.next_n();
         self.t_last = tn;
-        (self.n, speedup)
+        self.n
     }
 
     fn next_n(&self) -> i32 {
         let n = self.n + self.step_direction * self.step_size;
         i32::max(1, i32::min(self.max_threads, n))
-    }
-}
-
-impl std::fmt::Debug for Controller {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("T_best: {}, {} threads", self.t_best, self.t_best_thread_count))
     }
 }
