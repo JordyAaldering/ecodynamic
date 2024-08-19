@@ -1,10 +1,15 @@
 use std::{process::Command, sync::mpsc::{self, Sender}, thread::{self, sleep}, time::{Duration, Instant}};
 
-fn runner(tid: u64, rx: mpsc::Receiver<()>) {
-    let sleep_duration = Duration::from_secs(2u64.pow(6 + (tid as u32 % 4)));
-    println!("Sleep duration of thread {} is {}s", tid, sleep_duration.as_secs());
+fn runner(tid: usize, rx: mpsc::Receiver<()>) {
+    let sleep_duration = Duration::from_secs(2u64.pow(6 + (tid as u32 % 3)));
 
     loop {
+        println!("Thread {} sleeping for {}s", tid, sleep_duration.as_secs());
+
+        sleep(sleep_duration);
+
+        println!("Thread {} working for {}s", tid, sleep_duration.as_secs());
+
         let now = Instant::now();
         while now.elapsed() < sleep_duration {
             match rx.try_recv() {
@@ -16,18 +21,24 @@ fn runner(tid: u64, rx: mpsc::Receiver<()>) {
                 }
             }
         }
-
-        sleep(sleep_duration);
     }
 }
 
-fn start_busywork(max_threads: u64) -> Vec<Sender<()>> {
+fn start_busywork(max_threads: usize) -> Vec<Sender<()>> {
     println!("Starting {} busy threads", max_threads);
-    (0..max_threads).map(|tid| {
-        let (tx, rx) = mpsc::channel();
-        let _handle = thread::spawn(move || runner(tid, rx));
-        tx
-    }).collect()
+    core_affinity::get_core_ids().unwrap()
+        .into_iter()
+        .rev()
+        .take(max_threads)
+        .enumerate().map(|(idx, id)| {
+            let (tx, rx) = mpsc::channel();
+            let _handle = thread::spawn(move || {
+                let res = core_affinity::set_for_current(id);
+                assert!(res);
+                runner(idx, rx)
+            });
+            tx
+        }).collect()
 }
 
 fn stop_busywork(txs: Vec<Sender<()>>) {
@@ -44,7 +55,7 @@ fn main() {
         return;
     }
 
-    let max_threads = args[1].parse::<u64>().unwrap();
+    let max_threads = args[1].parse::<usize>().unwrap();
     let mut cmd = Command::new(&args[2]);
     cmd.args(&args[3..]);
 

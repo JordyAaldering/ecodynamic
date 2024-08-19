@@ -21,15 +21,17 @@ impl std::fmt::Debug for Sample {
 pub struct Letterbox {
     samples: Option<Vec<Sample>>,
     num_threads: i32,
+    num_measurements_per_adjustment: usize,
     // Debugging and analysis
     history: Vec<Sample>,
 }
 
 impl Letterbox {
-    pub fn new(max_threads: i32) -> Self {
+    pub fn new(max_threads: i32, num_measurements_per_adjustment: usize) -> Self {
         Letterbox {
             samples: None,
             num_threads: max_threads,
+            num_measurements_per_adjustment,
             // Debugging and analysis
             history: Vec::new(),
         }
@@ -43,7 +45,8 @@ impl Letterbox {
             vec.push(sample);
             vec.len()
         } else {
-            let vec = vec![sample];
+            let mut vec = Vec::with_capacity(self.num_measurements_per_adjustment);
+            vec.push(sample);
             self.samples = Some(vec);
             1
         }

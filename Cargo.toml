@@ -10,5 +10,12 @@ crate-type = ["lib", "cdylib", "staticlib"]
 name = "busywork"
 path = "src/busywork.rs"
 
+[[bin]]
+name = "busywork_f"
+path = "src/busywork_f.rs"
+
 [build-dependencies]
 cbindgen = "0.26.0"
+
+[dependencies]
+core_affinity = "0.8.1"
