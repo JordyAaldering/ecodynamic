@@ -5,6 +5,16 @@ pub enum Direction {
     Down = -1
 }
 
+impl Direction {
+    pub fn towards(from: i32, to: i32) -> Direction {
+        if from < to {
+            Direction::Up
+        } else {
+            Direction::Down
+        }
+    }
+}
+
 impl std::ops::Neg for Direction {
     type Output = Direction;
 

@@ -30,7 +30,8 @@ fn start_busywork(max_threads: usize) -> Vec<Sender<()>> {
         .into_iter()
         .rev()
         .take(max_threads)
-        .enumerate().map(|(idx, id)| {
+        .enumerate()
+        .map(|(idx, id)| {
             let (tx, rx) = mpsc::channel();
             let _handle = thread::spawn(move || {
                 let res = core_affinity::set_for_current(id);
