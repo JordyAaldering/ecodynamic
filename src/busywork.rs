@@ -1,7 +1,7 @@
 use std::{process::Command, sync::mpsc::{self, Sender}, thread::{self, sleep}, time::{Duration, Instant}};
 
 fn runner(tid: usize, rx: mpsc::Receiver<()>) {
-    let sleep_duration = Duration::from_secs(2u64.pow(6 + (tid as u32 % 3)));
+    let sleep_duration = Duration::from_secs(2u64.pow(4 + (tid as u32 % 3)));
 
     loop {
         println!("Thread {} sleeping for {}s", tid, sleep_duration.as_secs());
