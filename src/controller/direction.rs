@@ -1,12 +1,11 @@
-#[repr(i32)]
 #[derive(Clone, Copy)]
 pub enum Direction {
-    Up = 1,
-    Down = -1
+    Up,
+    Down,
 }
 
 impl Direction {
-    pub fn towards(from: i32, to: i32) -> Direction {
+    pub fn towards(from: f32, to: f32) -> Direction {
         if from < to {
             Direction::Up
         } else {
@@ -26,10 +25,13 @@ impl std::ops::Neg for Direction {
     }
 }
 
-impl std::ops::Mul<i32> for Direction {
-    type Output = i32;
+impl std::ops::Mul<f32> for Direction {
+    type Output = f32;
 
-    fn mul(self, rhs: i32) -> Self::Output {
-        self as i32 * rhs
+    fn mul(self, rhs: f32) -> Self::Output {
+        match self {
+            Direction::Up => rhs,
+            Direction::Down => -rhs,
+        }
     }
 }
