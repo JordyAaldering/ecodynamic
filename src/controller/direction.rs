@@ -5,7 +5,7 @@ pub enum Direction {
 }
 
 impl Direction {
-    pub fn towards(from: f32, to: f32) -> Direction {
+    pub fn towards(from: i32, to: i32) -> Direction {
         if from < to {
             Direction::Up
         } else {
@@ -25,10 +25,10 @@ impl std::ops::Neg for Direction {
     }
 }
 
-impl std::ops::Mul<f32> for Direction {
-    type Output = f32;
+impl std::ops::Mul<i32> for Direction {
+    type Output = i32;
 
-    fn mul(self, rhs: f32) -> Self::Output {
+    fn mul(self, rhs: i32) -> Self::Output {
         match self {
             Direction::Up => rhs,
             Direction::Down => -rhs,
