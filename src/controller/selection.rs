@@ -12,16 +12,6 @@ impl SelectionAlgorithm for Median {
     }
 }
 
-pub struct Average {}
-
-impl SelectionAlgorithm for Average {
-    fn find_best(&self, samples: Vec<u64>) -> u64 {
-        let len = samples.len() as u64;
-        let total = samples.into_iter().sum::<u64>();
-        total / len
-    }
-}
-
 pub struct FrequencyDist {
     num_ranges: usize,
 }

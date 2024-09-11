@@ -4,18 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["lib", "cdylib", "staticlib"]
+crate-type = ["lib", "cdylib"]
 
 [[bin]]
 name = "busywork"
-path = "src/busywork.rs"
+path = "src/bin/busywork.rs"
 
 [[bin]]
 name = "busywork_f"
-path = "src/busywork_f.rs"
+path = "src/bin/busywork_f.rs"
 
 [build-dependencies]
 cbindgen = "0.26.0"
 
 [dependencies]
 core_affinity = "0.8.1"
+threadpool = "1.8.1"

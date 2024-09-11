@@ -1,4 +1,3 @@
-RELEASE=target/release
 LOCAL=$(HOME)/.local
 
 all: debug
@@ -10,9 +9,12 @@ release:
 	cargo build --release
 
 install: debug release
-	cp $(RELEASE)/mtdynamic.h $(LOCAL)/include/
-	cp $(RELEASE)/libmtdynamic.so $(LOCAL)/lib/
+	cp target/release/mtdynamic.h $(LOCAL)/include/
+	cp target/release/libmtdynamic.so $(LOCAL)/lib/
 
 uninstall:
 	$(RM) $(LOCAL)/include/mtdynamic.h
 	$(RM) $(LOCAL)/lib/libmtdynamic.so
+
+clean:
+	cargo clean
