@@ -11,8 +11,7 @@ cargo build -q --release --example parallel
 
 printf "threads,energy,runtime,user-pct\n"
 
-for i in {1..16}
-do
- printf "$i,"
- ./target/release/examples/parallel $i true
+for i in `seq 1 32`; do
+    printf "$i,"
+    ./target/release/examples/parallel $i true
 done
