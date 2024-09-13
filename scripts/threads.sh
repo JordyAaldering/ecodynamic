@@ -4,7 +4,7 @@
 #SBATCH --partition=csmpi_fpga_long
 #SBATCH --mem=0
 #SBATCH --cpus-per-task=32
-#SBATCH --time=1:00:00
+#SBATCH --time=6:00:00
 #SBATCH --output=log/threads.out
 
 cargo build -q --release --example parallel
