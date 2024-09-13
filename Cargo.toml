@@ -23,5 +23,6 @@ threadpool = "1.8.1"
 
 [dev-dependencies]
 cpu-time = "1.0.0"
+rand = "0.8.5"
 rapl-energy = "0.1.12"
 rayon = "1.10.0"
