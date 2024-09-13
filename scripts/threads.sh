@@ -13,5 +13,5 @@ printf "threads,energy,runtime,user-pct\n"
 
 for i in `seq 1 32`; do
     printf "$i,"
-    ./target/release/examples/parallel $i true
+    ./target/release/examples/parallel 10000000 1000 $i true
 done
