@@ -44,8 +44,8 @@ fn main() {
     let mut v: Vec<f64> = (0..len).map(|x| x as f64).collect();
 
     let mut energies: Vec<f64> = Vec::with_capacity(iter);
-    let mut user_pcts: Vec<f64> = Vec::with_capacity(iter);
-    let mut reals: Vec<f64> = Vec::with_capacity(iter);
+    let mut user: Vec<f64> = Vec::with_capacity(iter);
+    let mut real: Vec<f64> = Vec::with_capacity(iter);
 
     let mut mtd = MTDynamic::new(max_threads, 10);
     let mut rapl = Rapl::now().unwrap();
@@ -68,10 +68,8 @@ fn main() {
 
         let user = user.as_secs_f64();
         let real = real.as_secs_f64();
-        let user_max = real * num_threads as f64;
-        let user_pct = user / user_max;
-        user_pcts.push(user_pct);
-        reals.push(real);
+        real.push(real);
+        user.push(user);
 
         if !threads_fixed {
             mtd.update("parallel", (real * 1000_000.0) as u64, (user * 1000_000.0) as u64, (energy * 1000_000.0) as u64);
@@ -84,7 +82,7 @@ fn main() {
     }
 
     let energy_avg = energies.into_iter().sum::<f64>() / iter as f64;
-    let real_avg = reals.into_iter().sum::<f64>() / iter as f64;
-    let user_pct_avg = user_pcts.into_iter().sum::<f64>() / iter as f64;
-    println!("{:.8},{:.8},{:.4}", energy_avg, real_avg, user_pct_avg);
+    let real_avg = real.into_iter().sum::<f64>() / iter as f64;
+    let user_avg = user.into_iter().sum::<f64>() / iter as f64;
+    println!("{:.8},{:.8},{:.8}", energy_avg, real_avg, user_avg);
 }
