@@ -1,9 +1,18 @@
-use std::{hint::black_box, time::Instant};
+use std::{hint::black_box, sync::mpsc::{self, Receiver}, thread::{self, JoinHandle}, time::Instant};
 
 use cpu_time::ProcessTime;
 use mtdynamic::MTDynamic;
 use rapl_energy::Rapl;
 use rayon::prelude::*;
+
+fn busy_loop(rx: Receiver<()>) {
+    loop {
+        match rx.try_recv() {
+            Ok(_) | Err(mpsc::TryRecvError::Disconnected) => break,
+            Err(mpsc::TryRecvError::Empty) => {}
+        }
+    }
+}
 
 fn process(chunk: &mut [f64]) {
     for x in chunk {
@@ -31,8 +40,8 @@ pub fn create_pool(num_threads: usize) -> rayon::ThreadPool {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 5 {
-        eprintln!("Usage: {} <len> <iter> <max_threads> <threads_fixed>", args[0]);
+    if args.len() != 6 {
+        eprintln!("Usage: {} <len> <iter> <max_threads> <threads_fixed> <busy>", args[0]);
         return;
     }
 
@@ -40,6 +49,7 @@ fn main() {
     let iter: usize = args[2].parse().unwrap();
     let max_threads: i32 = args[3].parse().unwrap();
     let threads_fixed: bool = args[4].parse().unwrap();
+    let busy: usize = args[5].parse().unwrap();
 
     let mut v: Vec<f64> = (0..len).map(|x| x as f64).collect();
 
@@ -52,6 +62,13 @@ fn main() {
 
     let mut num_threads = max_threads as usize;
     let mut pool = create_pool(num_threads);
+
+    let busy_handles: Vec<(mpsc::Sender<()>, JoinHandle<()>)> = (0..busy).map(|_| {
+        let (tx, rx) = mpsc::channel();
+        let handle = thread::spawn(move || busy_loop(rx));
+        (tx, handle)
+    }).collect();
+
     for _ in 0..iter {
         let _ = rapl.elapsed_mut();
         let user = ProcessTime::now();
@@ -80,6 +97,11 @@ fn main() {
             }
         }
     }
+
+    busy_handles.into_iter().for_each(|(sender, handle)| {
+        sender.send(()).unwrap();
+        handle.join().unwrap();
+    });
 
     let energy_avg = energies.into_iter().sum::<f64>() / iter as f64;
     let real_avg = reals.into_iter().sum::<f64>() / iter as f64;

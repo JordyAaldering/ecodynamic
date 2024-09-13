@@ -9,9 +9,14 @@
 
 cargo build -q --release --example parallel
 
-printf "threads,energy,runtime,usertime\n"
+printf "busy,threads,energy,runtime,usertime\n"
 
-for i in `seq 1 32`; do
-    printf "$i,"
-    ./target/release/examples/parallel 10000000 1000 $i true
+LEN=10000000
+ITER=1000
+
+for busy in 0 2 4 8 16 32; do
+    for threads in `seq 1 32`; do
+        printf "$busy,$threads,"
+        ./target/release/examples/parallel $LEN $ITER $threads true $busy
+    done
 done
