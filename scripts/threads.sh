@@ -7,7 +7,7 @@
 #SBATCH --time=1:00:00
 #SBATCH --output=log/threads.out
 
-cargo build --release --example parallel
+cargo build -q --release --example parallel
 
 printf "threads,energy,runtime,user-pct\n"
 
