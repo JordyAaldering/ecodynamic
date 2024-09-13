@@ -25,10 +25,10 @@ impl std::ops::Neg for Direction {
     }
 }
 
-impl std::ops::Mul<i32> for Direction {
-    type Output = i32;
+impl std::ops::Mul<f64> for Direction {
+    type Output = f64;
 
-    fn mul(self, rhs: i32) -> Self::Output {
+    fn mul(self, rhs: f64) -> Self::Output {
         match self {
             Direction::Up => rhs,
             Direction::Down => -rhs,

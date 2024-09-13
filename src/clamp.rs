@@ -16,11 +16,6 @@ impl<T> Clamp<T>
         self.value
     }
 
-    pub fn set(&mut self, value: T) {
-        self.value = value;
-        self.clamp();
-    }
-
     fn clamp(&mut self) {
         if self.value < self.min {
             self.value = self.min;
