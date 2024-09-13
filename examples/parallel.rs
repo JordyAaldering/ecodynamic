@@ -63,7 +63,7 @@ fn main() {
 
         let real = real.elapsed();
         let user = user.elapsed();
-        let energy = *rapl.elapsed_mut().values().next().unwrap();
+        let energy = rapl.elapsed_mut().values().sum();
         energies.push(energy);
 
         let real = real.as_secs_f64();
