@@ -14,7 +14,7 @@ printf "busy,threads,energy,runtime,usertime\n"
 LEN=10000000
 ITER=1000
 
-for busy in 0 2 4 8 16 32; do
+for busy in `seq 0 4 32`; do
     for threads in `seq 1 32`; do
         printf "$busy,$threads,"
         ./target/release/examples/parallel $LEN $ITER $threads true $busy
