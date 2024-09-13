@@ -5,7 +5,7 @@
 #SBATCH --mem=0
 #SBATCH --cpus-per-task=32
 #SBATCH --time=10:00:00
-#SBATCH --output=log/threads.out
+#SBATCH --output=log/matmul.out
 
 make release
 
