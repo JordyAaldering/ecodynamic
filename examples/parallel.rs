@@ -11,7 +11,7 @@ fn process(chunk: &mut [f64]) {
     }
 }
 
-fn iter(v: &mut Vec<f64>, num_threads: usize) {
+fn parallel(v: &mut Vec<f64>, num_threads: usize) {
     let len = v.len();
     let chunk_size = if len % num_threads == 0 {
         len / num_threads
@@ -29,37 +29,36 @@ pub fn create_pool(num_threads: usize) -> rayon::ThreadPool {
        .unwrap()
 }
 
-const LEN: usize = 10_000_000;
-const ITER: usize = 500;
-
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 3 {
-        eprintln!("Usage: {} <max_threads> <threads_fixed>", args[0]);
+    if args.len() != 5 {
+        eprintln!("Usage: {} <len> <iter> <max_threads> <threads_fixed>", args[0]);
         return;
     }
 
-    let max_threads: i32 = args[1].parse().unwrap();
-    let threads_fixed: bool = args[2].parse().unwrap();
+    let len: usize = args[1].parse().unwrap();
+    let iter: usize = args[2].parse().unwrap();
+    let max_threads: i32 = args[3].parse().unwrap();
+    let threads_fixed: bool = args[4].parse().unwrap();
 
-    let mut v: Vec<f64> = (0..LEN).map(|x| x as f64).collect();
+    let mut v: Vec<f64> = (0..len).map(|x| x as f64).collect();
 
-    let mut energies: Vec<f64> = Vec::with_capacity(ITER);
-    let mut user_pcts: Vec<f64> = Vec::with_capacity(ITER);
-    let mut reals: Vec<f64> = Vec::with_capacity(ITER);
+    let mut energies: Vec<f64> = Vec::with_capacity(iter);
+    let mut user_pcts: Vec<f64> = Vec::with_capacity(iter);
+    let mut reals: Vec<f64> = Vec::with_capacity(iter);
 
     let mut mtd = MTDynamic::new(max_threads, 10);
     let mut rapl = Rapl::now().unwrap();
 
     let mut num_threads = max_threads as usize;
     let mut pool = create_pool(num_threads);
-    for _ in 0..ITER {
+    for _ in 0..iter {
         let _ = rapl.elapsed_mut();
         let real = Instant::now();
         let user = ProcessTime::now();
 
         pool.install(|| {
-            iter(&mut v, num_threads);
+            parallel(&mut v, num_threads);
         });
 
         let user = user.elapsed();
