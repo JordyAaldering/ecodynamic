@@ -22,7 +22,7 @@ impl MTDynamic {
         }
     }
 
-    pub fn update<S: AsRef<str>>(&mut self, funname: S, realtime_ns: u64, usertime_ns: u64, energy_uj: u64) {
+    pub fn update<S: AsRef<str>>(&mut self, funname: S, runtime: f64, usertime: f64, energy: f64) {
         if !self.controllers.contains_key(funname.as_ref()) {
             let controller = Controller::new(self.max_threads);
             let letterbox = Letterbox::new(self.max_threads, self.num_measurements_per_adjustment);
@@ -31,11 +31,11 @@ impl MTDynamic {
 
         let (ref mut controller, ref mut letterbox) = self.controllers.get_mut(funname.as_ref()).unwrap();
 
-        let num_measurements = letterbox.push(Sample::new(realtime_ns, usertime_ns, energy_uj));
+        let num_measurements = letterbox.push(Sample::new(runtime, usertime, energy));
         if num_measurements >= self.num_measurements_per_adjustment {
             let samples = letterbox.take();
             let num_threads = controller.adjust_threads(samples);
-            println!("{} nr. threads from {} to {}", funname.as_ref(), letterbox.num_threads(), num_threads);
+            //println!("{} nr. threads from {} to {}", funname.as_ref(), letterbox.num_threads(), num_threads);
             letterbox.update_threads(num_threads);
         }
     }
@@ -67,15 +67,15 @@ extern "C" fn MTDcreate(max_threads: i32, num_measurements_per_adjustment: usize
 }
 
 #[no_mangle]
-extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, realtime_ns: u64, usertime_ns: u64, energy_uj: u64) {
-    if energy_uj == 0 {
+extern "C" fn MTDupdate(mtd: *mut &mut MTDynamic, funname: *const c_char, runtime: f64, usertime: f64, energy: f64) {
+    if energy == 0.0 {
         return;
     }
 
     let mtd = unsafe { std::ptr::read(mtd) };
     let funname = unsafe { CStr::from_ptr(funname) };
     let funname = funname.to_str().unwrap().to_string();
-    mtd.update(funname, realtime_ns, usertime_ns, energy_uj);
+    mtd.update(funname, runtime, usertime, energy);
 }
 
 #[no_mangle]

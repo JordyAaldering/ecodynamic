@@ -3,10 +3,10 @@ LOCAL=$(HOME)/.local
 all: debug
 
 debug:
-	cargo build
+	cargo build --lib --bins --examples
 
 release:
-	cargo build --release
+	cargo build --release --lib --bins --examples
 
 install: debug release
 	cp target/release/mtdynamic.h $(LOCAL)/include/

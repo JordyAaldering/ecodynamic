@@ -1,20 +1,20 @@
 #[derive(Clone)]
 pub struct Sample {
-    pub realtime_ns: u64,
-    pub usertime_ns: u64,
-    pub energy_uj: u64,
-    num_threads: i32,
+    pub runtime: f64,
+    pub usertime: f64,
+    pub energy: f64,
+    pub num_threads: i32,
 }
 
 impl Sample {
-    pub fn new(realtime_ns: u64, usertime_ns: u64, energy_uj: u64) -> Self {
-        Sample { realtime_ns, usertime_ns, energy_uj, num_threads: -1 }
+    pub fn new(runtime: f64, usertime: f64, energy: f64) -> Self {
+        Sample { runtime, usertime, energy, num_threads: -1 }
     }
 }
 
 impl std::fmt::Debug for Sample {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("({}, {}, {}, {})", self.realtime_ns, self.usertime_ns, self.energy_uj, self.num_threads))
+        f.write_fmt(format_args!("({}, {}, {}, {})", self.runtime, self.usertime, self.energy, self.num_threads))
     }
 }
 
@@ -67,14 +67,14 @@ impl Letterbox {
 
 impl std::fmt::Debug for Letterbox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let real_time: u64 = self.history.iter().map(|sample| sample.realtime_ns).sum();
-        let user_time: u64 = self.history.iter().map(|sample| sample.usertime_ns).sum();
-        let energy: u64 = self.history.iter().map(|sample| sample.energy_uj).sum();
+        let real_time: f64 = self.history.iter().map(|sample| sample.runtime).sum();
+        let user_time: f64 = self.history.iter().map(|sample| sample.usertime).sum();
+        let energy: f64 = self.history.iter().map(|sample| sample.energy).sum();
         f.write_fmt(format_args!(
-            "{:?}\n\tReal time ms: {}, user time ms: {}, energy mJ: {}",
+            "{:?}\n\tRuntime: {}, Usertime: {}, Energy: {}",
             self.history,
-            real_time / 1_000_000,
-            user_time / 1_000_000,
-            energy / 1_000))
+            real_time,
+            user_time,
+            energy))
     }
 }

@@ -1,13 +1,13 @@
 pub trait SelectionAlgorithm {
-    fn find_best(&self, samples: Vec<u64>) -> u64;
+    fn find_best(&self, samples: Vec<f64>) -> f64;
 }
 
 pub struct Median {}
 
 impl SelectionAlgorithm for Median {
-    fn find_best(&self, mut samples: Vec<u64>) -> u64 {
+    fn find_best(&self, mut samples: Vec<f64>) -> f64 {
         let idx = samples.len() / 2;
-        samples.sort();
+        samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
         samples[idx]
     }
 }
@@ -21,21 +21,21 @@ impl FrequencyDist {
         FrequencyDist { num_ranges }
     }
 
-    fn get_distribution_maximums(&self, samples: &Vec<u64>) -> Vec<u64> {
+    fn get_distribution_maximums(&self, samples: &Vec<f64>) -> Vec<f64> {
         let min = samples[0];
         let max = samples[samples.len() - 1];
-        let dist_size = (max - min) / self.num_ranges as u64;
-        let mut res = (1..=self.num_ranges as u64)
-            .map(|i| min + dist_size * i)
-            .collect::<Vec<u64>>();
+        let dist_size = (max - min) / self.num_ranges as f64;
+        let mut res = (1..=self.num_ranges)
+            .map(|i| min + dist_size * i as f64)
+            .collect::<Vec<f64>>();
         res[self.num_ranges - 1] = max;
         res
     }
 }
 
 impl SelectionAlgorithm for FrequencyDist {
-    fn find_best(&self, mut samples: Vec<u64>) -> u64 {
-        samples.sort();
+    fn find_best(&self, mut samples: Vec<f64>) -> f64 {
+        samples.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         let dist_max = self.get_distribution_maximums(&samples);
         let mut dist = vec![Vec::new(); self.num_ranges];

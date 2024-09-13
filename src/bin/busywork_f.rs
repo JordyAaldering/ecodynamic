@@ -20,7 +20,7 @@ fn start_busywork(step: usize, max_threads: usize) -> Vec<Sender<()>> {
         .step_by(step)
         .take(max_threads)
         .map(|id| {
-            println!("Looping thread {:?}", id);
+            //println!("Looping thread {:?}", id);
             let (tx, rx) = mpsc::channel();
             let _handle = thread::spawn(move || {
                 let res = core_affinity::set_for_current(id);
@@ -32,7 +32,7 @@ fn start_busywork(step: usize, max_threads: usize) -> Vec<Sender<()>> {
 }
 
 fn stop_busywork(txs: Vec<Sender<()>>) {
-    println!("Stopping {} busy threads", txs.len());
+    //println!("Stopping {} busy threads", txs.len());
     for tx in txs {
         tx.send(()).unwrap()
     }
@@ -55,8 +55,9 @@ fn main() {
     match cmd.spawn() {
         Ok(mut child) => {
             match child.wait() {
-                Ok(status) => eprintln!("Command exited with status: {:?}", status),
                 Err(e) => eprintln!("Failed to wait on child process: {}", e),
+                Ok(status) if !status.success() => eprintln!("Command exited with status: {:?}", status),
+                Ok(_) => {},
             }
         }
         Err(e) => eprintln!("Failed to start command: {}", e),
