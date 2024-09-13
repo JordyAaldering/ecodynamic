@@ -9,7 +9,7 @@
 
 cargo build -q --release --example parallel
 
-printf "threads,energy,runtime,user-pct\n"
+printf "threads,energy,runtime,usertime\n"
 
 for i in `seq 1 32`; do
     printf "$i,"
