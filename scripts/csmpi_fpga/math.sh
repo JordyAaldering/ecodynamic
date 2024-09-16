@@ -11,7 +11,7 @@ make release
 
 printf "dynamic,busy,threads,energy,runtime,usertime\n"
 
-REPEAT=50000
+REPEAT=10000
 ITER=100
 
 for busy in `seq 0 4 32`; do

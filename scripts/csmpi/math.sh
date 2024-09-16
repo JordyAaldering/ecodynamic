@@ -6,13 +6,13 @@
 #SBATCH --mem=0
 #SBATCH --cpus-per-task=16
 #SBATCH --time=10:00:00
-#SBATCH --output=log/math.out
+#SBATCH --output=log/cn_math.out
 
 make release
 
 printf "dynamic,busy,threads,energy,runtime,usertime\n"
 
-REPEAT=50000
+REPEAT=10000
 ITER=100
 
 for busy in `seq 0 2 16`; do
