@@ -17,13 +17,13 @@ ITER=500
 for busy in `seq 0 4 32`; do
     for threads in `seq 1 32`; do
         printf "false,$busy,$threads,"
-        ./target/release/busywork_f 1 $busy ./target/release/examples/parallel $LEN $ITER $threads true
+        ./target/release/busywork_f 1 $busy ./target/release/examples/math $LEN $ITER $threads true
     done
 done
 
 for busy in `seq 0 4 32`; do
     for threads in `seq 1 32`; do
         printf "true,$busy,$threads,"
-        ./target/release/busywork_f 1 $busy ./target/release/examples/parallel $LEN $ITER $threads false
+        ./target/release/busywork_f 1 $busy ./target/release/examples/math $LEN $ITER $threads false
     done
 done
