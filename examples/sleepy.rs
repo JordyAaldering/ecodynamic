@@ -50,7 +50,7 @@ fn main() {
         let real = Instant::now();
 
         pool.install(|| {
-            parallel(&mut v, repeat, Duration::from_micros(100 * num_threads as u64));
+            parallel(&mut v, repeat, Duration::from_micros(200 * num_threads as u64));
         });
 
         let real = real.elapsed();
