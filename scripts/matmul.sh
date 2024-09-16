@@ -11,7 +11,7 @@ make release
 
 printf "dynamic,busy,threads,energy,runtime,usertime\n"
 
-SIZE=100
+SIZE=200
 ITER=500
 
 for busy in `seq 0 4 32`; do
@@ -22,8 +22,6 @@ for busy in `seq 0 4 32`; do
 done
 
 for busy in `seq 0 4 32`; do
-    for threads in `seq 1 32`; do
-        printf "true,$busy,$threads,"
-        ./target/release/busywork_f 1 $busy ./target/release/examples/matmul $SIZE $ITER $threads false
-    done
+    printf "true,$busy,$threads,"
+    ./target/release/busywork_f 1 $busy ./target/release/examples/matmul $SIZE $ITER 32 false
 done
