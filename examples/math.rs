@@ -5,21 +5,12 @@ use mtdynamic::MTDynamic;
 use rapl_energy::Rapl;
 use rayon::prelude::*;
 
-fn process(chunk: &mut [f64]) {
-    for x in chunk {
-        *x = f64::sqrt(black_box(x.ln() * x.ln()));
-    }
-}
-
-fn parallel(v: &mut Vec<f64>, num_threads: usize) {
-    let len = v.len();
-    let chunk_size = if len % num_threads == 0 {
-        len / num_threads
-    } else {
-        len / (num_threads - 1)
-    };
-
-    v.par_chunks_mut(chunk_size).for_each(process);
+fn parallel(v: &mut Vec<f64>, repeat: usize) {
+    v.par_iter_mut().for_each(|x| {
+        for _ in 0..repeat {
+            *x = f64::sqrt(black_box(x.ln() * x.ln()));
+        }
+    });
 }
 
 pub fn create_pool(num_threads: usize) -> rayon::ThreadPool {
@@ -32,16 +23,16 @@ pub fn create_pool(num_threads: usize) -> rayon::ThreadPool {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 5 {
-        eprintln!("Usage: {} <len> <iter> <max_threads> <threads_fixed>", args[0]);
+        eprintln!("Usage: {} <repeat> <iter> <max_threads> <threads_fixed>", args[0]);
         return;
     }
 
-    let len: usize = args[1].parse().unwrap();
+    let repeat: usize = args[1].parse().unwrap();
     let iter: usize = args[2].parse().unwrap();
     let max_threads: i32 = args[3].parse().unwrap();
     let threads_fixed: bool = args[4].parse().unwrap();
 
-    let mut v: Vec<f64> = (0..len).map(|x| x as f64).collect();
+    let mut v: Vec<f64> = (0..1024).map(|x| x as f64).collect();
 
     let mut energies: Vec<f64> = Vec::with_capacity(iter);
     let mut reals: Vec<f64> = Vec::with_capacity(iter);
@@ -50,15 +41,14 @@ fn main() {
     let mut mtd = MTDynamic::new(max_threads, 10);
     let mut rapl = Rapl::now().unwrap();
 
-    let mut num_threads = max_threads as usize;
-    let mut pool = create_pool(num_threads);
+    let mut pool = create_pool(max_threads as usize);
     for _ in 0..iter {
         let _ = rapl.elapsed_mut();
         let user = ProcessTime::now();
         let real = Instant::now();
 
         pool.install(|| {
-            parallel(&mut v, num_threads);
+            parallel(&mut v, repeat);
         });
 
         let real = real.elapsed();
@@ -76,7 +66,6 @@ fn main() {
             let t = mtd.num_threads("parallel") as usize;
             if pool.current_num_threads() != t {
                 pool = create_pool(t);
-                num_threads = t;
             }
         }
     }
