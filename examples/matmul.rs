@@ -66,6 +66,10 @@ fn main() {
     let threads_fixed: bool = args[4].parse().unwrap();
     let do_print: bool = args[5].parse().unwrap();
 
+    if max_threads == 0 {
+        return;
+    }
+
     let x = black_box(create_random_matrix(size, size));
     let y = black_box(create_random_matrix(size, size));
 
