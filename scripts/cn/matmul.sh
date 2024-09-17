@@ -18,11 +18,13 @@ ITER=10
 for busy in `seq 0 2 16`; do
     for threads in `seq 1 16`; do
         printf "false,$busy,$threads,"
-        ./target/release/busywork_f 1 $busy numactl --interleave all ./target/release/examples/matmul $SIZE $ITER $threads true
+        numactl --interleave all ./target/release/examples/matmul $SIZE $(($ITER*$busy/2)) $busy true false &
+        numactl --interleave all ./target/release/examples/matmul $SIZE $ITER $threads true true
+        wait
     done
 done
 
-for busy in `seq 0 2 16`; do
-    printf "true,$busy,$threads,"
-    ./target/release/busywork_f 1 $busy numactl --interleave all ./target/release/examples/matmul $SIZE $ITER 16 false
-done
+#for busy in `seq 0 2 16`; do
+#    printf "true,$busy,$threads,"
+#    ./target/release/busywork_f 1 $busy numactl --interleave all ./target/release/examples/matmul $SIZE $ITER 16 false
+#done
