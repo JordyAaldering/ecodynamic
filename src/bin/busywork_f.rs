@@ -13,22 +13,12 @@ fn runner(rx: mpsc::Receiver<()>) {
     }
 }
 
-fn start_busywork(step: usize, max_threads: usize) -> Vec<Sender<()>> {
-    core_affinity::get_core_ids().unwrap()
-        .into_iter()
-        .rev()
-        .step_by(step)
-        .take(max_threads)
-        .map(|id| {
-            //println!("Looping thread {:?}", id);
-            let (tx, rx) = mpsc::channel();
-            let _handle = thread::spawn(move || {
-                let res = core_affinity::set_for_current(id);
-                assert!(res);
-                runner(rx)
-            });
-            tx
-        }).collect()
+fn start_busywork(max_threads: usize) -> Vec<Sender<()>> {
+    (0..max_threads).map(|_| {
+        let (tx, rx) = mpsc::channel();
+        let _handle = thread::spawn(move || runner(rx));
+        tx
+    }).collect()
 }
 
 fn stop_busywork(txs: Vec<Sender<()>>) {
@@ -40,17 +30,16 @@ fn stop_busywork(txs: Vec<Sender<()>>) {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Usage: {} <step> <max_threads> <script> [arguments...]", args[0]);
+    if args.len() < 2 {
+        eprintln!("Usage: {} <max_threads> <script> [arguments...]", args[0]);
         return;
     }
 
-    let step = args[1].parse::<usize>().unwrap();
-    let max_threads = args[2].parse::<usize>().unwrap();
-    let mut cmd = Command::new(&args[3]);
+    let max_threads = args[1].parse::<usize>().unwrap();
+    let mut cmd = Command::new(&args[2]);
     cmd.args(&args[4..]);
 
-    let senders = start_busywork(step, max_threads);
+    let senders = start_busywork(max_threads);
 
     match cmd.spawn() {
         Ok(mut child) => {

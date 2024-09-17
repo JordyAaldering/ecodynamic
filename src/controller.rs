@@ -27,8 +27,8 @@ impl Controller {
     }
 
     pub fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
-        let samples = samples.iter().map(|x| x.energy).collect();
-        let tn = self.selection_algorithm.find_best(samples);
+        let scores = samples.into_iter().map(|x| x.energy_score()).collect();
+        let tn = self.selection_algorithm.find_best(scores);
 
         if self.t_last < tn * 0.5 {
             // Fallen outside the corridor
@@ -36,12 +36,12 @@ impl Controller {
                 self.step_direction = -self.step_direction;
                 self.step_size *= 1.75;
             } else {
-                self.step_direction = Direction::towards(self.n.get(), self.max_threads / 2);
-                self.step_size = (self.max_threads / 2) as f64;
+                self.step_direction = Direction::Down;
+                self.step_size = (self.n.value() / 2) as f64;
             }
         } else {
             if tn > self.t_last {
-                // The previous iteration performed better
+                // The previous iteration performed a bit better
                 self.step_direction = -self.step_direction;
             }
 
@@ -50,7 +50,7 @@ impl Controller {
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    self.step_direction = Direction::towards(self.n.get(), self.max_threads / 2);
+                    self.step_direction = Direction::towards(self.n.value(), self.max_threads / 2);
                     self.step_size = (self.max_threads / 2) as f64;
                 }
             }
@@ -58,6 +58,6 @@ impl Controller {
 
         self.t_last = tn;
         self.n += f64::ceil(self.step_direction * self.step_size) as i32;
-        self.n.get()
+        self.n.value()
     }
 }

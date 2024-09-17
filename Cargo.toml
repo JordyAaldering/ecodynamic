@@ -18,7 +18,6 @@ path = "src/bin/busywork_f.rs"
 cbindgen = "0.26.0"
 
 [dependencies]
-core_affinity = "0.8.1"
 threadpool = "1.8.1"
 
 [dev-dependencies]

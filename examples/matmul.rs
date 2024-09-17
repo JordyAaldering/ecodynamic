@@ -55,8 +55,8 @@ fn create_pool(num_threads: usize) -> rayon::ThreadPool {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 5 {
-        eprintln!("Usage: {} <size> <iter> <max_threads> <threads_fixed>", args[0]);
+    if args.len() != 6 {
+        eprintln!("Usage: {} <size> <iter> <max_threads> <threads_fixed> <do_print>", args[0]);
         return;
     }
 
@@ -64,6 +64,7 @@ fn main() {
     let iter: usize = args[2].parse().unwrap();
     let max_threads: i32 = args[3].parse().unwrap();
     let threads_fixed: bool = args[4].parse().unwrap();
+    let do_print: bool = args[5].parse().unwrap();
 
     let x = black_box(create_random_matrix(size, size));
     let y = black_box(create_random_matrix(size, size));
@@ -104,8 +105,10 @@ fn main() {
         }
     }
 
-    let energy_avg = energies.into_iter().sum::<f64>() / iter as f64;
-    let real_avg = reals.into_iter().sum::<f64>() / iter as f64;
-    let user_avg = users.into_iter().sum::<f64>() / iter as f64;
-    println!("{:.8},{:.8},{:.8}", energy_avg, real_avg, user_avg);
+    if do_print {
+        let energy_avg = energies.into_iter().sum::<f64>() / iter as f64;
+        let real_avg = reals.into_iter().sum::<f64>() / iter as f64;
+        let user_avg = users.into_iter().sum::<f64>() / iter as f64;
+        println!("{:.8},{:.8},{:.8}", energy_avg, real_avg, user_avg);
+    }
 }

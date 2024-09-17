@@ -12,7 +12,7 @@ impl<T> Clamp<T>
         Clamp { value, min, max }
     }
 
-    pub fn get(&self) -> T {
+    pub fn value(&self) -> T {
         self.value
     }
 

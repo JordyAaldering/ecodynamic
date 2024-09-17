@@ -1,6 +1,6 @@
-use std::{process::Command, sync::mpsc::{self, Sender}, thread::{self, sleep}, time::{Duration, Instant}};
+use std::{process::Command, sync::mpsc::{self, Sender}, thread::{self, sleep, JoinHandle}, time::{Duration, Instant}};
 
-fn runner(tid: usize, rx: mpsc::Receiver<()>) {
+fn runner(tid: usize, received: mpsc::Receiver<()>) {
     let sleep_duration = Duration::from_secs(2u64.pow(4 + (tid as u32 % 3)));
 
     loop {
@@ -12,7 +12,7 @@ fn runner(tid: usize, rx: mpsc::Receiver<()>) {
 
         let now = Instant::now();
         while now.elapsed() < sleep_duration {
-            match rx.try_recv() {
+            match received.try_recv() {
                 Ok(_) | Err(mpsc::TryRecvError::Disconnected) => {
                     break;
                 }
@@ -24,29 +24,19 @@ fn runner(tid: usize, rx: mpsc::Receiver<()>) {
     }
 }
 
-fn start_busywork(max_threads: usize) -> Vec<Sender<()>> {
-    println!("Starting {} busy threads", max_threads);
-    core_affinity::get_core_ids().unwrap()
-        .into_iter()
-        .rev()
-        .take(max_threads)
-        .enumerate()
-        .map(|(idx, id)| {
-            let (tx, rx) = mpsc::channel();
-            let _handle = thread::spawn(move || {
-                let res = core_affinity::set_for_current(id);
-                assert!(res);
-                runner(idx, rx)
-            });
-            tx
-        }).collect()
+fn start_busywork(max_threads: usize) -> (Vec<Sender<()>>, Vec<JoinHandle<()>>) {
+    (0..max_threads).map(|tid| {
+        let (sender, receiver) = mpsc::channel();
+        let handle = thread::spawn(move || {
+            runner(tid, receiver)
+        });
+        (sender, handle)
+    }).unzip()
 }
 
-fn stop_busywork(txs: Vec<Sender<()>>) {
-    println!("Stopping {} busy threads", txs.len());
-    for tx in txs {
-        tx.send(()).unwrap()
-    }
+fn stop_busywork(senders: Vec<Sender<()>>, handles: Vec<JoinHandle<()>>) {
+    senders.into_iter().for_each(|sender| sender.send(()).unwrap());
+    handles.into_iter().for_each(|handle| handle.join().unwrap());
 }
 
 fn main() {
@@ -60,7 +50,7 @@ fn main() {
     let mut cmd = Command::new(&args[2]);
     cmd.args(&args[3..]);
 
-    let senders = start_busywork(max_threads);
+    let (senders, handles) = start_busywork(max_threads);
 
     match cmd.spawn() {
         Ok(mut child) => {
@@ -72,5 +62,5 @@ fn main() {
         Err(e) => eprintln!("Failed to start command: {}", e),
     }
 
-    stop_busywork(senders);
+    stop_busywork(senders, handles);
 }
