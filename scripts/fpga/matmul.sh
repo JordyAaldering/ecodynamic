@@ -12,12 +12,12 @@ make release
 printf "dynamic,busy,threads,energy,runtime,usertime\n"
 
 SIZE=500
-ITER=10
+ITER=20
 
 for busy in `seq 0 4 32`; do
     for threads in `seq 1 32`; do
         printf "false,$busy,$threads,"
-        numactl --interleave all ./target/release/examples/matmul $SIZE $ITER $busy true false &
+        numactl --interleave all ./target/release/examples/matmul $SIZE $((2*$ITER*$busy)) $busy true false &
         numactl --interleave all ./target/release/examples/matmul $SIZE $ITER $threads true true
         wait
     done
