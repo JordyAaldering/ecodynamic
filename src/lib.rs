@@ -2,7 +2,7 @@ mod clamp;
 mod controller;
 mod letterbox;
 
-use std::{collections::HashMap, ffi::{c_char, CStr}};
+use std::{collections::BTreeMap, ffi::{c_char, CStr}};
 
 use letterbox::{Letterbox, Sample};
 use controller::Controller;
@@ -10,7 +10,7 @@ use controller::Controller;
 pub struct MTDynamic {
     max_threads: i32,
     num_measurements_per_adjustment: usize,
-    controllers: HashMap<String, (Controller, Letterbox)>,
+    controllers: BTreeMap<String, (Controller, Letterbox)>,
 }
 
 impl MTDynamic {
@@ -18,7 +18,7 @@ impl MTDynamic {
         MTDynamic {
             max_threads,
             num_measurements_per_adjustment,
-            controllers: HashMap::new(),
+            controllers: BTreeMap::new(),
         }
     }
 
