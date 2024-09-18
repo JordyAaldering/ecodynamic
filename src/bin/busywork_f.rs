@@ -1,4 +1,6 @@
-use std::{process::Command, sync::mpsc::{self, Sender}, thread};
+use std::{process::Command, sync::mpsc::{self, Sender}, thread, time::Instant};
+
+use cpu_time::ProcessTime;
 
 fn runner(rx: mpsc::Receiver<()>) {
     loop {
@@ -47,10 +49,18 @@ fn main() {
 
     match cmd.spawn() {
         Ok(mut child) => {
+            let user = ProcessTime::now();
+            let real = Instant::now();
+
             match child.wait() {
                 Err(e) => eprintln!("Failed to wait on child process: {}", e),
                 Ok(_) => {},
             }
+
+            let real = real.elapsed();
+            let user = user.elapsed();
+            print!(",{:.8},{:.8}", real.as_secs_f64(), user.as_secs_f64());
+
         }
         Err(e) => eprintln!("Failed to start command: {}", e),
     }

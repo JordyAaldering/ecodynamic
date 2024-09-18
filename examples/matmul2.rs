@@ -113,5 +113,5 @@ fn main() {
     let energy_avg = energies.into_iter().sum::<f64>() / iter as f64;
     let real_avg = reals.into_iter().sum::<f64>() / iter as f64;
     let user_avg = users.into_iter().sum::<f64>() / iter as f64;
-    println!("{:.8},{:.8},{:.8}", energy_avg, real_avg, user_avg);
+    print!("{:.8},{:.8},{:.8}", energy_avg, real_avg, user_avg);
 }
