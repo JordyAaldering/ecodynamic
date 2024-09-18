@@ -15,7 +15,7 @@ printf "dynamic,busy,threads,energy,runtime,usertime\n"
 REPEAT=5000
 ITER=20
 
-for busy in `seq 1 16`; do
+for busy in `seq 1 15`; do
     for threads in `seq 1 16`; do
         printf "false,$busy,$threads,"
         numactl --interleave all ./target/release/examples/math2 $REPEAT $ITER $threads $busy
