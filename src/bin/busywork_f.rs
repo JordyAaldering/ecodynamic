@@ -37,7 +37,7 @@ fn main() {
 
     let max_threads = args[1].parse::<usize>().unwrap();
     let mut cmd = Command::new(&args[2]);
-    cmd.args(&args[4..]);
+    cmd.args(&args[3..]);
 
     let senders = start_busywork(max_threads);
 
