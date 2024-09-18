@@ -45,7 +45,6 @@ fn main() {
         Ok(mut child) => {
             match child.wait() {
                 Err(e) => eprintln!("Failed to wait on child process: {}", e),
-                Ok(status) if !status.success() => eprintln!("Command exited with status: {:?}", status),
                 Ok(_) => {},
             }
         }
