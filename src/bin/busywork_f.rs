@@ -59,8 +59,7 @@ fn main() {
 
             let real = real.elapsed();
             let user = user.elapsed();
-            print!(",{:.8},{:.8}", real.as_secs_f64(), user.as_secs_f64());
-
+            println!(",{:.8},{:.8}", real.as_secs_f64(), user.as_secs_f64());
         }
         Err(e) => eprintln!("Failed to start command: {}", e),
     }
