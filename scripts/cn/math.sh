@@ -12,17 +12,12 @@ make release
 
 printf "dynamic,busy,threads,energy,runtime,usertime\n"
 
-REPEAT=10000
-ITER=10
+REPEAT=5000
+ITER=20
 
-for busy in `seq 0 2 16`; do
+for busy in `seq 1 16`; do
     for threads in `seq 1 16`; do
         printf "false,$busy,$threads,"
-        ./target/release/busywork_f 1 $busy numactl --interleave all ./target/release/examples/math $REPEAT $ITER $threads true
+        numactl --interleave all ./target/release/examples/math2 $REPEAT $ITER $threads $busy
     done
-done
-
-for busy in `seq 0 2 16`; do
-    printf "true,$busy,$threads,"
-    ./target/release/busywork_f 1 $busy numactl --interleave all ./target/release/examples/math $REPEAT $ITER 16 false
 done

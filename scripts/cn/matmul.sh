@@ -15,7 +15,7 @@ printf "dynamic,busy,threads,energy,runtime,usertime\n"
 SIZE=500
 ITER=10
 
-for busy in `seq 0 2 16`; do
+for busy in `seq 1 2 15`; do
     for threads in `seq 1 16`; do
         printf "false,$busy,$threads,"
         numactl --interleave all ./target/release/examples/matmul2 $SIZE $ITER $threads $busy
