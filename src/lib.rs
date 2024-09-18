@@ -52,7 +52,7 @@ impl MTDynamic {
 impl std::fmt::Debug for MTDynamic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (name, (_, letterbox)) in &self.controllers {
-            f.write_fmt(format_args!("{}: {:?}", name, letterbox))?;
+            f.write_fmt(format_args!("{},{:?},", name, letterbox))?;
         }
         Ok(())
     }

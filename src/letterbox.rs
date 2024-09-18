@@ -74,11 +74,6 @@ impl std::fmt::Debug for Letterbox {
         let real_time: f64 = self.history.iter().map(|sample| sample.runtime).sum();
         let user_time: f64 = self.history.iter().map(|sample| sample.usertime).sum();
         let energy: f64 = self.history.iter().map(|sample| sample.energy).sum();
-        f.write_fmt(format_args!(
-            "{:?}\n\tRuntime: {}, Usertime: {}, Energy: {}",
-            self.history,
-            real_time,
-            user_time,
-            energy))
+        f.write_fmt(format_args!("{},{},{}", real_time, user_time, energy))
     }
 }
