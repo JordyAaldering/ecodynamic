@@ -91,6 +91,6 @@ extern "C" fn MTDnumThreads(mtd: *mut &mut MTDynamic, funname: *const c_char) ->
 #[no_mangle]
 extern "C" fn MTDfree(mtd: *mut MTDynamic) {
     let mtd = unsafe { std::ptr::read(mtd) };
-    print!("{:?}", mtd);
+    println!("{:?}", mtd);
     drop(mtd);
 }
