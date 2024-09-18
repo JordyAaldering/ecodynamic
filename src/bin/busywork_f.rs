@@ -47,24 +47,26 @@ fn main() {
         None
     };
 
-    match cmd.spawn() {
+    let (real, user) = match cmd.spawn() {
         Ok(mut child) => {
             let user = ProcessTime::now();
             let real = Instant::now();
 
             match child.wait() {
-                Err(e) => eprintln!("Failed to wait on child process: {}", e),
+                Err(e) => unreachable!("Failed to wait on child process: {}", e),
                 Ok(_) => {},
             }
 
             let real = real.elapsed();
             let user = user.elapsed();
-            println!(",{:.8},{:.8}", real.as_secs_f64(), user.as_secs_f64());
+            (real.as_secs_f64(), user.as_secs_f64())
         }
-        Err(e) => eprintln!("Failed to start command: {}", e),
-    }
+        Err(e) => unreachable!("Failed to start command: {}", e),
+    };
 
     if let Some(senders) = senders {
         stop_busywork(senders);
     }
+
+    println!(",{:.8},{:.8}", real, user);
 }
