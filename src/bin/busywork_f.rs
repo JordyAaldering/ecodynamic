@@ -39,7 +39,11 @@ fn main() {
     let mut cmd = Command::new(&args[2]);
     cmd.args(&args[3..]);
 
-    let senders = start_busywork(max_threads);
+    let senders = if max_threads > 0 {
+        Some(start_busywork(max_threads))
+    } else {
+        None
+    };
 
     match cmd.spawn() {
         Ok(mut child) => {
@@ -51,5 +55,7 @@ fn main() {
         Err(e) => eprintln!("Failed to start command: {}", e),
     }
 
-    stop_busywork(senders);
+    if let Some(senders) = senders {
+        stop_busywork(senders);
+    }
 }

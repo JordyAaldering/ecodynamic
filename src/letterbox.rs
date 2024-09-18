@@ -27,7 +27,7 @@ pub struct Letterbox {
     num_threads: i32,
     num_measurements_per_adjustment: usize,
     // Debugging and analysis
-    history: Vec<Sample>,
+    pub history: Vec<Sample>,
 }
 
 impl Letterbox {
