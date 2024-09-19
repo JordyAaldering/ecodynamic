@@ -3,7 +3,7 @@ mod selection;
 
 use crate::{clamp::Clamp, letterbox::Sample};
 use direction::Direction;
-pub use selection::*;
+use selection::*;
 
 pub struct Controller {
     n: Clamp<i32>,

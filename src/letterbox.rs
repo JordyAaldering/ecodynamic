@@ -1,5 +1,3 @@
-use crate::controller::FrequencyDist;
-
 #[derive(Clone)]
 pub struct Sample {
     runtime: f64,
@@ -73,26 +71,10 @@ impl Letterbox {
 
 impl std::fmt::Debug for Letterbox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let freq = FrequencyDist::new(5);
-
-        let energy = self.history.iter().map(|sample| sample.energy).collect();
-        let distributions = freq.distribute(energy);
-        let energy_dist = distributions.into_iter().max_by_key(Vec::len).unwrap();
-        let energy_len = energy_dist.len() as f64;
-        let energy = energy_dist.into_iter().sum::<f64>() / energy_len;
-
-        let real_time = self.history.iter().map(|sample| sample.runtime).collect();
-        let distributions = freq.distribute(real_time);
-        let real_time_dist = distributions.into_iter().max_by_key(Vec::len).unwrap();
-        let real_time_len = real_time_dist.len() as f64;
-        let real_time = real_time_dist.into_iter().sum::<f64>() / real_time_len;
-
-        let user_time = self.history.iter().map(|sample| sample.usertime).collect();
-        let distributions = freq.distribute(user_time);
-        let user_time_dist = distributions.into_iter().max_by_key(Vec::len).unwrap();
-        let user_time_len = user_time_dist.len() as f64;
-        let user_time = user_time_dist.into_iter().sum::<f64>() / user_time_len;
-
+        let len = self.history.len() as f64;
+        let real_time = self.history.iter().map(|sample| sample.runtime).sum::<f64>() / len;
+        let user_time = self.history.iter().map(|sample| sample.usertime).sum::<f64>() / len;
+        let energy = self.history.iter().map(|sample| sample.energy).sum::<f64>() / len;
         f.write_fmt(format_args!("{},{},{}", real_time, user_time, energy))
     }
 }
