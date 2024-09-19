@@ -1,38 +1,39 @@
-use std::{process::Command, sync::mpsc::{self, Sender}, thread, time::Instant};
+use std::process::Command;
+use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::thread::{self, JoinHandle};
 
-use cpu_time::ProcessTime;
-
-fn runner(rx: mpsc::Receiver<()>) {
+fn runner(rx: Receiver<()>) {
     loop {
         match rx.try_recv() {
-            Ok(_) | Err(mpsc::TryRecvError::Disconnected) => {
-                break;
-            }
-            Err(mpsc::TryRecvError::Empty) => {
-                // Do nothing
-            }
+            Ok(_) | Err(TryRecvError::Disconnected) => break,
+            Err(TryRecvError::Empty) => {}
         }
     }
 }
 
-fn start_busywork(max_threads: usize) -> Vec<Sender<()>> {
-    (0..max_threads).map(|_| {
-        let (tx, rx) = mpsc::channel();
-        let _handle = thread::spawn(move || runner(rx));
-        tx
-    }).collect()
+fn start_busywork(max_threads: usize) -> Vec<(Sender<()>, JoinHandle<()>)> {
+    core_affinity::get_core_ids()
+        .unwrap()
+        .into_iter()
+        .take(max_threads)
+        .map(|core_id| {
+            assert!(core_affinity::set_for_current(core_id));
+            let (sender, receiver) = mpsc::channel();
+            let handle = thread::spawn(move || runner(receiver));
+            (sender, handle)
+        }).collect()
 }
 
-fn stop_busywork(txs: Vec<Sender<()>>) {
-    //println!("Stopping {} busy threads", txs.len());
-    for tx in txs {
-        tx.send(()).unwrap()
+fn stop_busywork(threads: Vec<(Sender<()>, JoinHandle<()>)>) {
+    for (sender, handle) in threads {
+        sender.send(()).unwrap();
+        handle.join().unwrap();
     }
 }
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
+    if args.len() < 3 {
         eprintln!("Usage: {} <max_threads> <script> [arguments...]", args[0]);
         return;
     }
@@ -41,32 +42,17 @@ fn main() {
     let mut cmd = Command::new(&args[2]);
     cmd.args(&args[3..]);
 
-    let senders = if max_threads > 0 {
-        Some(start_busywork(max_threads))
-    } else {
-        None
-    };
+    let threads = start_busywork(max_threads);
 
-    let (real, user) = match cmd.spawn() {
+    match cmd.spawn() {
         Ok(mut child) => {
-            let user = ProcessTime::now();
-            let real = Instant::now();
-
             match child.wait() {
                 Err(e) => unreachable!("Failed to wait on child process: {}", e),
                 Ok(_) => {},
             }
-
-            let real = real.elapsed();
-            let user = user.elapsed();
-            (real.as_secs_f64(), user.as_secs_f64())
         }
         Err(e) => unreachable!("Failed to start command: {}", e),
     };
 
-    if let Some(senders) = senders {
-        stop_busywork(senders);
-    }
-
-    println!(",{:.8},{:.8}", real, user);
+    stop_busywork(threads);
 }
