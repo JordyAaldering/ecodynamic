@@ -1,3 +1,5 @@
+#!/bin/sh
+
 #SBATCH --account=csmpi
 #SBATCH --partition=csmpi_long
 #SBATCH --nodelist cn128
