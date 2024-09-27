@@ -51,7 +51,7 @@ impl Controller {
             }
 
             if self.step_size > 1.0 {
-                self.step_size *= 0.45;
+                self.step_size *= 0.5;
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
@@ -61,17 +61,17 @@ impl Controller {
             }
         }
 
-        let n = *self.n + self.step_direction * self.step_size;
-        self.changed = n != *self.n;
+        let prev_n = *self.n;
+        self.n += self.step_direction * self.step_size;
 
+        self.changed = prev_n.round() as i32 != (*self.n).round() as i32;
         if self.changed {
+            self.t_last = tn;
+        } else {
             self.t_last += tn;
             self.t_last *= 0.5;
-        } else {
-            self.t_last = tn;
         }
 
-        self.n += self.step_direction * self.step_size;
         (*self.n).round() as i32
     }
 }
