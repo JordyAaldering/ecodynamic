@@ -43,11 +43,10 @@ impl Controller {
             if tn > self.t_last {
                 // The previous iteration performed a bit better
                 self.step_direction = -self.step_direction;
-                self.step_size *= 2.0;
             }
-            else
+
             if self.step_size > 1.0 {
-                self.step_size /= 2.0;
+                self.step_size *= 0.6;
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
