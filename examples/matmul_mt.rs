@@ -1,6 +1,7 @@
 use std::{hint::black_box, time::Instant};
 
 use cpu_time::ProcessTime;
+use mtdynamic::MTDynamic;
 use rand::Rng;
 use rapl_energy::Rapl;
 use rayon::prelude::*;
@@ -46,18 +47,8 @@ impl Matrix {
 }
 
 fn create_pool(num_threads: usize) -> rayon::ThreadPool {
-    let cores = core_affinity::get_core_ids().unwrap();
-    let max_threads = cores.len();
-    assert!(num_threads <= max_threads);
-    let thread_indices: Vec<usize> = (0..max_threads).step_by(2)
-        .chain((1..max_threads).step_by(2)).collect();
     rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
-        //.start_handler(move |idx| {
-        //    let thread_idx = thread_indices[idx];
-        //    let core_id = cores[thread_idx];
-        //    assert!(core_affinity::set_for_current(core_id));
-        //})
         .build()
         .unwrap()
 }
@@ -79,7 +70,8 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let pool = create_pool(threads as usize);
+    let mut mtd = MTDynamic::new(threads, 20);
+    let mut pool = create_pool(threads as usize);
 
     let x = black_box(Matrix::random(size, size));
     let y = black_box(Matrix::random(size, size));
@@ -97,9 +89,19 @@ fn main() {
         let user = user.elapsed();
         let rapl = rapl.elapsed_mut();
 
-        runtime.push(real.as_secs_f64());
-        usertime.push(user.as_secs_f64());
-        energy.push(rapl.values().sum());
+        let real = real.as_secs_f64();
+        let user = user.as_secs_f64();
+        let rapl = rapl.values().sum();
+
+        runtime.push(real);
+        usertime.push(user);
+        energy.push(rapl);
+
+        mtd.update("parallel", real, user, rapl);
+        let t = mtd.num_threads("parallel") as usize;
+        if pool.current_num_threads() != t {
+            pool = create_pool(t);
+        }
     }
 
     println!("{:.8},{:.8},{:.8}",

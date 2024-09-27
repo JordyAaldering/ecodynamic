@@ -35,7 +35,7 @@ impl MTDynamic {
         if num_measurements >= self.num_measurements_per_adjustment {
             let samples = letterbox.take();
             let num_threads = controller.adjust_threads(samples);
-            //println!("{} nr. threads from {} to {}", funname.as_ref(), letterbox.num_threads(), num_threads);
+            println!("{} nr. threads from {} to {}", funname.as_ref(), letterbox.num_threads(), num_threads);
             letterbox.update_threads(num_threads);
         }
     }
