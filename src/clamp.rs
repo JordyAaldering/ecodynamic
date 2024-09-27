@@ -12,10 +12,6 @@ impl<T> Clamp<T>
         Clamp { value, min, max }
     }
 
-    pub fn value(&self) -> T {
-        self.value
-    }
-
     fn clamp(&mut self) {
         if self.value < self.min {
             self.value = self.min;
@@ -58,6 +54,16 @@ impl<T> std::ops::DivAssign<T> for Clamp<T>
     fn div_assign(&mut self, rhs: T) {
         self.value /= rhs;
         self.clamp();
+    }
+}
+
+impl<T> std::ops::Deref for Clamp<T>
+    where T: Copy + std::cmp::PartialOrd {
+
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.value
     }
 }
 

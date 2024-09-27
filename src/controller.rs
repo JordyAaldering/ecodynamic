@@ -37,20 +37,21 @@ impl Controller {
                 self.step_size *= 1.75;
             } else {
                 self.step_direction = Direction::Down;
-                self.step_size = (self.n.value() / 2) as f64;
+                self.step_size = (*self.n / 2) as f64;
             }
         } else {
             if tn > self.t_last {
                 // The previous iteration performed a bit better
                 self.step_direction = -self.step_direction;
+                self.step_size *= 2.0;
             }
-
+            else
             if self.step_size > 1.0 {
                 self.step_size /= 2.0;
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    self.step_direction = Direction::towards(self.n.value(), self.max_threads / 2);
+                    self.step_direction = Direction::towards(*self.n, self.max_threads / 2);
                     self.step_size = (self.max_threads / 2) as f64;
                 }
             }
@@ -58,6 +59,6 @@ impl Controller {
 
         self.t_last = tn;
         self.n += f64::ceil(self.step_direction * self.step_size) as i32;
-        self.n.value()
+        *self.n
     }
 }

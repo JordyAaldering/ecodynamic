@@ -49,6 +49,7 @@ impl SelectionAlgorithm for FrequencyDist {
         }
 
         let biggest_dist = dist.into_iter().max_by_key(Vec::len).unwrap();
-        biggest_dist[0]
+        let len = biggest_dist.len() as f64;
+        biggest_dist.into_iter().sum::<f64>() / len
     }
 }
