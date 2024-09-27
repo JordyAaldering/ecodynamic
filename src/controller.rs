@@ -1,5 +1,5 @@
-mod direction;
-mod selection;
+pub mod direction;
+pub mod selection;
 
 use crate::{clamp::Clamp, letterbox::Sample};
 use direction::Direction;
@@ -29,7 +29,7 @@ impl Controller {
     }
 
     pub fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
-        let scores = samples.into_iter().map(|x| x.energy_score()).collect();
+        let scores = samples.into_iter().map(|x| x.energy).collect();
         let tn = self.selection_algorithm.find_best(scores);
 
         if self.t_last < tn * 0.5 {

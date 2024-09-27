@@ -1,18 +1,14 @@
 #[derive(Clone)]
 pub struct Sample {
-    runtime: f64,
-    usertime: f64,
-    energy: f64,
+    pub runtime: f64,
+    pub usertime: f64,
+    pub energy: f64,
     num_threads: i32,
 }
 
 impl Sample {
     pub fn new(runtime: f64, usertime: f64, energy: f64) -> Self {
         Sample { runtime, usertime, energy, num_threads: -1 }
-    }
-
-    pub fn energy_score(&self) -> f64 {
-        self.energy
     }
 }
 
