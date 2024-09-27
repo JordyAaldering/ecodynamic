@@ -6,7 +6,8 @@ use direction::Direction;
 use selection::*;
 
 pub struct Controller {
-    n: Clamp<i32>,
+    n: Clamp<f64>,
+    changed: bool,
     step_size: f64,
     step_direction: Direction,
     max_threads: i32,
@@ -17,7 +18,8 @@ pub struct Controller {
 impl Controller {
     pub fn new(max_threads: i32) -> Controller {
         Controller {
-            n: Clamp::new(max_threads, 1, max_threads),
+            n: Clamp::new(max_threads as f64, 1.0, max_threads as f64),
+            changed: false,
             step_size: max_threads as f64,
             step_direction: Direction::Down,
             max_threads,
@@ -37,27 +39,39 @@ impl Controller {
                 self.step_size *= 1.75;
             } else {
                 self.step_direction = Direction::Down;
-                self.step_size = (*self.n / 2) as f64;
+                self.step_size = *self.n * 0.5;
             }
         } else {
             if tn > self.t_last {
                 // The previous iteration performed a bit better
-                self.step_direction = -self.step_direction;
+                if self.changed {
+                    // Only reverse direction if we actually changed n in the last iteration
+                    self.step_direction = -self.step_direction;
+                }
             }
 
             if self.step_size > 1.0 {
-                self.step_size *= 0.6;
+                self.step_size *= 0.45;
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    self.step_direction = Direction::towards(*self.n, self.max_threads / 2);
+                    self.step_direction = Direction::towards(*self.n as i32, self.max_threads / 2);
                     self.step_size = (self.max_threads / 2) as f64;
                 }
             }
         }
 
-        self.t_last = tn;
-        self.n += f64::ceil(self.step_direction * self.step_size) as i32;
-        *self.n
+        let n = *self.n + self.step_direction * self.step_size;
+        self.changed = n != *self.n;
+
+        if self.changed {
+            self.t_last += tn;
+            self.t_last *= 0.5;
+        } else {
+            self.t_last = tn;
+        }
+
+        self.n += self.step_direction * self.step_size;
+        (*self.n).round() as i32
     }
 }
