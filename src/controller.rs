@@ -68,8 +68,7 @@ impl Controller {
         if self.changed {
             self.t_last = tn;
         } else {
-            self.t_last += tn;
-            self.t_last *= 0.5;
+            self.t_last = f64::min(self.t_last, tn);
         }
 
         (*self.n).round() as i32
