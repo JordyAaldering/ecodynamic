@@ -53,11 +53,11 @@ fn create_pool(num_threads: usize) -> rayon::ThreadPool {
         .chain((1..max_threads).step_by(2)).collect();
     rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
-        //.start_handler(move |idx| {
-        //    let thread_idx = thread_indices[idx];
-        //    let core_id = cores[thread_idx];
-        //    assert!(core_affinity::set_for_current(core_id));
-        //})
+        .start_handler(move |idx| {
+            let thread_idx = thread_indices[idx];
+            let core_id = cores[thread_idx];
+            assert!(core_affinity::set_for_current(core_id));
+        })
         .build()
         .unwrap()
 }
