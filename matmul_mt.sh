@@ -8,4 +8,4 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=cn128_matmul_mt.out
 
-cargo run --release --example matmul_mt $1 $2 16
+cargo run --release --example matmul_mt $1 $2 16 $3
