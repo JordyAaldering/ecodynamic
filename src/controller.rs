@@ -65,11 +65,11 @@ impl Controller {
         self.n += self.step_direction * self.step_size;
 
         self.changed = prev_n.round() as i32 != (*self.n).round() as i32;
-        if self.changed {
-            self.t_last = tn;
+        self.t_last = if self.changed {
+            tn
         } else {
-            self.t_last = f64::min(self.t_last, tn);
-        }
+            f64::min(self.t_last, tn)
+        };
 
         (*self.n).round() as i32
     }
