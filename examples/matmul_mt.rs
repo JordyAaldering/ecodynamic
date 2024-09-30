@@ -53,16 +53,34 @@ fn create_pool(num_threads: usize) -> rayon::ThreadPool {
         .unwrap()
 }
 
+fn create_pool_pinned(num_threads: usize) -> rayon::ThreadPool {
+    let cores = core_affinity::get_core_ids().unwrap();
+    let max_threads = cores.len();
+    assert!(num_threads <= max_threads);
+    let thread_indices: Vec<usize> = (0..max_threads).step_by(2)
+        .chain((1..max_threads).step_by(2)).collect();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .start_handler(move |idx| {
+            let thread_idx = thread_indices[idx];
+            let core_id = cores[thread_idx];
+            assert!(core_affinity::set_for_current(core_id));
+        })
+        .build()
+        .unwrap()
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 4 {
-        eprintln!("Usage: {} <size> <iter> <threads>", args[0]);
+    if args.len() != 5 {
+        eprintln!("Usage: {} <size> <iter> <threads> <pin_threads?>", args[0]);
         return;
     }
 
     let size: usize = args[1].parse().unwrap();
     let iter: usize = args[2].parse().unwrap();
     let threads: i32 = args[3].parse().unwrap();
+    let pin_threads: bool = args[4].parse().unwrap();
 
     let mut runtime: Vec<f64> = Vec::with_capacity(iter);
     let mut usertime: Vec<f64> = Vec::with_capacity(iter);
@@ -71,7 +89,8 @@ fn main() {
     let mut rapl = Rapl::now().unwrap();
 
     let mut mtd = MTDynamic::new(threads, 20);
-    let mut pool = create_pool(threads as usize);
+    let create_pool_fn = if pin_threads { create_pool } else { create_pool_pinned };
+    let mut pool = create_pool_fn(threads as usize);
 
     let x = black_box(Matrix::random(size, size));
     let y = black_box(Matrix::random(size, size));
@@ -100,7 +119,7 @@ fn main() {
         mtd.update("parallel", real, user, rapl);
         let t = mtd.num_threads("parallel") as usize;
         if pool.current_num_threads() != t {
-            pool = create_pool(t);
+            pool = create_pool_fn(t);
         }
     }
 
