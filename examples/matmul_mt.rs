@@ -89,7 +89,7 @@ fn main() {
     let mut rapl = Rapl::now().unwrap();
 
     let mut mtd = MTDynamic::new(threads, 20);
-    let create_pool_fn = if pin_threads { create_pool } else { create_pool_pinned };
+    let create_pool_fn = if pin_threads { create_pool_pinned } else { create_pool };
     let mut pool = create_pool_fn(threads as usize);
 
     let x = black_box(Matrix::random(size, size));
