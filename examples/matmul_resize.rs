@@ -71,7 +71,7 @@ fn create_pool_pinned(num_threads: usize) -> rayon::ThreadPool {
 }
 
 fn main() {
-    let mut mtd = MTDynamic::new(16, 20);
+    let mut mtd = MTDynamic::new(16, 10);
     let mut rapl = Rapl::now().unwrap();
 
     const CYCLES: [(usize, bool); 20] = [
