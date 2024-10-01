@@ -38,7 +38,7 @@ impl Controller {
                 self.step_direction = -self.step_direction;
                 self.step_size *= 1.75;
             } else {
-                self.move_halfway_towards_farthest_edge();
+                self.move_towards_farthest_edge(0.75);
             }
         } else {
             if tn > self.t_last {
@@ -54,7 +54,7 @@ impl Controller {
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    self.move_halfway_towards_farthest_edge()
+                    self.move_towards_farthest_edge(0.75)
                 }
             }
         }
@@ -69,14 +69,14 @@ impl Controller {
         self.n.round() as i32
     }
 
-    fn move_halfway_towards_farthest_edge(&mut self) {
+    fn move_towards_farthest_edge(&mut self, scale: f64) {
         let n_max = self.max_threads as f64;
         if *self.n <= n_max * 0.5 {
             self.step_direction = Direction::Up;
-            self.step_size = (n_max - *self.n) * 0.5;
+            self.step_size = (n_max - *self.n) * scale;
         } else {
             self.step_direction = Direction::Down;
-            self.step_size = *self.n * 0.5;
+            self.step_size = *self.n * scale;
         }
     }
 }
