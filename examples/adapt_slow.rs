@@ -1,0 +1,135 @@
+use std::{hint::black_box, time::Instant};
+
+use cpu_time::ProcessTime;
+use mtdynamic::MTDynamic;
+use rand::Rng;
+use rapl_energy::Rapl;
+use rayon::prelude::*;
+
+struct Matrix {
+    rows: usize,
+    cols: usize,
+    data: Vec<Vec<f64>>,
+}
+
+impl Matrix {
+    fn new(data: Vec<Vec<f64>>) -> Self {
+        Matrix {
+            rows: data.len(),
+            cols: data[0].len(),
+            data,
+        }
+    }
+
+    fn random(x: usize, y: usize) -> Self {
+        let mut rng = rand::thread_rng();
+        let data = (0..y).map(|_| {
+            let mut row = vec![0.0; x];
+            rng.fill(row.as_mut_slice());
+            row
+        }).collect();
+        Self::new(data)
+    }
+
+    fn mul(&self, other: &Matrix) -> Matrix {
+        let mut res = vec![vec![0.0; other.cols]; self.rows];
+
+        res.par_iter_mut().enumerate().for_each(|(row_a, data)| {
+            for col_b in 0..other.cols {
+                for i in 0..self.cols {
+                    data[col_b] += self.data[row_a][i] * other.data[i][col_b];
+                }
+            }
+        });
+
+        Matrix::new(res)
+    }
+}
+
+fn create_pool(num_threads: usize) -> rayon::ThreadPool {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+        .unwrap()
+}
+
+fn create_pool_pinned(num_threads: usize) -> rayon::ThreadPool {
+    let cores = core_affinity::get_core_ids().unwrap();
+    let max_threads = cores.len();
+    assert!(num_threads <= max_threads);
+    let thread_indices: Vec<usize> = (0..max_threads).step_by(2)
+        .chain((1..max_threads).step_by(2)).collect();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .start_handler(move |idx| {
+            let thread_idx = thread_indices[idx];
+            let core_id = cores[thread_idx];
+            assert!(core_affinity::set_for_current(core_id));
+        })
+        .build()
+        .unwrap()
+}
+
+fn main() {
+    let mut mtd = MTDynamic::new(16, 10);
+    let mut rapl = Rapl::now().unwrap();
+
+    const CYCLES: [(usize, bool); 20] = [
+        (700, false),
+        (750, false),
+        (800, false),
+        (850, false),
+        (900, false),
+        (950, false),
+        (1000, false),
+        (1050, false),
+        (1100, false),
+        (1150, false),
+        (700, true),
+        (750, true),
+        (800, true),
+        (850, true),
+        (900, true),
+        (950, true),
+        (1000, true),
+        (1050, true),
+        (1100, true),
+        (1150, true),
+    ];
+
+    println!("size,pin,threads,runtime,usertime,energy");
+
+    let mut num_threads = 16;
+    for (size, pin) in CYCLES {
+        let mut pool = if pin { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
+
+        let x = black_box(Matrix::random(size, size));
+        let y = black_box(Matrix::random(size, size));
+
+        for _ in 0..100 {
+            let _ = rapl.elapsed_mut();
+            let user = ProcessTime::now();
+            let real = Instant::now();
+
+            pool.install(|| {
+                let _ = black_box(x.mul(&y));
+            });
+
+            let real = real.elapsed();
+            let user = user.elapsed();
+            let rapl = rapl.elapsed_mut();
+
+            let real = real.as_secs_f64();
+            let user = user.as_secs_f64();
+            let rapl = rapl.values().sum();
+
+            println!("{},{},{},{:.8},{:.8},{:.8}", size, pin, num_threads, real, user, rapl);
+
+            mtd.update("parallel", real, user, rapl);
+            num_threads = mtd.num_threads("parallel") as usize;
+            if pool.current_num_threads() != num_threads {
+                pool = if pin { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
+            }
+        }
+    }
+}
