@@ -34,14 +34,11 @@ impl Controller {
 
         if self.t_last < tn * 0.5 {
             // Fallen outside the corridor
-            // move halfway towards the farthest edge
-            let n_max = self.max_threads as f64;
-            if *self.n <= n_max * 0.5 {
-                self.step_direction = Direction::Up;
-                self.step_size = (n_max - *self.n) * 0.5;
+            if self.step_size > 1.0 {
+                self.step_direction = -self.step_direction;
+                self.step_size *= 1.75;
             } else {
-                self.step_direction = Direction::Down;
-                self.step_size = *self.n * 0.5;
+                self.move_halfway_towards_farthest_edge();
             }
         } else {
             if tn > self.t_last {
@@ -57,15 +54,7 @@ impl Controller {
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    // move halfway towards the farthest edge
-                    let n_max = self.max_threads as f64;
-                    if *self.n <= n_max * 0.5 {
-                        self.step_direction = Direction::Up;
-                        self.step_size = (n_max - *self.n) * 0.5;
-                    } else {
-                        self.step_direction = Direction::Down;
-                        self.step_size = *self.n * 0.5;
-                    }
+                    self.move_halfway_towards_farthest_edge()
                 }
             }
         }
@@ -78,5 +67,16 @@ impl Controller {
         };
 
         self.n.round() as i32
+    }
+
+    fn move_halfway_towards_farthest_edge(&mut self) {
+        let n_max = self.max_threads as f64;
+        if *self.n <= n_max * 0.5 {
+            self.step_direction = Direction::Up;
+            self.step_size = (n_max - *self.n) * 0.5;
+        } else {
+            self.step_direction = Direction::Down;
+            self.step_size = *self.n * 0.5;
+        }
     }
 }
