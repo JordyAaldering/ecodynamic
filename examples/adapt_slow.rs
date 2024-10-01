@@ -75,8 +75,6 @@ fn main() {
     let mut rapl = Rapl::now().unwrap();
 
     const CYCLES: [(usize, bool); 20] = [
-        (700, false),
-        (750, false),
         (800, false),
         (850, false),
         (900, false),
@@ -85,8 +83,8 @@ fn main() {
         (1050, false),
         (1100, false),
         (1150, false),
-        (700, true),
-        (750, true),
+        (1200, false),
+        (1250, false),
         (800, true),
         (850, true),
         (900, true),
@@ -95,6 +93,8 @@ fn main() {
         (1050, true),
         (1100, true),
         (1150, true),
+        (1200, true),
+        (1250, true),
     ];
 
     println!("size,pin,threads,runtime,usertime,energy");

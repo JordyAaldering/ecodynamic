@@ -6,6 +6,6 @@
 #SBATCH --mem=0
 #SBATCH --cpus-per-task=16
 #SBATCH --time=10:00:00
-#SBATCH --output=adapt_sudden.out
+#SBATCH --output=adapt_fast.out
 
-cargo run --release --example adapt_sudden
+cargo run --release --example adapt_fast
