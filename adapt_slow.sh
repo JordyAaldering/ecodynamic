@@ -6,6 +6,6 @@
 #SBATCH --mem=0
 #SBATCH --cpus-per-task=16
 #SBATCH --time=10:00:00
-#SBATCH --output=cn128_matmul_resize.out
+#SBATCH --output=adapt_slow.out
 
-cargo run --release --example matmul_resize
+cargo run --release --example adapt_slow
