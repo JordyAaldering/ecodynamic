@@ -10,10 +10,6 @@ impl ThreadCount {
         Self { n: max as f64, max: max as f64 }
     }
 
-    pub fn round(&self) -> i32 {
-        self.n.round() as i32
-    }
-
     pub fn adjust(&mut self, step_direction: Direction, step_size: f64) -> bool {
         let prev = self.n;
         self.n += step_direction * step_size;

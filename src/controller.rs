@@ -55,7 +55,7 @@ impl Controller {
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    self.step_direction = Direction::towards(self.n.round(), self.max_threads / 2);
+                    self.step_direction = Direction::towards(self.n.floor() as i32, self.max_threads / 2);
                     self.step_size = (self.max_threads / 2) as f64;
                 }
             }
@@ -68,6 +68,6 @@ impl Controller {
             f64::min(self.t_last, tn)
         };
 
-        self.n.round()
+        self.n.round() as i32
     }
 }

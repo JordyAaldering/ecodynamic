@@ -6,7 +6,7 @@ pub enum Direction {
 
 impl Direction {
     pub fn towards(from: i32, to: i32) -> Direction {
-        if from < to {
+        if from <= to {
             Direction::Up
         } else {
             Direction::Down
