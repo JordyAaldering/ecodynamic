@@ -54,7 +54,7 @@ impl Controller {
                 self.step_size *= 0.5;
             } else {
                 self.step_size = self.step_size.tanh();
-                if self.step_size < 0.29 {
+                if self.step_size < 0.27 {
                     self.step_direction = Direction::towards(self.n.floor() as i32, self.max_threads / 2);
                     self.step_size = (self.max_threads / 2) as f64;
                 }
