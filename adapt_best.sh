@@ -13,11 +13,13 @@ cargo build --release --example matmul
 # Warmup
 ./target/release/examples/matmul 1000 20 16
 
-for size in `seq 800 50 1250`; do
+printf "size,pin,threads,runtime,usertime,energy"
+
+for size in `seq 500 50 1250`; do
     for threads in `seq 4 16`; do
         printf "$size,true,$threads,"
-        ./target/release/examples/matmul $size 20 $threads true
+        ./target/release/examples/matmul $size 10 $threads true
         printf "$size,false,$threads,"
-        ./target/release/examples/matmul $size 20 $threads false
+        ./target/release/examples/matmul $size 10 $threads false
     done
 done
