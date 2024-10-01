@@ -106,7 +106,7 @@ fn main() {
         let x = black_box(Matrix::random(size, size));
         let y = black_box(Matrix::random(size, size));
 
-        for _ in 0..100 {
+        for _ in 0..200 {
             let _ = rapl.elapsed_mut();
             let user = ProcessTime::now();
             let real = Instant::now();
