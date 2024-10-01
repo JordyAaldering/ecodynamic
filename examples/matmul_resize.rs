@@ -97,7 +97,7 @@ fn main() {
         (1500, true),
     ];
 
-    println!("size,pin,runtime,usertime,energy");
+    println!("size,pin,threads,runtime,usertime,energy");
 
     let mut num_threads = 16;
     for (size, pin) in CYCLES {
@@ -123,7 +123,7 @@ fn main() {
             let user = user.as_secs_f64();
             let rapl = rapl.values().sum();
 
-            println!("{},{},{:.8},{:.8},{:.8}", size, pin, real, user, rapl);
+            println!("{},{},{},{:.8},{:.8},{:.8}", size, pin, num_threads, real, user, rapl);
 
             mtd.update("parallel", real, user, rapl);
             num_threads = mtd.num_threads("parallel") as usize;
