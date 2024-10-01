@@ -46,6 +46,13 @@ impl Matrix {
 }
 
 fn create_pool(num_threads: usize) -> rayon::ThreadPool {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+        .unwrap()
+}
+
+fn create_pool_pinned(num_threads: usize) -> rayon::ThreadPool {
     let cores = core_affinity::get_core_ids().unwrap();
     let max_threads = cores.len();
     assert!(num_threads <= max_threads);
@@ -64,14 +71,15 @@ fn create_pool(num_threads: usize) -> rayon::ThreadPool {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 4 {
-        eprintln!("Usage: {} <size> <iter> <threads>", args[0]);
+    if args.len() != 4 && args.len() != 5 {
+        eprintln!("Usage: {} <size> <iter> <threads> <pin-threads?>", args[0]);
         return;
     }
 
     let size: usize = args[1].parse().unwrap();
     let iter: usize = args[2].parse().unwrap();
     let threads: i32 = args[3].parse().unwrap();
+    let pin: bool = args.get(4).map_or(true, |x| x.parse().unwrap());
 
     let mut runtime: Vec<f64> = Vec::with_capacity(iter);
     let mut usertime: Vec<f64> = Vec::with_capacity(iter);
@@ -79,7 +87,7 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let pool = create_pool(threads as usize);
+    let pool = if pin { create_pool_pinned(threads as usize) } else { create_pool(threads as usize) };
 
     let x = black_box(Matrix::random(size, size));
     let y = black_box(Matrix::random(size, size));
