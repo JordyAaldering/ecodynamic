@@ -34,9 +34,11 @@ impl Controller {
 
         if self.t_last < tn * 0.5 {
             // Fallen outside the corridor
-            if self.step_size > 1.0 {
-                self.step_direction = -self.step_direction;
-                self.step_size *= 1.75;
+            // move halfway towards the farthest edge
+            let n_max = self.max_threads as f64;
+            if *self.n <= n_max * 0.5 {
+                self.step_direction = Direction::Up;
+                self.step_size = (n_max - *self.n) * 0.5;
             } else {
                 self.step_direction = Direction::Down;
                 self.step_size = *self.n * 0.5;
@@ -55,8 +57,15 @@ impl Controller {
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    self.step_direction = Direction::towards(self.n.floor() as i32, self.max_threads / 2);
-                    self.step_size = (self.max_threads / 2) as f64;
+                    // move halfway towards the farthest edge
+                    let n_max = self.max_threads as f64;
+                    if *self.n <= n_max * 0.5 {
+                        self.step_direction = Direction::Up;
+                        self.step_size = (n_max - *self.n) * 0.5;
+                    } else {
+                        self.step_direction = Direction::Down;
+                        self.step_size = *self.n * 0.5;
+                    }
                 }
             }
         }
