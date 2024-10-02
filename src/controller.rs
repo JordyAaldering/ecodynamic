@@ -38,7 +38,7 @@ impl Controller {
                 self.step_direction = -self.step_direction;
                 self.step_size *= 1.75;
             } else {
-                self.move_towards_farthest_edge(0.75);
+                self.move_towards_farthest_edge(0.40);
             }
         } else {
             if tn > self.t_last {
@@ -54,7 +54,7 @@ impl Controller {
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    self.move_towards_farthest_edge(0.75)
+                    self.move_towards_farthest_edge(0.40)
                 }
             }
         }
