@@ -25,7 +25,7 @@ impl Controller {
             // Settings
             max_threads,
             corridor_width: 0.5,
-            selection_algorithm: Box::new(FrequencyDist::new(5)),
+            selection_algorithm: Box::new(FrequencyDist::new(5, false)),
         }
     }
 

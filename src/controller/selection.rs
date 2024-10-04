@@ -14,11 +14,12 @@ impl SelectionAlgorithm for Median {
 
 pub struct FrequencyDist {
     num_ranges: usize,
+    average: bool,
 }
 
 impl FrequencyDist {
-    pub fn new(num_ranges: usize) -> Self {
-        FrequencyDist { num_ranges }
+    pub fn new(num_ranges: usize, average: bool) -> Self {
+        FrequencyDist { num_ranges, average }
     }
 
     fn get_distribution_maximums(&self, samples: &Vec<f64>) -> Vec<f64> {
@@ -50,6 +51,10 @@ impl SelectionAlgorithm for FrequencyDist {
 
         let biggest_dist = dist.into_iter().max_by_key(Vec::len).unwrap();
         let len = biggest_dist.len() as f64;
-        biggest_dist.into_iter().sum::<f64>() / len
+        if self.average {
+            biggest_dist.into_iter().sum::<f64>() / len
+        } else {
+            biggest_dist[0]
+        }
     }
 }
