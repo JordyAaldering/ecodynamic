@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, hint::black_box, time::Instant};
 
 use cpu_time::ProcessTime;
-use mtdynamic::{controller_runtime, Letterbox, MTDynamic, Sample};
+use mtdynamic::{controller_runtime, Letterbox, Sample};
 use rand::Rng;
 use rapl_energy::Rapl;
 use rayon::prelude::*;
@@ -112,123 +112,61 @@ impl MTDynamicRT {
 }
 
 fn main() {
-    const CYCLES: [(usize, bool); 3] = [
-        (500, true),
-        (750, false),
-        (1000, false),
-        //(1250, false),
-        //(1500, false),
-        //(500, true),
-        //(750, true),
-        //(1000, true),
-        //(1250, true),
-        //(1500, true),
-        //(500, false),
-        //(750, false),
-        //(1000, false),
-        //(1250, false),
-        //(1500, false),
-        //(500, true),
-        //(750, true),
-        //(1000, true),
-        //(1250, true),
-        //(1500, true),
-    ];
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() != 5 {
+        eprintln!("Usage: {} <size> <iter> <threads> <pin_threads?>", args[0]);
+        return;
+    }
+
+    let size: usize = args[1].parse().unwrap();
+    let iter: usize = args[2].parse().unwrap();
+    let threads: i32 = args[3].parse().unwrap();
+    let pin_threads: bool = args[4].parse().unwrap();
+
+    let mut runtime: Vec<f64> = Vec::with_capacity(iter);
+    let mut usertime: Vec<f64> = Vec::with_capacity(iter);
+    let mut energy: Vec<f64> = Vec::with_capacity(iter);
 
     let mut rapl = Rapl::now().unwrap();
-    let mut mtd = MTDynamicRT::new(16, 20);
 
-    let mut num_threads = 16;
-    for (size, pin_threads) in CYCLES {
-        let mut runtime: Vec<f64> = Vec::new();
-        let mut usertime: Vec<f64> = Vec::new();
-        let mut energy: Vec<f64> = Vec::new();
+    let mut mtd = MTDynamicRT::new(threads, 20);
+    let create_pool_fn = if pin_threads { create_pool_pinned } else { create_pool };
+    let mut pool = create_pool_fn(threads as usize);
 
-        let mut pool = if pin_threads { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
+    let x = black_box(Matrix::random(size, size));
+    let y = black_box(Matrix::random(size, size));
 
-        let x = black_box(Matrix::random(size, size));
-        let y = black_box(Matrix::random(size, size));
+    for _ in 0..iter {
+        let _ = rapl.elapsed_mut();
+        let user = ProcessTime::now();
+        let real = Instant::now();
 
-        for _ in 0..200 {
-            let _ = rapl.elapsed_mut();
-            let user = ProcessTime::now();
-            let real = Instant::now();
+        pool.install(|| {
+            let _ = black_box(x.mul(&y));
+        });
 
-            pool.install(|| {
-                let _ = black_box(x.mul(&y));
-            });
+        let real = real.elapsed();
+        let user = user.elapsed();
+        let rapl = rapl.elapsed_mut();
 
-            let real = real.elapsed();
-            let user = user.elapsed();
-            let rapl = rapl.elapsed_mut();
+        let real = real.as_secs_f64();
+        let user = user.as_secs_f64();
+        let rapl = rapl.values().sum();
 
-            let real = real.as_secs_f64();
-            let user = user.as_secs_f64();
-            let rapl = rapl.values().sum();
-            runtime.push(real);
-            usertime.push(user);
-            energy.push(rapl);
+        runtime.push(real);
+        usertime.push(user);
+        energy.push(rapl);
 
-            mtd.update("parallel", real, user, rapl);
-            num_threads = mtd.num_threads("parallel") as usize;
-            if pool.current_num_threads() != num_threads {
-                pool = if pin_threads { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
-            }
+        mtd.update("parallel", real, user, rapl);
+        let t = mtd.num_threads("parallel") as usize;
+        if pool.current_num_threads() != t {
+            pool = create_pool_fn(t);
         }
-
-        let len = runtime.len() as f64;
-        println!("rt,{:.8},{:.8},{:.8}",
-            runtime.into_iter().sum::<f64>() / len,
-            usertime.into_iter().sum::<f64>() / len,
-            energy.into_iter().sum::<f64>() / len,
-        );
     }
 
-    let mut mtd = MTDynamic::new(16, 20);
-
-    let mut num_threads = 16;
-    for (size, pin_threads) in CYCLES {
-        let mut runtime: Vec<f64> = Vec::new();
-        let mut usertime: Vec<f64> = Vec::new();
-        let mut energy: Vec<f64> = Vec::new();
-
-        let mut pool = if pin_threads { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
-
-        let x = black_box(Matrix::random(size, size));
-        let y = black_box(Matrix::random(size, size));
-
-        for _ in 0..200 {
-            let _ = rapl.elapsed_mut();
-            let user = ProcessTime::now();
-            let real = Instant::now();
-
-            pool.install(|| {
-                let _ = black_box(x.mul(&y));
-            });
-
-            let real = real.elapsed();
-            let user = user.elapsed();
-            let rapl = rapl.elapsed_mut();
-
-            let real = real.as_secs_f64();
-            let user = user.as_secs_f64();
-            let rapl = rapl.values().sum();
-            runtime.push(real);
-            usertime.push(user);
-            energy.push(rapl);
-
-            mtd.update("parallel", real, user, rapl);
-            num_threads = mtd.num_threads("parallel") as usize;
-            if pool.current_num_threads() != num_threads {
-                pool = if pin_threads { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
-            }
-        }
-
-        let len = runtime.len() as f64;
-        println!("mt,{:.8},{:.8},{:.8}",
-            runtime.into_iter().sum::<f64>() / len,
-            usertime.into_iter().sum::<f64>() / len,
-            energy.into_iter().sum::<f64>() / len,
-        );
-    }
+    println!("{:.8},{:.8},{:.8}",
+        runtime.into_iter().sum::<f64>() / iter as f64,
+        usertime.into_iter().sum::<f64>() / iter as f64,
+        energy.into_iter().sum::<f64>() / iter as f64,
+    );
 }
