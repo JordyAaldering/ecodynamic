@@ -8,7 +8,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=savings.out
 
-ITER=200
+ITER=100
 
 cargo build --release --example matmul
 cargo build --release --example matmul_mt
@@ -23,7 +23,7 @@ printf "type,size,pin,runtime,usertime,energy\n"
 #
 
 for pin in true false; do
-    for size in `seq 500 250 1500`; do
+    for size in `seq 500 250 2500`; do
         printf "8,$size,$pin,"
         ./target/release/examples/matmul $size $ITER 8 $pin
         printf "12,$size,$pin,"
