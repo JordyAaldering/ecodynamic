@@ -112,12 +112,12 @@ impl MTDynamicRT {
 }
 
 fn main() {
-    const CYCLES: [(usize, bool); 5] = [
+    const CYCLES: [(usize, bool); 3] = [
         (500, true),
         (750, false),
         (1000, false),
-        (1250, false),
-        (1500, false),
+        //(1250, false),
+        //(1500, false),
         //(500, true),
         //(750, true),
         //(1000, true),
@@ -138,12 +138,12 @@ fn main() {
     let mut rapl = Rapl::now().unwrap();
     let mut mtd = MTDynamicRT::new(16, 20);
 
-    let mut runtime: Vec<f64> = Vec::new();
-    let mut usertime: Vec<f64> = Vec::new();
-    let mut energy: Vec<f64> = Vec::new();
-
     let mut num_threads = 16;
     for (size, pin_threads) in CYCLES {
+        let mut runtime: Vec<f64> = Vec::new();
+        let mut usertime: Vec<f64> = Vec::new();
+        let mut energy: Vec<f64> = Vec::new();
+
         let mut pool = if pin_threads { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
 
         let x = black_box(Matrix::random(size, size));
@@ -175,23 +175,23 @@ fn main() {
                 pool = if pin_threads { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
             }
         }
-    }
 
-    let len = runtime.len() as f64;
-    println!("rt,{:.8},{:.8},{:.8}",
-        runtime.into_iter().sum::<f64>() / len,
-        usertime.into_iter().sum::<f64>() / len,
-        energy.into_iter().sum::<f64>() / len,
-    );
+        let len = runtime.len() as f64;
+        println!("rt,{:.8},{:.8},{:.8}",
+            runtime.into_iter().sum::<f64>() / len,
+            usertime.into_iter().sum::<f64>() / len,
+            energy.into_iter().sum::<f64>() / len,
+        );
+    }
 
     let mut mtd = MTDynamic::new(16, 20);
 
-    let mut runtime: Vec<f64> = Vec::new();
-    let mut usertime: Vec<f64> = Vec::new();
-    let mut energy: Vec<f64> = Vec::new();
-
     let mut num_threads = 16;
     for (size, pin_threads) in CYCLES {
+        let mut runtime: Vec<f64> = Vec::new();
+        let mut usertime: Vec<f64> = Vec::new();
+        let mut energy: Vec<f64> = Vec::new();
+
         let mut pool = if pin_threads { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
 
         let x = black_box(Matrix::random(size, size));
@@ -223,12 +223,12 @@ fn main() {
                 pool = if pin_threads { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
             }
         }
-    }
 
-    let len = runtime.len() as f64;
-    println!("mt,{:.8},{:.8},{:.8}",
-        runtime.into_iter().sum::<f64>() / len,
-        usertime.into_iter().sum::<f64>() / len,
-        energy.into_iter().sum::<f64>() / len,
-    );
+        let len = runtime.len() as f64;
+        println!("mt,{:.8},{:.8},{:.8}",
+            runtime.into_iter().sum::<f64>() / len,
+            usertime.into_iter().sum::<f64>() / len,
+            energy.into_iter().sum::<f64>() / len,
+        );
+    }
 }
