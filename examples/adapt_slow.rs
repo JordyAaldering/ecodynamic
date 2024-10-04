@@ -103,10 +103,10 @@ fn main() {
     for (size, pin) in CYCLES {
         let mut pool = if pin { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
 
-        let x = black_box(Matrix::random(size, size));
-        let y = black_box(Matrix::random(size, size));
-
         for _ in 0..200 {
+            let x = black_box(Matrix::random(size, size));
+            let y = black_box(Matrix::random(size, size));
+
             let _ = rapl.elapsed_mut();
             let user = ProcessTime::now();
             let real = Instant::now();

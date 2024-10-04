@@ -89,10 +89,10 @@ fn main() {
 
     let pool = if pin { create_pool_pinned(threads as usize) } else { create_pool(threads as usize) };
 
-    let x = black_box(Matrix::random(size, size));
-    let y = black_box(Matrix::random(size, size));
-
     for _ in 0..iter {
+        let x = black_box(Matrix::random(size, size));
+        let y = black_box(Matrix::random(size, size));
+
         let _ = rapl.elapsed_mut();
         let user = ProcessTime::now();
         let real = Instant::now();
