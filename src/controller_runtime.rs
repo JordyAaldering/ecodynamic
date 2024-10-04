@@ -4,7 +4,7 @@ use crate::letterbox::Sample;
 
 pub struct Controller {
     n: i32,
-    t_best: f64,
+    t1: f64,
     t_last: f64,
     step_size: i32,
     step_direction: Direction,
@@ -18,7 +18,7 @@ impl Controller {
     pub fn new(max_threads: i32) -> Controller {
         Controller {
             n: max_threads,
-            t_best: f64::MAX,
+            t1: f64::MAX,
             t_last: f64::MAX,
             step_size: max_threads,
             step_direction: Direction::Down,
@@ -33,16 +33,16 @@ impl Controller {
         let samples = samples.into_iter().map(|x| x.runtime).collect();
         let tn = self.selection_algorithm.find_best(samples);
 
-        let speedup = self.t_best / tn;
+        let speedup = self.t1 / tn;
         if speedup < (1.0 - self.corridor_width) * self.n as f64 {
             // We have fallen outside the corridor
             self.step_direction = Direction::Down;
             self.step_size = i32::max(1, self.n / 2);
         } else {
             if speedup > self.n as f64 {
-                // In the initial iteration t1 and t_last as u64::MAX so we
-                // reach this condition, an initialize t1 with a real value
-                self.t_best = tn * self.n as f64;
+                // In the initial iteration t1 and t_last are f64::MAX so we
+                // reach this condition, an initialize t1 with an actual value
+                self.t1 = tn * self.n as f64;
             }
 
             if tn > self.t_last {

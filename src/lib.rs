@@ -1,11 +1,11 @@
 mod thread_count;
 mod controller;
-mod controller_runtime;
+pub mod controller_runtime;
 mod letterbox;
 
 use std::{collections::BTreeMap, ffi::{c_char, CStr}};
 
-use letterbox::{Letterbox, Sample};
+pub use letterbox::{Letterbox, Sample};
 use controller::Controller;
 
 pub struct MTDynamic {
