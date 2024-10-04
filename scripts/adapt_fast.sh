@@ -8,4 +8,4 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=adapt_fast.out
 
-cargo run --release --example adapt_fast
+cargo run --release --example adapt_fast true

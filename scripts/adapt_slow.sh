@@ -8,4 +8,4 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=adapt_slow.out
 
-cargo run --release --example adapt_slow
+cargo run --release --example adapt_slow true

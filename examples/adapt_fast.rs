@@ -71,6 +71,15 @@ fn create_pool_pinned(num_threads: usize) -> rayon::ThreadPool {
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let print_intermediate: bool = args[1].parse().unwrap();
+    let mut num_threads = 16;
+    let mut dynamic = true;
+    if args.len() > 2 {
+        num_threads = args[2].parse().unwrap();
+        dynamic = true;
+    }
+
     let mut mtd = MTDynamic::new(16, 10);
     let mut rapl = Rapl::now().unwrap();
 
@@ -97,9 +106,14 @@ fn main() {
         (1500, true),
     ];
 
-    println!("size,pin,threads,runtime,usertime,energy");
+    if print_intermediate {
+        println!("size,pin,threads,runtime,usertime,energy");
+    }
 
-    let mut num_threads = 16;
+    let mut real_total = 0.0;
+    let mut user_total = 0.0;
+    let mut rapl_total = 0.0;
+
     for (size, pin) in CYCLES {
         let mut pool = if pin { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
 
@@ -122,14 +136,25 @@ fn main() {
             let real = real.as_secs_f64();
             let user = user.as_secs_f64();
             let rapl = rapl.values().sum();
+            real_total += real;
+            user_total += user;
+            rapl_total += rapl;
 
-            println!("{},{},{},{:.8},{:.8},{:.8}", size, pin, num_threads, real, user, rapl);
+            if print_intermediate {
+                println!("{},{},{},{:.8},{:.8},{:.8}", size, pin, num_threads, real, user, rapl);
+            }
 
-            mtd.update("parallel", real, user, rapl);
-            num_threads = mtd.num_threads("parallel") as usize;
-            if pool.current_num_threads() != num_threads {
-                pool = if pin { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
+            if dynamic {
+                mtd.update("parallel", real, user, rapl);
+                num_threads = mtd.num_threads("parallel") as usize;
+                if pool.current_num_threads() != num_threads {
+                    pool = if pin { create_pool_pinned(num_threads) } else { create_pool(num_threads) };
+                }
             }
         }
+    }
+
+    if !print_intermediate {
+        println!("{},{},{}", real_total, user_total, rapl_total);
     }
 }

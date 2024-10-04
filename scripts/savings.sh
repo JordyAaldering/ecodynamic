@@ -8,29 +8,24 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=savings.out
 
-ITER=100
+cargo build --release --example adapt_fast
 
-cargo build --release --example matmul
-cargo build --release --example matmul_mt
+printf "8,"
+./target/release/examples/adapt_fast false 8
+printf "12,"
+./target/release/examples/adapt_fast false 12
+printf "16,"
+./target/release/examples/adapt_fast false 16
+printf "mt,"
+./target/release/examples/adapt_fast false
 
-# Warmup
-./target/release/examples/matmul 1000 50 16 true
+cargo build --release --example adapt_slow
 
-printf "type,size,pin,runtime,usertime,energy\n"
-
-#
-# With thread pinning
-#
-
-for pin in true false; do
-    for size in `seq 500 250 2500`; do
-        printf "8,$size,$pin,"
-        ./target/release/examples/matmul $size $ITER 8 $pin
-        printf "12,$size,$pin,"
-        ./target/release/examples/matmul $size $ITER 12 $pin
-        printf "16,$size,$pin,"
-        ./target/release/examples/matmul $size $ITER 16 $pin
-        printf "mt,$size,$pin,"
-        ./target/release/examples/matmul_mt $size $ITER 16 $pin
-    done
-done
+printf "8,"
+./target/release/examples/adapt_slow false 8
+printf "12,"
+./target/release/examples/adapt_slow false 12
+printf "16,"
+./target/release/examples/adapt_slow false 16
+printf "mt,"
+./target/release/examples/adapt_slow false
