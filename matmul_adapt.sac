@@ -44,7 +44,7 @@ int main()
     len = _sel_VxA_([0], _shape_A_(SIZES));
     for (i = 0; _le_SxS_(i, len); i = _add_SxS_(i, 1)) {
         size = _sel_VxA_([i], SIZES);
-        iter = _div_SxS_(_mul_SxS_(1500, 30), size)
+        iter = _div_SxS_(_mul_SxS_(1500, 30), size);
 
         a = { [i,j] -> _tod_S_(_add_SxS_(i, j)) | [i,j] < [size,size] };
         b = { [i,j] -> _tod_S_(_mul_SxS_(i, j)) | [i,j] < [size,size] };
