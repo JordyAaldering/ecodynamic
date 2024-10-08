@@ -8,10 +8,12 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=sac_savings.out
 
+# Warmup
+../sac2c/build_r/sac2c_p -noprelude -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=1000 -DITER=30
+./matmul -mt 16
+
 ../sac2c/build_r/sac2c_p -noprelude -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=1500 -DITER=100
 ../sac2c/build_r/sac2c_p -noprelude -t mt_pth_rt -mt_bind simple matmul.sac -o matmul_mt -DP=1500 -DITER=100
-# Warmup
-./matmul -mt 16
 
 printf "\ntype,,energy,runtime,usertime\n"
 
@@ -26,10 +28,6 @@ printf "mt,"
 
 ../sac2c/build_r/sac2c_p -noprelude -t mt_pth matmul.sac -o matmul -DP=1500 -DITER=100
 ../sac2c/build_r/sac2c_p -noprelude -t mt_pth_rt matmul.sac -o matmul_mt -DP=1500 -DITER=100
-# Warmup
-./matmul -mt 16
-
-printf "\ntype,,energy,runtime,usertime\n"
 
 printf "8,"
 ./matmul -mt 8
