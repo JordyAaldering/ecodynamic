@@ -20,7 +20,7 @@ impl std::fmt::Debug for Sample {
 
 pub struct Letterbox {
     samples: Option<Vec<Sample>>,
-    num_threads: i32,
+    pub num_threads: i32,
     num_measurements_per_adjustment: usize,
     // Debugging and analysis
     pub history: Vec<Sample>,
@@ -52,14 +52,6 @@ impl Letterbox {
         }
     }
 
-    pub fn update_threads(&mut self, num_threads: i32) {
-        self.num_threads = num_threads;
-    }
-
-    pub fn num_threads(&self) -> i32 {
-        self.num_threads
-    }
-
     pub fn take(&mut self) -> Vec<Sample> {
         self.samples.take().unwrap()
     }
@@ -67,10 +59,9 @@ impl Letterbox {
 
 impl std::fmt::Debug for Letterbox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let len = self.history.len() as f64;
-        let energy = self.history.iter().map(|sample| sample.energy).sum::<f64>() / len;
-        let realtime = self.history.iter().map(|sample| sample.runtime).sum::<f64>() / len;
-        let usertime = self.history.iter().map(|sample| sample.usertime).sum::<f64>() / len;
+        let energy: f64 = self.history.iter().map(|x| x.energy).sum();
+        let realtime: f64 = self.history.iter().map(|x| x.runtime).sum();
+        let usertime: f64 = self.history.iter().map(|x| x.usertime).sum();
         f.write_fmt(format_args!("{},{},{}", energy, realtime, usertime))
     }
 }

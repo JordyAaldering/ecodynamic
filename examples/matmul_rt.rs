@@ -97,14 +97,13 @@ impl MTDynamicRT {
         let num_measurements = letterbox.push(Sample::new(runtime, usertime, energy));
         if num_measurements >= self.num_measurements_per_adjustment {
             let samples = letterbox.take();
-            let num_threads = controller.adjust_threads(samples);
-            letterbox.update_threads(num_threads);
+            letterbox.num_threads = controller.adjust_threads(samples);
         }
     }
 
     pub fn num_threads<S: AsRef<str>>(&self, funname: S) -> i32 {
         if let Some((_, letterbox)) = self.controllers.get(funname.as_ref()) {
-            letterbox.num_threads()
+            letterbox.num_threads
         } else {
             self.max_threads
         }
