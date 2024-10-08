@@ -34,12 +34,12 @@ impl Controller {
 
         if self.t_last < tn * 0.5 {
             // Fallen outside the corridor
-            if self.step_size > 1.0 {
+            let bound = self.max_threads as f64 * 0.2;
+            if *self.n < bound || *self.n > self.max_threads as f64 - bound {
+                // Only reverse step direction if we are close to an edge
                 self.step_direction = -self.step_direction;
-                self.step_size *= 1.75;
-            } else {
-                self.move_towards_farthest_edge(0.40);
             }
+            self.step_size = self.max_threads as f64 * 0.40;
         } else {
             if tn > self.t_last {
                 // The previous iteration performed a bit better

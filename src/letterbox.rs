@@ -68,9 +68,9 @@ impl Letterbox {
 impl std::fmt::Debug for Letterbox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let len = self.history.len() as f64;
-        let real_time = self.history.iter().map(|sample| sample.runtime).sum::<f64>() / len;
-        let user_time = self.history.iter().map(|sample| sample.usertime).sum::<f64>() / len;
         let energy = self.history.iter().map(|sample| sample.energy).sum::<f64>() / len;
-        f.write_fmt(format_args!("{},{},{}", real_time, user_time, energy))
+        let realtime = self.history.iter().map(|sample| sample.runtime).sum::<f64>() / len;
+        let usertime = self.history.iter().map(|sample| sample.usertime).sum::<f64>() / len;
+        f.write_fmt(format_args!("{},{},{}", energy, realtime, usertime))
     }
 }

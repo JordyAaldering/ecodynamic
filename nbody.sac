@@ -1,0 +1,111 @@
+struct Vector3 {
+    double x;
+    double y;
+    double z;
+};
+
+struct Body {
+    struct Vector3 pos;
+    struct Vector3 vel;
+    double mass;
+};
+
+inline
+struct Vector3 *(double a, struct Vector3 b)
+{
+    return Vector3 { _mul_SxS_(a, b.x), _mul_SxS_(a, b.y), _mul_SxS_(a, b.z) };
+}
+
+inline
+struct Vector3[n] *(double a, struct Vector3[n] b)
+{
+    return { iv -> a * b[iv] };
+}
+
+inline
+struct Vector3 +(struct Vector3 a, struct Vector3 b)
+{
+    return Vector3 { _add_SxS_(a.x, b.x), _add_SxS_(a.y, b.y), _add_SxS_(a.z, b.z) };
+}
+
+inline
+struct Vector3[n] +(struct Vector3[n] a, struct Vector3[n] b)
+{
+    return { iv -> a[iv] + b[iv] };
+}
+
+inline
+struct Vector3 -(struct Vector3 a, struct Vector3 b)
+{
+    return Vector3 { _sub_SxS_(a.x, b.x), _sub_SxS_(a.y, b.y), _sub_SxS_(a.z, b.z) };
+}
+
+inline
+double l2norm(struct Vector3 a)
+{
+    x = _mul_SxS_(a.x, a.x);
+    y = _mul_SxS_(a.y, a.y);
+    z = _mul_SxS_(a.z, a.z);
+    return /*_sqrt_S_*/(_add_SxS_(_add_SxS_(x, y), z));
+}
+
+inline
+double pow3(double x)
+{
+    return _mul_SxS_(_mul_SxS_(x, x), x);
+}
+
+inline
+struct Vector3 acc(struct Body b1, struct Body b2)
+{
+    dir = b2.pos - b1.pos;
+    factor = _eq_SxS_(l2norm(dir), 0.0)
+        ? 0.0
+        : _div_SxS_(b2.mass, pow3(l2norm(dir)));
+    return factor * dir;
+}
+
+inline
+struct Vector3 rsum(struct Vector3[n] x)
+{
+    return with {
+        ([0] <= [i] < [n]) : x[[i]];
+    }: fold(+, Vector3 { 0.0, 0.0, 0.0 });
+}
+
+inline
+struct Vector3[n] acc_v(struct Body[n] bodies)
+{
+    return { [i] -> rsum({ [j] -> acc(bodies[[i]], bodies[[j]]) }) };
+}
+
+noinline
+struct Body[n] timestep(struct Body[n] bodies, double dt)
+{
+    acceleration = acc_v(bodies);
+    bodies.pos += dt * bodies.vel;
+    bodies.vel += dt * acceleration;
+    return bodies;
+}
+
+struct Body body(int i)
+{
+    d = _tod_S_(i);
+    return Body {
+        Vector3 { d, d, d },
+        Vector3 { d, d, d },
+        d
+    };
+}
+
+int main()
+{
+    bodies = { [i] -> body(i) | [i] < [50] };
+
+    for (i = 0; _lt_SxS_(i, 100); i = _add_SxS_(i, 1)) {
+        bodies = timestep(bodies, 0.01);
+    }
+
+    body0 = bodies[[0]];
+    return _toi_S_(body0.pos.x);
+}
