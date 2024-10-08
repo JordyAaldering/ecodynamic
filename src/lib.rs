@@ -97,7 +97,7 @@ extern "C" fn MTDfree(mtd: *mut MTDynamic) {
     let date = chrono::offset::Local::now();
 
     for (name, (_controller, letterbox)) in &mtd.controllers {
-        if letterbox.history.len() > 1 {
+        if letterbox.history.len() > 10 {
             let filename = format!("{}-{}.csv", name, date.format("%Y-%m-%d-%H-%M-%S"));
             let mut file = fs::File::create(Path::new("mtd").join(filename)).unwrap();
 
