@@ -14,7 +14,7 @@ impl Sample {
 
 impl std::fmt::Debug for Sample {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("({}, {}, {}, {})", self.runtime, self.usertime, self.energy, self.num_threads))
+        f.write_fmt(format_args!("{},{},{},{}", self.runtime, self.usertime, self.energy, self.num_threads))
     }
 }
 

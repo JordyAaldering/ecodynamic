@@ -100,9 +100,9 @@ extern "C" fn MTDfree(mtd: *mut MTDynamic) {
             let filename = format!("{}-{}.csv", name, date.format("%Y-%m-%d-%H-%M-%S"));
             let mut file = fs::File::create(Path::new("mtd").join(filename)).unwrap();
 
-            file.write("energy,runtime,usertime\n".as_bytes()).unwrap();
+            file.write("energy,runtime,usertime,threads\n".as_bytes()).unwrap();
             for sample in &letterbox.history {
-                file.write_fmt(format_args!("{},{},{}\n", sample.energy, sample.runtime, sample.usertime)).unwrap();
+                file.write_fmt(format_args!("{:?}\n", sample)).unwrap();
             }
 
             print!("{},{:?},", name, letterbox);
