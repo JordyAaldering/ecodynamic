@@ -1,4 +1,5 @@
-/log
-/target
 /__pycache__
+/log
+/mtd
+/target
 a.out*

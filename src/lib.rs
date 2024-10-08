@@ -109,7 +109,7 @@ extern "C" fn MTDfree(mtd: *mut MTDynamic) {
             }
         }
 
-        println!("{}: {:?}", name, letterbox);
+        println!("{},{:?}", name, letterbox);
     }
 
     drop(mtd);
