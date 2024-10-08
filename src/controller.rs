@@ -1,9 +1,12 @@
 pub mod direction;
 pub mod selection;
+mod thread_count;
 
-use crate::{thread_count::ThreadCount, letterbox::Sample};
 use direction::Direction;
-use selection::*;
+use selection::{SelectionAlgorithm, FrequencyDist};
+use thread_count::ThreadCount;
+
+use crate::letterbox::Sample;
 
 pub struct Controller {
     n: ThreadCount,
@@ -36,7 +39,7 @@ impl Controller {
             // Fallen outside the corridor
             let bound = self.max_threads as f64 * 0.2;
             if *self.n < bound || *self.n > self.max_threads as f64 - bound {
-                // Only reverse step direction if we are close to an edge
+                // Only reverse direction if we are close to an edge
                 self.step_direction = -self.step_direction;
             }
             self.step_size = self.max_threads as f64 * 0.40;

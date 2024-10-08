@@ -1,5 +1,5 @@
 use crate::controller::direction::Direction;
-use crate::controller::selection::*;
+use crate::controller::selection::{SelectionAlgorithm, FrequencyDist};
 use crate::letterbox::Sample;
 
 pub struct Controller {

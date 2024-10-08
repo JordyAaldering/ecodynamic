@@ -50,7 +50,7 @@ int main()
         b = { [i,j] -> _tod_S_(_mul_SxS_(i, j)) | [i,j] < [size,size] };
 
         for (j = 0; _le_SxS_(j, iter); j = _add_SxS_(j, 1)) {
-            res = _add_SxS_(res, matmul_(j, a, b));
+            res = _mod_SxS_(_add_SxS_(res, matmul_(j, a, b)), 10000);
         }
     }
 
