@@ -13,8 +13,8 @@
 ./matmul -mt 16
 
 # Without pinning
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -nolur -nowlur -t mt_pth    matmul_adapt.sac -o matmul
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -nolur -nowlur -t mt_pth_rt matmul_adapt.sac -o matmul_mt
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -t mt_pth    matmul_adapt.sac -o matmul
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -t mt_pth_rt matmul_adapt.sac -o matmul_mt
 
 printf "4,"
 ./matmul -mt 4
@@ -28,8 +28,8 @@ printf "mt,"
 ./matmul_mt -mt 16
 
 # With pinning
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -nolur -nowlur -mt_bind simple -t mt_pth    matmul_adapt.sac -o matmul
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -nolur -nowlur -mt_bind simple -t mt_pth_rt matmul_adapt.sac -o matmul_mt
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -mt_bind simple -t mt_pth    matmul_adapt.sac -o matmul
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -mt_bind simple -t mt_pth_rt matmul_adapt.sac -o matmul_mt
 
 printf "\ntype,,energy,runtime,usertime\n"
 
