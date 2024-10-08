@@ -1,0 +1,53 @@
+#ifndef P
+#define P 5000
+#endif
+
+#ifndef ITER
+#define ITER 100
+#endif
+
+inline double[d:shp] sel(int[n] idx, double[n:_,d:shp] a)
+{
+    return { iv -> _sel_VxA_(_cat_VxV_(idx, iv), a) | iv < shp };
+}
+
+inline double +(double a, double b) { return _add_SxS_(a, b); }
+
+inline double sum(double[d:shp] a)
+{
+    return with {
+        (_mul_SxV_(0, shp) <= iv < shp): a[iv];
+    } : fold(+, 0.0);
+}
+
+inline double[2:shp] relax(double[m,m] weights, double[2:shp] arr)
+{
+    return { iv -> sum({ ov -> _mul_SxS_(weights[ov], arr[_aplmod_VxV_(_sub_VxS_(ov, _div_SxS_(m, 2)), shp)]) })
+           | iv < shp };
+}
+
+int main()
+{
+    arr = { [i,j] -> _tod_S_(_add_SxS_(i, j)) | [i,j] < [P,P] };
+
+    //weights = [
+    //    [1.0, 2.0, 1.0],
+    //    [2.0, 3.0, 2.0],
+    //    [1.0, 2.0, 1.0]
+    //];
+    weights = [
+        [1.0,  4.0,  7.0,  4.0, 1.0],
+        [4.0, 20.0, 33.0, 20.0, 4.0],
+        [7.0, 33.0, 55.0, 33.0, 7.0],
+        [4.0, 20.0, 33.0, 20.0, 4.0],
+        [1.0,  4.0,  7.0,  4.0, 1.0]
+    ];
+    weights = { iv -> _div_SxS_(weights[iv], sum(weights)) };
+
+    for (i = 0; _le_SxS_(i, ITER); i = _add_SxS_(i, 1)) {
+        arr = relax(weights, arr);
+    }
+
+    x = arr[[_div_SxS_(P, 2), _div_SxS_(P, 2)]];
+    return _toi_S_(x);
+}
