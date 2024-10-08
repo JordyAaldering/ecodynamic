@@ -10,6 +10,9 @@
 
 ITER=20
 
+# Warmup
+stress --cpu 16 --timeout 30
+
 printf "pin,size,threads,,energy,runtime,usertime\n"
 
 # With pinning

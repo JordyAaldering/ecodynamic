@@ -11,7 +11,7 @@
 cargo build --release --example matmul
 
 # Warmup
-./target/release/examples/matmul 1000 50 16
+stress --cpu 16 --timeout 30
 
 printf "size,pin,threads,runtime,usertime,energy\n"
 

@@ -8,4 +8,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=adapt_slow.out
 
+# Warmup
+stress --cpu 16 --timeout 30
+
 cargo run --release --example adapt_slow true

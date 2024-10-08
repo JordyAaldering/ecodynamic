@@ -8,15 +8,12 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=sac_savings.out
 
-# Warmup
-../sac2c/build_r/sac2c_p -noprelude -mt_bind simple -t mt_pth matmul.sac -o matmul -DP=1000 -DITER=30
-./matmul -mt 16
-
-printf "\ntype,,energy,runtime,usertime\n"
-
 # With pinning
 ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -mt_bind simple -t mt_pth    matmul_adapt.sac -o matmul
 ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -mt_bind simple -t mt_pth_rt matmul_adapt.sac -o matmul_mt
+
+# Warmup
+stress --cpu 16 --timeout 30
 
 printf "4,"
 ./matmul -mt 4
@@ -32,6 +29,9 @@ printf "mt,"
 # Without pinning
 ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -t mt_pth    matmul_adapt.sac -o matmul
 ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -t mt_pth_rt matmul_adapt.sac -o matmul_mt
+
+# Warmup
+stress --cpu 16 --timeout 30
 
 printf "4,"
 ./matmul -mt 4

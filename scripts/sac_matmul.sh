@@ -11,7 +11,7 @@
 ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=1000 -DITER=20
 
 # Warmup
-./matmul -mt 16
+stress --cpu 16 --timeout 30
 
 for size in `seq 300 100 1500`; do
     ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$size -DITER=20

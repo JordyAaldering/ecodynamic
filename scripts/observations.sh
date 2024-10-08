@@ -11,7 +11,7 @@
 cargo build --release --example matmul
 
 # Warmup
-./target/release/examples/matmul 1000 10 16
+stress --cpu 16 --timeout 30
 
 for size in `seq 300 100 1500`; do
     for threads in `seq 1 16`; do
