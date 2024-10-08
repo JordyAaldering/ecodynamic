@@ -24,6 +24,23 @@ noinline double matmul_(int i, double[.,.] a, double[.,.] b)
     return res[[0,0]];
 }
 
+noinline double run(int[.,.] sizes, int i)
+{
+    size = _sel_VxA_([i,0], sizes);
+    iter = _sel_VxA_([i,1], sizes);
+
+    a = { [i,j] -> _tod_S_(_add_SxS_(i, j)) | [i,j] < [size,size] };
+    b = { [i,j] -> _tod_S_(_sub_SxS_(i, j)) | [i,j] < [size,size] };
+
+    res = 0.0;
+    for (j = 0; _le_SxS_(j, iter); j = _add_SxS_(j, 1)) {
+        c = matmul_(j, a, b);
+        res = _max_SxS_(res, c);
+    }
+
+    return res;
+}
+
 int main()
 {
     SIZES = [
@@ -44,17 +61,7 @@ int main()
 
     len = _sel_VxA_([0], _shape_A_(SIZES));
     for (i = 0; _lt_SxS_(i, len); i = _add_SxS_(i, 1)) {
-        size = _sel_VxA_([i,0], SIZES);
-        iter = _sel_VxA_([i,1], SIZES);
-
-        a = { [i,j] -> _tod_S_(_add_SxS_(i, j)) | [i,j] < [size,size] };
-        b = { [i,j] -> _tod_S_(_sub_SxS_(i, j)) | [i,j] < [size,size] };
-
-        res = 0.0;
-        for (j = 0; _le_SxS_(j, iter); j = _add_SxS_(j, 1)) {
-            c = matmul_(j, a, b);
-            res = _max_SxS_(res, c);
-        }
+        res = _max_SxS_(res, run(SIZES, i));
     }
 
     return _toi_S_(res);
