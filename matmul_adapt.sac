@@ -41,12 +41,15 @@ int main()
 
     res = 0.0;
 
-    for (i = 0; _le_SxS_(i, 100); i = _add_SxS_(i, 1)) {
+    len = _sel_VxA_([0], _shape_A_(SIZES));
+    for (i = 0; _le_SxS_(i, len); i = _add_SxS_(i, 1)) {
         size = _sel_VxA_([i], SIZES);
+        iter = _div_SxS_(_mul_SxS_(1500, 30), size)
+
         a = { [i,j] -> _tod_S_(_add_SxS_(i, j)) | [i,j] < [size,size] };
         b = { [i,j] -> _tod_S_(_mul_SxS_(i, j)) | [i,j] < [size,size] };
 
-        for (j = 0; _le_SxS_(j, 10); j = _add_SxS_(j, 1)) {
+        for (j = 0; _le_SxS_(j, iter); j = _add_SxS_(j, 1)) {
             res = _add_SxS_(res, matmul_(j, a, b));
         }
     }
