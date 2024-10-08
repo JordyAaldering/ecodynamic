@@ -80,7 +80,7 @@ fn main() {
         dynamic = true;
     }
 
-    let mut mtd = MTDynamic::new(16, 10);
+    let mut mtd = MTDynamic::new(16, 20);
     let mut rapl = Rapl::now().unwrap();
 
     const CYCLES: [(usize, bool); 20] = [

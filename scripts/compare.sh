@@ -63,6 +63,22 @@ printf "mt,1500,true,"
 printf "rt,1500,true,"
 ./target/release/examples/matmul_rt 1500 $ITER 16 true
 
+# 2000 threads pinned, optimum = 12 threads
+printf "oracle,2000,true,"
+./target/release/examples/matmul 2000 $ITER 12 true
+printf "mt,2000,true,"
+./target/release/examples/matmul_mt 2000 $ITER 16 true
+printf "rt,2000,true,"
+./target/release/examples/matmul_rt 2000 $ITER 16 true
+
+# 2500 threads pinned, optimum = 12 threads
+printf "oracle,2500,true,"
+./target/release/examples/matmul 2500 $ITER 12 true
+printf "mt,2500,true,"
+./target/release/examples/matmul_mt 2500 $ITER 16 true
+printf "rt,2500,true,"
+./target/release/examples/matmul_rt 2500 $ITER 16 true
+
 #
 # Without thread pinning
 #
@@ -106,3 +122,19 @@ printf "mt,1500,false,"
 ./target/release/examples/matmul_mt 1500 $ITER 16 false
 printf "rt,1500,false,"
 ./target/release/examples/matmul_rt 1500 $ITER 16 false
+
+# 2000 threads not pinned, optimum = 8 threads
+printf "oracle,2000,false,"
+./target/release/examples/matmul 2000 $ITER 8 false
+printf "mt,2000,false,"
+./target/release/examples/matmul_mt 2000 $ITER 16 false
+printf "rt,2000,false,"
+./target/release/examples/matmul_rt 2000 $ITER 16 false
+
+# 2500 threads not pinned, optimum = 8 threads
+printf "oracle,2500,false,"
+./target/release/examples/matmul 2500 $ITER 8 false
+printf "mt,2500,false,"
+./target/release/examples/matmul_mt 2500 $ITER 16 false
+printf "rt,2500,false,"
+./target/release/examples/matmul_rt 2500 $ITER 16 false
