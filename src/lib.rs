@@ -99,12 +99,14 @@ extern "C" fn MTDfree(mtd: *mut MTDynamic) {
     let date = chrono::offset::Local::now();
 
     for (name, (_controller, letterbox)) in &mtd.controllers {
-        let filename = format!("{}-{}.csv", name, date.format("%Y-%m-%d-%H-%M-%S"));
-        let mut file = fs::File::create(Path::new("mtd").join(filename)).unwrap();
+        if letterbox.history.len() > 1 {
+            let filename = format!("{}-{}.csv", name, date.format("%Y-%m-%d-%H-%M-%S"));
+            let mut file = fs::File::create(Path::new("mtd").join(filename)).unwrap();
 
-        file.write("energy,runtime,usertime".as_bytes()).unwrap();
-        for sample in &letterbox.history {
-            file.write_fmt(format_args!("{},{},{}\n", sample.energy, sample.runtime, sample.usertime)).unwrap();
+            file.write("energy,runtime,usertime\n".as_bytes()).unwrap();
+            for sample in &letterbox.history {
+                file.write_fmt(format_args!("{},{},{}\n", sample.energy, sample.runtime, sample.usertime)).unwrap();
+            }
         }
 
         println!("{}: {:?}", name, letterbox);
