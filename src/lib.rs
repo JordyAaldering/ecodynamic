@@ -93,8 +93,6 @@ extern "C" fn MTDnumThreads(mtd: *mut &mut MTDynamic, funname: *const c_char) ->
 extern "C" fn MTDfree(mtd: *mut MTDynamic) {
     let mtd = unsafe { std::ptr::read(mtd) };
 
-    println!("name,energy,runtime,usertime");
-
     fs::create_dir_all("mtd").unwrap();
     let date = chrono::offset::Local::now();
 
@@ -107,10 +105,12 @@ extern "C" fn MTDfree(mtd: *mut MTDynamic) {
             for sample in &letterbox.history {
                 file.write_fmt(format_args!("{},{},{}\n", sample.energy, sample.runtime, sample.usertime)).unwrap();
             }
-        }
 
-        println!("{},{:?}", name, letterbox);
+            print!("{},{:?},", name, letterbox);
+        }
     }
+
+    println!();
 
     drop(mtd);
 }
