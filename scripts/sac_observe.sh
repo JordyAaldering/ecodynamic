@@ -14,14 +14,14 @@ printf "pin,size,threads,,energy,runtime,usertime\n"
 
 # With pinning
 for size in `seq 500 50 1250`; do
-    ../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$size -DITER=$ITER
+    ../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$size -DITER=$ITER
     for threads in `seq 1 16`; do
         printf "true,$size,$threads,"
         ./matmul -mt $threads
     done
 done
 for size in `seq 1500 250 2500`; do
-    ../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$size -DITER=$ITER
+    ../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$size -DITER=$ITER
     for threads in `seq 1 16`; do
         printf "true,$size,$threads,"
         ./matmul -mt $threads
@@ -30,14 +30,14 @@ done
 
 # Without pinning
 for size in `seq 500 50 1250`; do
-    ../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth matmul.sac -o matmul -DP=$size -DITER=$ITER
+    ../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth matmul.sac -o matmul -DP=$size -DITER=$ITER
     for threads in `seq 1 16`; do
         printf "false,$size,$threads,"
         ./matmul -mt $threads
     done
 done
 for size in `seq 1500 250 2500`; do
-    ../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth matmul.sac -o matmul -DP=$size -DITER=$ITER
+    ../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth matmul.sac -o matmul -DP=$size -DITER=$ITER
     for threads in `seq 1 16`; do
         printf "false,$size,$threads,"
         ./matmul -mt $threads

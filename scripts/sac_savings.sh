@@ -9,11 +9,11 @@
 #SBATCH --output=sac_savings.out
 
 # Warmup
-../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=1000 -DITER=30
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=1000 -DITER=30
 ./matmul -mt 16
 
-../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=1500 -DITER=100
-../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth_rt -mt_bind simple matmul.sac -o matmul_mt -DP=1500 -DITER=100
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=1500 -DITER=100
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth_rt -mt_bind simple matmul.sac -o matmul_mt -DP=1500 -DITER=100
 
 printf "\ntype,,energy,runtime,usertime\n"
 
@@ -26,8 +26,8 @@ printf "16,"
 printf "mt,"
 ./matmul_mt -mt 16
 
-../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth matmul_adapt.sac -o matmul
-../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth_rt matmul_adapt.sac -o matmul_mt
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth matmul_adapt.sac -o matmul
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth_rt matmul_adapt.sac -o matmul_mt
 
 printf "8,"
 ./matmul -mt 8

@@ -8,13 +8,13 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=sac_matmul_mt.out
 
-../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth -mt_bind simple matmul.sac -o matmul_mt -DP=1000 -DITER=20
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth -mt_bind simple matmul.sac -o matmul_mt -DP=1000 -DITER=20
 
 # Warmup
 ./matmul -mt 16
 
 for size in `seq 300 100 1500`; do
-    ../sac2c/build_r/sac2c_p -noprelude -specmode AKD -t mt_pth_rt -mt_bind simple matmul.sac -o matmul_mt -DP=$size -DITER=20
+    ../sac2c/build_r/sac2c_p -noprelude -specmode akd -t mt_pth_rt -mt_bind simple matmul.sac -o matmul_mt -DP=$size -DITER=20
     ./matmul_mt -mt 16
 done
 
