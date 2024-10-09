@@ -1,3 +1,11 @@
+#ifndef P
+#define P 10000
+#endif
+
+#ifndef ITER
+#define ITER 1000
+#endif
+
 struct Vector3 {
     double x;
     double y;
@@ -100,12 +108,13 @@ struct Body body(int i)
 
 int main()
 {
-    bodies = { [i] -> body(i) | [i] < [50] };
+    bodies = { [i] -> body(i) | [i] < [_hideValue_SxA_(0, P)] };
 
-    for (i = 0; _lt_SxS_(i, 100); i = _add_SxS_(i, 1)) {
+    i = 0;
+    while (_lt_SxS_(i, ITER)) {
         bodies = timestep(bodies, 0.01);
+        i = _add_SxS_(i, 1);
     }
 
-    body0 = bodies[[0]];
-    return _toi_S_(body0.pos.x);
+    return _toi_S_(_add_SxS_(bodies[[0]].pos.x, bodies[[1]].vel.y));
 }
