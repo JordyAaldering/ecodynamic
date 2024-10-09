@@ -27,13 +27,13 @@ noinline double matmul_(int i, double[.,.] a, double[.,.] b)
 int main()
 {
     SIZES = [
-        [500, 300],
+        [500, 250],
         [1000, 100],
-        [500, 300],
+        [500, 250],
         [1000, 100],
-        [500, 300],
+        [500, 250],
         [1000, 100],
-        [500, 300]
+        [500, 250]
     ];
     SIZES = _hideShape_SxA_(0, SIZES);
 
