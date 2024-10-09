@@ -26,11 +26,3 @@ impl std::ops::Deref for ThreadCount {
         &self.n
     }
 }
-
-//impl<T> std::fmt::Display for ThreadCount<T>
-//    where T: Copy + std::cmp::PartialOrd + std::fmt::Display {
-//
-//    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//        f.write_fmt(format_args!("{}", self.value))
-//    }
-//}
