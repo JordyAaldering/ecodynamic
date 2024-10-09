@@ -9,8 +9,8 @@
 #SBATCH --output=sac_savings.out
 
 # With pinning
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -mt_bind simple -t mt_pth    matmul_adapt.sac -o matmul
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -mt_bind simple -t mt_pth_rt matmul_adapt.sac -o matmul_mt
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -mt_bind simple -t mt_pth    matmul_adapt.sac -o matmul
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -mt_bind simple -t mt_pth_rt matmul_adapt.sac -o matmul_mt
 
 # Warmup
 stress --cpu 16 --timeout 30
@@ -27,8 +27,8 @@ printf "mt,"
 ./matmul_mt -mt 16
 
 # Without pinning
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -t mt_pth    matmul_adapt.sac -o matmul
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -t mt_pth_rt matmul_adapt.sac -o matmul_mt
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth    matmul_adapt.sac -o matmul
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth_rt matmul_adapt.sac -o matmul_mt
 
 # Warmup
 stress --cpu 16 --timeout 30

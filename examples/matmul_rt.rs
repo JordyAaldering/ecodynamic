@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, hint::black_box, time::Instant};
+use std::{hint::black_box, time::Instant};
 
 use cpu_time::ProcessTime;
-use mtdynamic::{controller_runtime, Letterbox, Sample};
+use mtdynamic::MtdBuilder;
 use rand::Rng;
 use rapl_energy::Rapl;
 use rayon::prelude::*;
@@ -70,46 +70,6 @@ fn create_pool_pinned(num_threads: usize) -> rayon::ThreadPool {
         .unwrap()
 }
 
-struct MTDynamicRT {
-    max_threads: i32,
-    num_measurements_per_adjustment: usize,
-    controllers: BTreeMap<String, (controller_runtime::Controller, Letterbox)>,
-}
-
-impl MTDynamicRT {
-    pub fn new(max_threads: i32, num_measurements_per_adjustment: usize) -> Self {
-        Self {
-            max_threads,
-            num_measurements_per_adjustment,
-            controllers: BTreeMap::new(),
-        }
-    }
-
-    pub fn update<S: AsRef<str>>(&mut self, funname: S, runtime: f64, usertime: f64, energy: f64) {
-        if !self.controllers.contains_key(funname.as_ref()) {
-            let controller = controller_runtime::Controller::new(self.max_threads);
-            let letterbox = Letterbox::new(self.max_threads, self.num_measurements_per_adjustment);
-            self.controllers.insert(funname.as_ref().to_string(), (controller, letterbox));
-        }
-
-        let (ref mut controller, ref mut letterbox) = self.controllers.get_mut(funname.as_ref()).unwrap();
-
-        let num_measurements = letterbox.push(Sample::new(runtime, usertime, energy));
-        if num_measurements >= self.num_measurements_per_adjustment {
-            let samples = letterbox.take();
-            letterbox.num_threads = controller.adjust_threads(samples);
-        }
-    }
-
-    pub fn num_threads<S: AsRef<str>>(&self, funname: S) -> i32 {
-        if let Some((_, letterbox)) = self.controllers.get(funname.as_ref()) {
-            letterbox.num_threads
-        } else {
-            self.max_threads
-        }
-    }
-}
-
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 5 {
@@ -128,7 +88,9 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let mut mtd = MTDynamicRT::new(threads, 20);
+    let mut builder = MtdBuilder::new(threads);
+    builder.runtime();
+    let mut mtd = builder.build();
     let create_pool_fn = if pin_threads { create_pool_pinned } else { create_pool };
     let mut pool = create_pool_fn(threads as usize);
 

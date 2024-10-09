@@ -1,8 +1,7 @@
-use crate::controller::direction::Direction;
-use crate::controller::selection::{SelectionAlgorithm, FrequencyDist};
+use crate::controller::{Controller, Direction, FrequencyDist, SelectionAlgorithm};
 use crate::letterbox::Sample;
 
-pub struct Controller {
+pub struct ControllerRuntime {
     n: i32,
     t1: f64,
     t_last: f64,
@@ -14,9 +13,9 @@ pub struct Controller {
     selection_algorithm: Box<dyn SelectionAlgorithm>,
 }
 
-impl Controller {
-    pub fn new(max_threads: i32) -> Controller {
-        Controller {
+impl ControllerRuntime {
+    pub fn new(max_threads: i32) -> ControllerRuntime {
+        ControllerRuntime {
             n: max_threads,
             t1: f64::MAX,
             t_last: f64::MAX,
@@ -28,8 +27,10 @@ impl Controller {
             selection_algorithm: Box::new(FrequencyDist::new(5, false)),
         }
     }
+}
 
-    pub fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
+impl Controller for ControllerRuntime {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
         let samples = samples.into_iter().map(|x| x.runtime).collect();
         let tn = self.selection_algorithm.find_best(samples);
 

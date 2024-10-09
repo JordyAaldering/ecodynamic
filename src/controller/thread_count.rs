@@ -1,4 +1,4 @@
-use crate::controller::direction::Direction;
+use super::Direction;
 
 pub struct ThreadCount {
     n: f64,

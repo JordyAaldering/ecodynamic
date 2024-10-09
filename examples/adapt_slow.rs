@@ -1,7 +1,7 @@
 use std::{hint::black_box, time::Instant};
 
 use cpu_time::ProcessTime;
-use mtdynamic::MTDynamic;
+use mtdynamic::MtdBuilder;
 use rand::Rng;
 use rapl_energy::Rapl;
 use rayon::prelude::*;
@@ -80,7 +80,7 @@ fn main() {
         dynamic = true;
     }
 
-    let mut mtd = MTDynamic::new(16, 20);
+    let mut mtd = MtdBuilder::new(16).build();
     let mut rapl = Rapl::now().unwrap();
 
     const CYCLES: [(usize, bool); 20] = [

@@ -1,7 +1,7 @@
 use std::{hint::black_box, time::Instant};
 
 use cpu_time::ProcessTime;
-use mtdynamic::MTDynamic;
+use mtdynamic::MtdBuilder;
 use rand::Rng;
 use rapl_energy::Rapl;
 use rayon::prelude::*;
@@ -88,7 +88,7 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let mut mtd = MTDynamic::new(threads, 20);
+    let mut mtd = MtdBuilder::new(threads).build();
     let create_pool_fn = if pin_threads { create_pool_pinned } else { create_pool };
     let mut pool = create_pool_fn(threads as usize);
 
