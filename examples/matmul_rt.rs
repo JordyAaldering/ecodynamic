@@ -88,9 +88,7 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let mut builder = MtdBuilder::new(threads);
-    builder.runtime();
-    let mut mtd = builder.build();
+    let mut mtd = MtdBuilder::new(threads).runtime().build();
     let create_pool_fn = if pin_threads { create_pool_pinned } else { create_pool };
     let mut pool = create_pool_fn(threads as usize);
 

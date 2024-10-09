@@ -25,16 +25,19 @@ impl MtdBuilder {
         }
     }
 
-    pub fn energy(&mut self) {
+    pub fn energy(mut self) -> Self {
         self.controller_type = ControllerType::Energy;
+        self
     }
 
-    pub fn runtime(&mut self) {
+    pub fn runtime(mut self) -> Self {
         self.controller_type = ControllerType::Runtime;
+        self
     }
 
-    pub fn letterbox_size(&mut self, num_measurements_per_adjustment: usize) {
+    pub fn letterbox_size(mut self, num_measurements_per_adjustment: usize) -> Self {
         self.num_measurements_per_adjustment = num_measurements_per_adjustment;
+        self
     }
 
     pub fn build(self) -> MTDynamic {

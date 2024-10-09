@@ -11,10 +11,9 @@ pub use mtd::{MtdBuilder, MTDynamic};
 
 #[no_mangle]
 extern "C" fn MTDcreate(max_threads: i32, num_measurements_per_adjustment: usize, mtd_out: *mut *mut MTDynamic) {
-    let mut builder = MtdBuilder::new(max_threads);
-    builder.letterbox_size(num_measurements_per_adjustment);
-    let mtd = builder.build();
-
+    let mtd = MtdBuilder::new(max_threads)
+        .letterbox_size(num_measurements_per_adjustment)
+        .build();
     unsafe {
         *mtd_out = Box::into_raw(Box::new(mtd));
     }
