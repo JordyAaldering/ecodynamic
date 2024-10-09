@@ -42,7 +42,7 @@ extern "C" fn MTDfree(mtd: *mut MTDynamic) {
         file.write("name,energy,runtime,usertime,threads\n".as_bytes()).unwrap();
 
         for (name, (_controller, letterbox)) in &mtd.controllers {
-            if letterbox.history.len() > 10 {
+            if letterbox.history.len() >= letterbox.num_measurements_per_adjustment {
                 for sample in &letterbox.history {
                     file.write_fmt(format_args!("{},{:?}\n", name, sample)).unwrap();
                 }

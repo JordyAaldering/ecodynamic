@@ -21,7 +21,7 @@ impl std::fmt::Debug for Sample {
 pub struct Letterbox {
     samples: Option<Vec<Sample>>,
     pub num_threads: i32,
-    num_measurements_per_adjustment: usize,
+    pub num_measurements_per_adjustment: usize,
     // Debugging and analysis
     pub history: Vec<Sample>,
 }

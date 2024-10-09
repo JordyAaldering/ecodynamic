@@ -1,9 +1,9 @@
 #ifndef P
-#define P 5000
+#define P 10000
 #endif
 
 #ifndef ITER
-#define ITER 500
+#define ITER 1000
 #endif
 
 inline double[d:shp] sel(int[n] idx, double[n:_,d:shp] a)
