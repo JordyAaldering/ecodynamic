@@ -9,8 +9,8 @@
 #SBATCH --output=sac_savings_relax.out
 
 # With pinning
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -mt_bind simple -t mt_pth    relax.sac -o relax
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -mt_bind simple -t mt_pth_rt relax.sac -o relax_mt
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -mt_bind simple -t mt_pth    relax.sac -o relax
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -mt_bind simple -t mt_pth_rt relax.sac -o relax_mt
 
 # Warmup
 stress --cpu 16 --timeout 30
@@ -27,8 +27,8 @@ printf "mt,"
 ./relax_mt -mt 16
 
 # Without pinning
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -t mt_pth    relax.sac -o relax
-../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -maxlur 50 -t mt_pth_rt relax.sac -o relax_mt
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth    relax.sac -o relax
+../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth_rt relax.sac -o relax_mt
 
 # Warmup
 stress --cpu 16 --timeout 30
