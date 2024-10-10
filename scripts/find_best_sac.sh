@@ -20,9 +20,9 @@ printf "pin,size,threads,runtime,runtimestd,usertime,usertimestd,energy,energyst
 for pin in true false; do
     for size in `seq 500 250 2000`; do
         if [ $pin ]; then
-            ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$SIZE -DITER=$ITER
+            ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$size -DITER=$ITER
         else
-            ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth matmul.sac -o matmul -DP=$SIZE -DITER=$ITER
+            ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth matmul.sac -o matmul -DP=$size -DITER=$ITER
         fi
 
         for threads in `seq 1 16`; do
@@ -31,3 +31,8 @@ for pin in true false; do
         done
     done
 done
+
+rm matmul
+rm matmul.c
+rm matmul.i
+rm matmul.o
