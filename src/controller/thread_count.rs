@@ -13,9 +13,14 @@ impl ThreadCount {
     pub fn adjust(&mut self, step_direction: Direction, step_size: f64) -> bool {
         let prev = self.n;
         self.n += step_direction * step_size;
-        self.n = f64::max(1.0, f64::min(self.n, self.max));
+        self.clamp();
+
         let changed = prev.round() != self.n.round();
         changed
+    }
+
+    fn clamp(&mut self) {
+        self.n = self.n.max(1.0).min(self.max);
     }
 }
 

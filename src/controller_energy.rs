@@ -6,7 +6,7 @@ pub struct ControllerEnergy {
     changed: bool,
     step_size: f64,
     step_direction: Direction,
-    max_threads: i32,
+    max_threads: f64,
     selection_algorithm: Box<dyn SelectionAlgorithm>,
     t_last: f64,
 }
@@ -18,17 +18,9 @@ impl ControllerEnergy {
             changed: false,
             step_size: max_threads as f64,
             step_direction: Direction::Down,
-            max_threads,
+            max_threads: max_threads as f64,
             selection_algorithm: Box::new(FrequencyDist::new(5)),
             t_last: f64::MAX,
-        }
-    }
-
-    fn move_towards_farthest_edge(&mut self) {
-        if *self.n <= self.max_threads as f64 * 0.5 {
-            self.step_direction = Direction::Up;
-        } else {
-            self.step_direction = Direction::Down;
         }
     }
 }
@@ -40,12 +32,14 @@ impl Controller for ControllerEnergy {
 
         if self.t_last < tn * 0.5 {
             // Fallen outside the corridor
-            let bound = self.max_threads as f64 * 0.25;
-            if *self.n < bound || *self.n > self.max_threads as f64 - bound {
+            let lb = self.max_threads * 0.25;
+            let ub = self.max_threads * 0.75;
+            if *self.n < lb || *self.n > ub {
                 // Only reverse direction if we are close to an edge
                 self.step_direction = -self.step_direction;
             }
-            self.step_size = self.max_threads as f64 * 0.5;
+
+            self.step_size = self.max_threads * 0.5;
         } else {
             if tn > self.t_last {
                 // The previous iteration performed a bit better
@@ -57,12 +51,11 @@ impl Controller for ControllerEnergy {
 
             if self.step_size > 1.0 {
                 self.step_size *= 0.5;
-            } else {
+            } else if self.step_size > 0.2 {
                 self.step_size = self.step_size.tanh();
-                if self.step_size < 0.20 {
-                    self.move_towards_farthest_edge();
-                    self.step_size = self.max_threads as f64 * 0.5;
-                }
+            } else {
+                self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
+                self.step_size = self.max_threads * 0.5;
             }
         }
 
@@ -74,5 +67,13 @@ impl Controller for ControllerEnergy {
         };
 
         self.n.round() as i32
+    }
+}
+
+fn towards_farthest_edge(n: f64, max_threads: f64) -> Direction {
+    if n > max_threads * 0.5 {
+        Direction::Down
+    } else {
+        Direction::Up
     }
 }
