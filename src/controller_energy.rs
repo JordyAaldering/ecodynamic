@@ -51,7 +51,7 @@ impl Controller for ControllerEnergy {
 
             if self.step_size > 1.0 {
                 self.step_size *= 0.5;
-            } else if self.step_size > 0.2 {
+            } else if self.step_size > 0.25 {
                 self.step_size = self.step_size.tanh();
             } else {
                 self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
