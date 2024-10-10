@@ -10,7 +10,7 @@ use rapl_energy::Rapl;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 4 && args.len() != 5 {
-        eprintln!("Usage: {} <size> <iter> <threads> <pin-threads?>", args[0]);
+        eprintln!("Usage: {} <size> <iter> <num-threads> <pin-threads>", args[0]);
         return;
     }
 
