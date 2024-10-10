@@ -18,8 +18,8 @@ stress --cpu 16 --timeout 30
 printf "pin,size,threads,runtime,runtimestd,usertime,usertimestd,energy,energystd\n"
 
 for pin in true false; do
-    for size in `seq 500 250 2500`; do
-        for threads in `seq 4 16`; do
+    for size in `seq 500 250 2000`; do
+        for threads in `seq 1 16`; do
             printf "$pin,$size,$threads,"
             ./target/release/examples/matmul $size $ITER $threads $pin
         done
