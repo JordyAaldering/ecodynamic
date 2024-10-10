@@ -15,7 +15,7 @@ cargo build --release --example matmul
 # Warmup
 stress --cpu 16 --timeout 30
 
-printf "pin,size,threads,runtime,usertime,energy\n"
+printf "pin,size,threads,runtime,runtimestd,usertime,usertimestd,energy,energystd\n"
 
 for pin in true false; do
     for size in `seq 500 250 2500`; do

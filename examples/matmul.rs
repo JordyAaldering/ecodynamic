@@ -48,9 +48,10 @@ fn main() {
         energy.push(rapl.values().sum());
     }
 
-    println!("{:.8},{:.8},{:.8}",
-        runtime.into_iter().sum::<f64>() / iter as f64,
-        usertime.into_iter().sum::<f64>() / iter as f64,
-        energy.into_iter().sum::<f64>() / iter as f64,
+    let n = iter as f64;
+    println!("{:.8},{:.8},{:.8},{:.8},{:.8},{:.8}",
+        runtime.iter().sum::<f64>() / n, stddev(&runtime),
+        usertime.iter().sum::<f64>() / n, stddev(&usertime),
+        energy.iter().sum::<f64>() / n, stddev(&energy),
     );
 }

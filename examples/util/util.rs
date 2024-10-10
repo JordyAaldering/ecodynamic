@@ -61,3 +61,10 @@ pub fn threadpool(num_threads: usize, pin_threads: bool) -> rayon::ThreadPool {
 
     builder.build().unwrap()
 }
+
+pub fn stddev(xs: &Vec<f64>) -> f64 {
+    let n = xs.len() as f64;
+    let mean = xs.iter().sum::<f64>() / n;
+    let variance = xs.iter().map(|x| f64::powi(x - mean, 2)).sum::<f64>() / n;
+    variance.sqrt()
+}
