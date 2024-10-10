@@ -19,7 +19,7 @@ impl ControllerEnergy {
             step_size: max_threads as f64,
             step_direction: Direction::Down,
             max_threads,
-            selection_algorithm: Box::new(FrequencyDist::new(5, true)),
+            selection_algorithm: Box::new(FrequencyDist::new(5)),
             t_last: f64::MAX,
         }
     }
@@ -43,12 +43,12 @@ impl Controller for ControllerEnergy {
 
         if self.t_last < tn * 0.5 {
             // Fallen outside the corridor
-            let bound = self.max_threads as f64 * 0.2;
-            if *self.n < bound || *self.n > self.max_threads as f64 - bound {
-                // Only reverse direction if we are close to an edge
+            //let bound = self.max_threads as f64 * 0.2;
+            //if *self.n < bound || *self.n > self.max_threads as f64 - bound {
+            //    // Only reverse direction if we are close to an edge
                 self.step_direction = -self.step_direction;
-            }
-            self.step_size = self.max_threads as f64 * 0.40;
+            //}
+            self.step_size = self.max_threads as f64 * 0.5;
         } else {
             if tn > self.t_last {
                 // The previous iteration performed a bit better
@@ -63,7 +63,7 @@ impl Controller for ControllerEnergy {
             } else {
                 self.step_size = self.step_size.tanh();
                 if self.step_size < 0.3 {
-                    self.move_towards_farthest_edge(0.40)
+                    self.move_towards_farthest_edge(0.5)
                 }
             }
         }
