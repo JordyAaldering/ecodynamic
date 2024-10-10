@@ -52,8 +52,8 @@ fn main() {
     let mut user_total = 0.0;
     let mut rapl_total = 0.0;
 
-    for (size, pinned) in CYCLES {
-        let mut pool = threadpool(num_threads, pinned);
+    for (size, pin_threads) in CYCLES {
+        let mut pool = threadpool(num_threads, pin_threads);
 
         for _ in 0..200 {
             let x = black_box(Matrix::random(size, size));
@@ -79,14 +79,14 @@ fn main() {
             rapl_total += rapl;
 
             if print_intermediate {
-                println!("{},{},{},{:.8},{:.8},{:.8}", size, pinned, num_threads, real, user, rapl);
+                println!("{},{},{},{:.8},{:.8},{:.8}", size, pin_threads, num_threads, real, user, rapl);
             }
 
             if dynamic {
                 mtd.update("parallel", real, user, rapl);
                 num_threads = mtd.num_threads("parallel") as usize;
                 if pool.current_num_threads() != num_threads {
-                    pool = threadpool(num_threads, pinned);
+                    pool = threadpool(num_threads, pin_threads);
                 }
             }
         }

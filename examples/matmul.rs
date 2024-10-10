@@ -16,8 +16,8 @@ fn main() {
 
     let size: usize = args[1].parse().unwrap();
     let iter: usize = args[2].parse().unwrap();
-    let threads: usize = args[3].parse().unwrap();
-    let pinned: bool = args.get(4).map_or(true, |x| x.parse().unwrap());
+    let num_threads: usize = args[3].parse().unwrap();
+    let pin_threads: bool = args.get(4).map_or(true, |x| x.parse().unwrap());
 
     let mut runtime: Vec<f64> = Vec::with_capacity(iter);
     let mut usertime: Vec<f64> = Vec::with_capacity(iter);
@@ -25,7 +25,7 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let pool = threadpool(threads, pinned);
+    let pool = threadpool(num_threads, pin_threads);
 
     for _ in 0..iter {
         let x = black_box(Matrix::random(size, size));

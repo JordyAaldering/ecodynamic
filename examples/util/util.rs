@@ -41,11 +41,11 @@ impl Matrix {
     }
 }
 
-pub fn threadpool(num_threads: usize, pinned: bool) -> rayon::ThreadPool {
+pub fn threadpool(num_threads: usize, pin_threads: bool) -> rayon::ThreadPool {
     let mut builder = rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads);
 
-    if pinned {
+    if pin_threads {
         let cores = core_affinity::get_core_ids().unwrap();
         let max_threads = cores.len();
         assert!(num_threads <= max_threads);

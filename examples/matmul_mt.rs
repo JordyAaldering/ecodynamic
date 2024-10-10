@@ -17,8 +17,8 @@ fn main() {
 
     let size: usize = args[1].parse().unwrap();
     let iter: usize = args[2].parse().unwrap();
-    let threads: usize = args[3].parse().unwrap();
-    let pinned: bool = args[4].parse().unwrap();
+    let num_threads: usize = args[3].parse().unwrap();
+    let pin_threads: bool = args[4].parse().unwrap();
 
     let mut runtime: Vec<f64> = Vec::with_capacity(iter);
     let mut usertime: Vec<f64> = Vec::with_capacity(iter);
@@ -26,8 +26,8 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let mut mtd = MtdBuilder::new(threads as i32).build();
-    let mut pool = threadpool(threads, pinned);
+    let mut mtd = MtdBuilder::new(num_threads as i32).build();
+    let mut pool = threadpool(num_threads, pin_threads);
 
     for _ in 0..iter {
         let x = black_box(Matrix::random(size, size));
@@ -56,7 +56,7 @@ fn main() {
         mtd.update("parallel", real, user, rapl);
         let t = mtd.num_threads("parallel") as usize;
         if pool.current_num_threads() != t {
-            pool = threadpool(threads, pinned);
+            pool = threadpool(num_threads, pin_threads);
         }
     }
 
