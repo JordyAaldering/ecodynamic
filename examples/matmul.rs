@@ -1,73 +1,11 @@
+#[path = "util/util.rs"]
+mod util;
+use util::*;
+
 use std::{hint::black_box, time::Instant};
 
 use cpu_time::ProcessTime;
-use rand::Rng;
 use rapl_energy::Rapl;
-use rayon::prelude::*;
-
-struct Matrix {
-    rows: usize,
-    cols: usize,
-    data: Vec<Vec<f64>>,
-}
-
-impl Matrix {
-    fn new(data: Vec<Vec<f64>>) -> Self {
-        Matrix {
-            rows: data.len(),
-            cols: data[0].len(),
-            data,
-        }
-    }
-
-    fn random(x: usize, y: usize) -> Self {
-        let mut rng = rand::thread_rng();
-        let data = (0..y).map(|_| {
-            let mut row = vec![0.0; x];
-            rng.fill(row.as_mut_slice());
-            row
-        }).collect();
-        Self::new(data)
-    }
-
-    fn mul(&self, other: &Matrix) -> Matrix {
-        let mut res = vec![vec![0.0; other.cols]; self.rows];
-
-        res.par_iter_mut().enumerate().for_each(|(row_a, data)| {
-            for col_b in 0..other.cols {
-                for i in 0..self.cols {
-                    data[col_b] += self.data[row_a][i] * other.data[i][col_b];
-                }
-            }
-        });
-
-        Matrix::new(res)
-    }
-}
-
-fn create_pool(num_threads: usize) -> rayon::ThreadPool {
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads)
-        .build()
-        .unwrap()
-}
-
-fn create_pool_pinned(num_threads: usize) -> rayon::ThreadPool {
-    let cores = core_affinity::get_core_ids().unwrap();
-    let max_threads = cores.len();
-    assert!(num_threads <= max_threads);
-    let thread_indices: Vec<usize> = (0..max_threads).step_by(2)
-        .chain((1..max_threads).step_by(2)).collect();
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads)
-        .start_handler(move |idx| {
-            let thread_idx = thread_indices[idx];
-            let core_id = cores[thread_idx];
-            assert!(core_affinity::set_for_current(core_id));
-        })
-        .build()
-        .unwrap()
-}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -78,8 +16,8 @@ fn main() {
 
     let size: usize = args[1].parse().unwrap();
     let iter: usize = args[2].parse().unwrap();
-    let threads: i32 = args[3].parse().unwrap();
-    let pin: bool = args.get(4).map_or(true, |x| x.parse().unwrap());
+    let threads: usize = args[3].parse().unwrap();
+    let pinned: bool = args.get(4).map_or(true, |x| x.parse().unwrap());
 
     let mut runtime: Vec<f64> = Vec::with_capacity(iter);
     let mut usertime: Vec<f64> = Vec::with_capacity(iter);
@@ -87,7 +25,7 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let pool = if pin { create_pool_pinned(threads as usize) } else { create_pool(threads as usize) };
+    let pool = threadpool(threads, pinned);
 
     for _ in 0..iter {
         let x = black_box(Matrix::random(size, size));
