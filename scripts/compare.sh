@@ -10,9 +10,7 @@
 
 ITER=200
 
-cargo build --release --example matmul
-cargo build --release --example matmul_mt
-cargo build --release --example matmul_rt
+cargo build --release --lib --examples
 
 # Warmup
 stress --cpu 16 --timeout 30

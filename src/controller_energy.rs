@@ -24,14 +24,11 @@ impl ControllerEnergy {
         }
     }
 
-    fn move_towards_farthest_edge(&mut self, scale: f64) {
-        let n_max = self.max_threads as f64;
-        if *self.n <= n_max * 0.5 {
+    fn move_towards_farthest_edge(&mut self) {
+        if *self.n <= self.max_threads as f64 * 0.5 {
             self.step_direction = Direction::Up;
-            self.step_size = (n_max - *self.n) * scale;
         } else {
             self.step_direction = Direction::Down;
-            self.step_size = *self.n * scale;
         }
     }
 }
@@ -62,8 +59,9 @@ impl Controller for ControllerEnergy {
                 self.step_size *= 0.5;
             } else {
                 self.step_size = self.step_size.tanh();
-                if self.step_size < 0.3 {
-                    self.move_towards_farthest_edge(0.5)
+                if self.step_size < 0.20 {
+                    self.move_towards_farthest_edge();
+                    self.step_size = self.max_threads as f64 * 0.5;
                 }
             }
         }
