@@ -1,12 +1,14 @@
 #!/bin/sh
 
+NODE="${1:-cn128}"
+
 #SBATCH --account=csmpi
 #SBATCH --partition=csmpi_long
-#SBATCH --nodelist cn128
+#SBATCH --nodelist $NODE
 #SBATCH --mem=0
 #SBATCH --cpus-per-task=16
 #SBATCH --time=10:00:00
-#SBATCH --output=find_best.out
+#SBATCH --output=find_best_$NODE.out
 
 ITER=50
 
