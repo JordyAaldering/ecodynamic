@@ -38,10 +38,10 @@ impl Controller for ControllerEnergy {
         } else {
             if tn > self.t_last {
                 // The previous iteration performed (a bit) better
-                if self.changed {
+                //if self.changed {
                     // Only reverse direction if n changed in the previous iteration
                     self.step_direction = -self.step_direction;
-                }
+                //}
             }
 
             if self.step_size > 0.25001 {
@@ -52,7 +52,7 @@ impl Controller for ControllerEnergy {
             }
         }
 
-        self.t_last = if self.changed {
+        self.t_last = if self.changed || true {
             tn
         } else {
             // Thread-count was not changed
