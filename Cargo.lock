@@ -210,6 +210,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
+name = "energy-bench"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d42a799145323e9d54d10817e24d089f53cccd40dc07959537dd30ea626a74ca"
+dependencies = [
+ "chrono",
+ "indexmap 2.5.0",
+ "rapl-energy",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -403,6 +414,7 @@ dependencies = [
  "chrono",
  "core_affinity",
  "cpu-time",
+ "energy-bench",
  "rand",
  "rapl-energy",
  "rayon",
