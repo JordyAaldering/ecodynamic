@@ -31,6 +31,7 @@ impl Controller for ControllerEnergy {
         let tn = self.selection_algorithm.find_best(scores);
 
         if tn > self.t_last * 1.25 {
+            // The previous iteration performed a lot better
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
             self.step_size = self.max_threads * 0.5;
         } else {
@@ -44,23 +45,22 @@ impl Controller for ControllerEnergy {
 
             if self.step_size > 0.250001 {
                 self.step_size = f64::max(self.step_size, f64::sqrt(self.step_size)) * 0.5;
-            //} else if self.step_size > 0.25 {
-            //    self.step_size = self.step_size.tanh();
             } else {
                 self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
                 self.step_size = self.max_threads * 0.5;
             }
         }
 
-        let prev_n = *self.n;
-        self.n += self.step_direction * self.step_size;
-        self.changed = prev_n.round() != self.n.round();
-
         self.t_last = if self.changed {
             tn
         } else {
+            // Thread-count was not changed
             f64::min(self.t_last, tn)
         };
+
+        let prev_n = *self.n;
+        self.n += self.step_direction * self.step_size;
+        self.changed = prev_n.round() != self.n.round();
 
         *self.n
     }
