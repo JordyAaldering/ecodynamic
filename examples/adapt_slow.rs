@@ -79,7 +79,8 @@ fn main() {
             rapl_total += rapl;
 
             if print_intermediate {
-                println!("{},{},{},{:.8},{:.8},{:.8}", size, pin_threads, num_threads, real, user, rapl);
+                let num_threads_f64 = mtd.controllers["parallel"].1.num_threads;
+                println!("{},{},{},{:.8},{:.8},{:.8}", size, pin_threads, num_threads_f64, real, user, rapl);
             }
 
             if dynamic {
