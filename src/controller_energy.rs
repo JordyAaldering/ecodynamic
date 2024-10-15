@@ -31,14 +31,7 @@ impl Controller for ControllerEnergy {
         let tn = self.selection_algorithm.find_best(scores);
 
         if self.t_last < tn * 0.5 {
-            // Fallen outside the corridor
-            let lb = self.max_threads * 0.25;
-            let ub = self.max_threads * 0.75;
-            if *self.n < lb || *self.n > ub {
-                // Only reverse direction if we are close to an edge
-                self.step_direction = -self.step_direction;
-            }
-
+            self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
             self.step_size = self.max_threads * 0.5;
         } else {
             if tn > self.t_last {
