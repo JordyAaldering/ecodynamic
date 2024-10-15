@@ -42,10 +42,10 @@ impl Controller for ControllerEnergy {
                 }
             }
 
-            if self.step_size > 1.0 {
-                self.step_size *= 0.5;
-            } else if self.step_size > 0.25 {
-                self.step_size = self.step_size.tanh();
+            if self.step_size > 0.250001 {
+                self.step_size = f64::max(self.step_size, f64::sqrt(self.step_size)) * 0.5;
+            //} else if self.step_size > 0.25 {
+            //    self.step_size = self.step_size.tanh();
             } else {
                 self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
                 self.step_size = self.max_threads * 0.5;
