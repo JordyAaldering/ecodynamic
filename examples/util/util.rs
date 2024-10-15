@@ -7,6 +7,7 @@ pub struct Matrix {
     data: Vec<Vec<f64>>,
 }
 
+#[allow(unused)]
 impl Matrix {
     pub fn new(data: Vec<Vec<f64>>) -> Self {
         Matrix {
@@ -41,6 +42,7 @@ impl Matrix {
     }
 }
 
+#[allow(unused)]
 pub fn threadpool(num_threads: usize, pin_threads: bool) -> rayon::ThreadPool {
     let mut builder = rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads);
@@ -62,6 +64,7 @@ pub fn threadpool(num_threads: usize, pin_threads: bool) -> rayon::ThreadPool {
     builder.build().unwrap()
 }
 
+#[allow(unused)]
 pub fn stddev(xs: &Vec<f64>) -> f64 {
     let n = xs.len() as f64;
     let mean = xs.iter().sum::<f64>() / n;
