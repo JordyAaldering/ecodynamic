@@ -79,7 +79,11 @@ fn main() {
             rapl_total += rapl;
 
             if print_intermediate {
-                let num_threads_f64 = mtd.controllers["parallel"].1.num_threads;
+                let num_threads_f64 = if let Some((_, lb)) = mtd.controllers.get("parallel") {
+                    lb.num_threads
+                } else {
+                    16.0
+                };
                 println!("{},{},{},{:.8},{:.8},{:.8}", size, pin_threads, num_threads_f64, real, user, rapl);
             }
 
