@@ -26,7 +26,7 @@ impl ControllerEnergy {
 }
 
 impl Controller for ControllerEnergy {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f64 {
         let scores = samples.into_iter().map(|x| x.energy).collect();
         let tn = self.selection_algorithm.find_best(scores);
 
@@ -59,7 +59,7 @@ impl Controller for ControllerEnergy {
             f64::min(self.t_last, tn)
         };
 
-        self.n.round() as i32
+        *self.n
     }
 }
 

@@ -66,7 +66,7 @@ impl MTDynamic {
     pub fn update<S: AsRef<str>>(&mut self, funname: S, runtime: f64, usertime: f64, energy: f64) {
         if !self.controllers.contains_key(funname.as_ref()) {
             let controller = (self.controller_fn)();
-            let letterbox = Letterbox::new(self.max_threads, self.num_measurements_per_adjustment);
+            let letterbox = Letterbox::new(self.max_threads as f64, self.num_measurements_per_adjustment);
             self.controllers.insert(funname.as_ref().to_string(), (controller, letterbox));
         }
 
@@ -83,7 +83,7 @@ impl MTDynamic {
 
     pub fn num_threads<S: AsRef<str>>(&self, funname: S) -> i32 {
         if let Some((_, letterbox)) = self.controllers.get(funname.as_ref()) {
-            letterbox.num_threads
+            letterbox.num_threads.round() as i32
         } else {
             self.max_threads
         }

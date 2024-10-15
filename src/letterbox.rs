@@ -3,12 +3,12 @@ pub struct Sample {
     pub runtime: f64,
     pub usertime: f64,
     pub energy: f64,
-    num_threads: i32,
+    num_threads: f64,
 }
 
 impl Sample {
     pub fn new(runtime: f64, usertime: f64, energy: f64) -> Self {
-        Sample { runtime, usertime, energy, num_threads: -1 }
+        Sample { runtime, usertime, energy, num_threads: -1.0 }
     }
 }
 
@@ -20,14 +20,14 @@ impl std::fmt::Debug for Sample {
 
 pub struct Letterbox {
     samples: Option<Vec<Sample>>,
-    pub num_threads: i32,
+    pub num_threads: f64,
     pub num_measurements_per_adjustment: usize,
     // Debugging and analysis
     pub history: Vec<Sample>,
 }
 
 impl Letterbox {
-    pub fn new(max_threads: i32, num_measurements_per_adjustment: usize) -> Self {
+    pub fn new(max_threads: f64, num_measurements_per_adjustment: usize) -> Self {
         Letterbox {
             samples: None,
             num_threads: max_threads,

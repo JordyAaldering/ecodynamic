@@ -30,7 +30,7 @@ impl ControllerRuntime {
 }
 
 impl Controller for ControllerRuntime {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f64 {
         let samples = samples.into_iter().map(|x| x.runtime).collect();
         let tn = self.selection_algorithm.find_best(samples);
 
@@ -56,6 +56,6 @@ impl Controller for ControllerRuntime {
         self.t_last = tn;
         self.n += (self.step_direction * self.step_size as f64) as i32;
         self.n = i32::max(1, i32::min(self.max_threads, self.n));
-        self.n
+        self.n as f64
     }
 }

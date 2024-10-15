@@ -9,5 +9,5 @@ pub use thread_count::ThreadCount;
 use crate::Sample;
 
 pub trait Controller {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32;
+    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f64;
 }
