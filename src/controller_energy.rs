@@ -34,31 +34,22 @@ impl Controller for ControllerEnergy {
             // The previous iteration performed a lot better
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
 
-            self.step_size = if self.step_size >= self.max_threads * 0.5 {
-                self.max_threads / 3.0
+            if self.step_size != self.max_threads * 0.5 {
+                self.step_size = self.max_threads * 0.5;
             } else {
-                self.max_threads / 2.0
-            };
+                // Step size was already reset in the previous iteration
+                self.decrease_step_size();
+            }
         } else {
             if tn > self.t_last * 1.05 {
-                // The previous iteration performed better
+                // The previous iteration performed a bit better
                 if self.changed {
                     // Only reverse direction if n changed in the previous iteration
                     self.step_direction = -self.step_direction;
-
-                    //if self.step_size < 1.0 {
-                    //    // Will be halved by the end
-                    //    self.step_size = 8.0;
-                    //}
                 }
             }
 
-            if self.step_size > 0.25001 {
-                self.step_size = f64::max(self.step_size, f64::sqrt(self.step_size)) * 0.5;
-            } else {
-                self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
-                self.step_size = self.max_threads * 0.5;
-            }
+            self.decrease_step_size();
         }
 
         self.t_last = if self.changed {
@@ -73,6 +64,17 @@ impl Controller for ControllerEnergy {
         self.changed = prev_n.round() != self.n.round();
 
         *self.n
+    }
+}
+
+impl ControllerEnergy {
+    fn decrease_step_size(&mut self) {
+        if self.step_size > 0.25001 {
+            self.step_size = f64::max(self.step_size, f64::sqrt(self.step_size)) * 0.5;
+        } else {
+            self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
+            self.step_size = self.max_threads * 0.5;
+        }
     }
 }
 
