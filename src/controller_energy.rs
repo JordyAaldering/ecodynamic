@@ -36,10 +36,10 @@ impl Controller for ControllerEnergy {
         } else {
             if tn > self.t_last {
                 // The previous iteration performed a bit better
-                if self.changed {
+                //if self.changed {
                     // Only reverse direction if we actually changed n in the last iteration
                     self.step_direction = -self.step_direction;
-                }
+                //}
             }
 
             if self.step_size > 1.0 {
