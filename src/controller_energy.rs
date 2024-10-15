@@ -26,22 +26,20 @@ impl ControllerEnergy {
 }
 
 impl Controller for ControllerEnergy {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f64 {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) -> i32 {
         let scores = samples.into_iter().map(|x| x.energy).collect();
         let tn = self.selection_algorithm.find_best(scores);
 
-        if tn > 1.25 * self.t_last {
-            // The previous iteration performed a lot (25%) better
+        if self.t_last < tn * 0.25 {
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
             self.step_size = self.max_threads * 0.5;
         } else {
-            if tn > 1.05 * self.t_last {
-                // The previous iteration performed at bit (5%) better
-                //if self.changed {
+            if tn > self.t_last {
+                // The previous iteration performed a bit better
+                if self.changed {
                     // Only reverse direction if we actually changed n in the last iteration
                     self.step_direction = -self.step_direction;
-                    self.step_size = f64::max(self.step_size, 2.0);
-                //}
+                }
             }
 
             if self.step_size > 1.0 {
@@ -61,7 +59,7 @@ impl Controller for ControllerEnergy {
             f64::min(self.t_last, tn)
         };
 
-        *self.n
+        self.n.round() as i32
     }
 }
 
