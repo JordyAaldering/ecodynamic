@@ -36,12 +36,12 @@ impl Controller for ControllerEnergy {
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
             self.step_size = self.max_threads * 0.5;
         } else {
-            if self.step_size >= 1.0 || tn > self.t_last * 1.05 {
+            if tn > self.t_last {
                 // The previous iteration performed (a bit) better
-                //if self.changed {
+                if self.changed {
                     // Only reverse direction if n changed in the previous iteration
                     self.step_direction = -self.step_direction;
-                //}
+                }
             }
 
             if self.step_size > 0.25001 {
