@@ -19,7 +19,7 @@ impl ControllerEnergy {
             step_size: max_threads as f64,
             step_direction: Direction::Down,
             max_threads: max_threads as f64,
-            selection_algorithm: Box::new(FrequencyDist::new(4, true)),
+            selection_algorithm: Box::new(FrequencyDist::new(5, true)),
             t_last: f64::MAX,
         }
     }
@@ -30,14 +30,11 @@ impl Controller for ControllerEnergy {
         let scores = samples.into_iter().map(|x| x.energy).collect();
         let tn = self.selection_algorithm.find_best(scores);
 
-        if tn > self.t_last * 1.25 {
-            // The previous iteration performed a lot better,
-            // and the step size was not already reset in that iteration
+        if tn > self.t_last * 1.5 {
+            // The previous iteration performed a lot better
+            // And the step size was not already reset in the previous iteration
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
-
-            let slowdown = self.t_last / tn;
-            let slowdown = f64::max(0.25, f64::min(slowdown, 0.5));
-            self.step_size = self.max_threads * slowdown;
+            self.step_size = self.max_threads * 0.5;
         } else {
             if tn > self.t_last {
                 // The previous iteration performed (a bit) better
@@ -58,8 +55,8 @@ impl Controller for ControllerEnergy {
         self.t_last = if self.changed {
             tn
         } else {
-            // Actual thread-count was not changed
-            f64::min(self.t_last, tn)
+            // Thread-count was not changed
+            (self.t_last + tn) * 0.5
         };
 
         let prev_n = *self.n;
