@@ -19,7 +19,7 @@ impl ControllerEnergy {
             step_size: max_threads as f64,
             step_direction: Direction::Down,
             max_threads: max_threads as f64,
-            selection_algorithm: Box::new(FrequencyDist::new(5)),
+            selection_algorithm: Box::new(FrequencyDist::new(4, true)),
             t_last: f64::MAX,
         }
     }
