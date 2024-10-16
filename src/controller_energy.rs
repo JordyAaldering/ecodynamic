@@ -30,18 +30,14 @@ impl Controller for ControllerEnergy {
         let scores = samples.into_iter().map(|x| x.energy).collect();
         let tn = self.selection_algorithm.find_best(scores);
 
-        if tn > self.t_last * 1.5 {
-            // The previous iteration performed a lot better
+        if tn < self.t_last * 0.5 || tn > self.t_last * 1.5 {
+            // The previous iteration performed a lot better, or a lot worse
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
             self.step_size = self.max_threads * 0.5;
         } else {
             if tn > self.t_last * 1.05 {
                 // The previous iteration performed (a bit) better
-                self.step_direction = match *self.n {
-                    x if x >= self.max_threads - 0.5 => Direction::Down,
-                    x if x <= 0.5 => Direction::Up,
-                    _ => -self.step_direction,
-                };
+                self.step_direction =  -self.step_direction;
             }
 
             if self.step_size > 0.1 {
@@ -63,6 +59,7 @@ impl Controller for ControllerEnergy {
 
 #[inline]
 fn towards_farthest_edge(n: f64, max_threads: f64) -> Direction {
+    // Prefer to move up; typically we don't want to end up in a case where we are running single-threaded
     if n > max_threads * 0.75 {
         Direction::Down
     } else {
