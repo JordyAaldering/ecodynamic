@@ -30,20 +30,16 @@ impl Controller for ControllerEnergy {
         let scores = samples.into_iter().map(|x| x.energy).collect();
         let tn = self.selection_algorithm.find_best(scores);
 
-        if tn > self.t_last * 1.5 {
+        if tn > self.t_last * 1.40 {
             // The previous iteration performed a lot better
             // And the step size was not already reset in the previous iteration
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
             self.step_size = self.max_threads * 0.5;
+        } else if tn > self.t_last * 1.05 {
+            // The previous iteration performed (a bit) better
+            self.step_direction = -self.step_direction;
+            self.step_size *= 2.0;
         } else {
-            if tn > self.t_last {
-                // The previous iteration performed (a bit) better
-                //if self.changed {
-                    // Only reverse direction if n changed in the previous iteration
-                    self.step_direction = -self.step_direction;
-                //}
-            }
-
             if self.step_size > 0.25001 {
                 self.step_size = f64::max(self.step_size, f64::sqrt(self.step_size)) * 0.5;
             } else {
@@ -52,13 +48,7 @@ impl Controller for ControllerEnergy {
             }
         }
 
-        self.t_last = if self.changed || true {
-            tn
-        } else {
-            // Thread-count was not changed
-            (self.t_last + tn) * 0.5
-        };
-
+        self.t_last = tn;
         let prev_n = *self.n;
         self.n += self.step_direction * self.step_size;
         self.changed = prev_n.round() != self.n.round();

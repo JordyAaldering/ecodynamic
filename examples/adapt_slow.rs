@@ -22,7 +22,6 @@ fn main() {
     let mut rapl = Rapl::now().unwrap();
 
     const CYCLES: [(usize, bool); 20] = [
-        (800, false),
         (850, false),
         (900, false),
         (950, false),
@@ -32,6 +31,8 @@ fn main() {
         (1150, false),
         (1200, false),
         (1250, false),
+        (1300, false),
+        (1300, true),
         (1250, true),
         (1200, true),
         (1150, true),
@@ -41,7 +42,6 @@ fn main() {
         (950, true),
         (900, true),
         (850, true),
-        (800, true),
     ];
 
     if print_intermediate {
