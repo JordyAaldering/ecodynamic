@@ -48,10 +48,18 @@ fn main() {
         let real = real.as_secs_f64();
         let user = user.as_secs_f64();
         let rapl = rapl.values().sum();
-
         runtime.push(real);
         usertime.push(user);
         energy.push(rapl);
+
+        if false {
+            let num_threads_f64 = if let Some((_, lb)) = mtd.controllers.get("parallel") {
+                lb.num_threads
+            } else {
+                16.0
+            };
+            println!("{},{},{},{:.8},{:.8},{:.8}", size, pin_threads, num_threads_f64, real, user, rapl);
+        }
 
         mtd.update("parallel", real, user, rapl);
         let t = mtd.num_threads("parallel") as usize;

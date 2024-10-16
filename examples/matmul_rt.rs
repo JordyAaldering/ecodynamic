@@ -48,7 +48,6 @@ fn main() {
         let real = real.as_secs_f64();
         let user = user.as_secs_f64();
         let rapl = rapl.values().sum();
-
         runtime.push(real);
         usertime.push(user);
         energy.push(rapl);
