@@ -20,7 +20,7 @@ impl MtdBuilder {
     pub fn new(max_threads: i32) -> Self {
         Self {
             max_threads,
-            num_measurements_per_adjustment: 20,
+            num_measurements_per_adjustment: 10,
             controller_type: ControllerType::Energy,
         }
     }

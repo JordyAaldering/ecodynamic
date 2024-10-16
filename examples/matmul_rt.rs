@@ -26,7 +26,7 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    let mut mtd = MtdBuilder::new(num_threads as i32).runtime().build();
+    let mut mtd = MtdBuilder::new(num_threads as i32).letterbox_size(20).runtime().build();
     let mut pool = threadpool(num_threads, pin_threads);
 
     for _ in 0..iter {
