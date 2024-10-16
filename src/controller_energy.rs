@@ -28,7 +28,7 @@ impl Controller for ControllerEnergy {
         let scores = samples.into_iter().map(|x| x.energy).collect();
         let tn = self.selection_algorithm.find_best(scores);
 
-        if tn < self.t_last * 0.50 || tn > self.t_last * 1.50 {
+        if tn < self.t_last * 0.75 || tn > self.t_last * 1.50 {
             // The previous iteration performed a lot worse, or a lot better
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
             self.step_size = self.max_threads * 0.5;
