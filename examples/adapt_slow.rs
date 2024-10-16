@@ -18,7 +18,7 @@ fn main() {
         dynamic = true;
     }
 
-    let mut mtd = MtdBuilder::new(16).letterbox_size(10).build();
+    let mut mtd = MtdBuilder::new(16).build();
     let mut rapl = Rapl::now().unwrap();
 
     const CYCLES: [(usize, bool); 20] = [
@@ -55,7 +55,7 @@ fn main() {
     for (size, pin_threads) in CYCLES {
         let mut pool = threadpool(num_threads, pin_threads);
 
-        for _ in 0..100 {
+        for _ in 0..200 {
             let x = black_box(Matrix::random(size, size));
             let y = black_box(Matrix::random(size, size));
 
