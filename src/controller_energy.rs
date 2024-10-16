@@ -37,7 +37,11 @@ impl Controller for ControllerEnergy {
         } else {
             if tn > self.t_last * 1.05 {
                 // The previous iteration performed (a bit) better
-                self.step_direction = -self.step_direction;
+                self.step_direction = match *self.n {
+                    x if x >= self.max_threads - 0.5 => Direction::Down,
+                    x if x <= 0.5 => Direction::Up,
+                    _ => -self.step_direction,
+                };
             }
 
             if self.step_size > 0.1 {
