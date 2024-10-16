@@ -3,7 +3,6 @@ use crate::letterbox::Sample;
 
 pub struct ControllerEnergy {
     n: ThreadCount,
-    changed: bool,
     step_size: f64,
     step_direction: Direction,
     max_threads: f64,
@@ -15,7 +14,6 @@ impl ControllerEnergy {
     pub fn new(max_threads: i32) -> ControllerEnergy {
         ControllerEnergy {
             n: ThreadCount::new(max_threads),
-            changed: false,
             step_size: max_threads as f64,
             step_direction: Direction::Down,
             max_threads: max_threads as f64,
@@ -35,9 +33,9 @@ impl Controller for ControllerEnergy {
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
             self.step_size = self.max_threads * 0.5;
         } else {
-            if tn > self.t_last * 1.05 {
+            if tn > self.t_last {
                 // The previous iteration performed (a bit) better
-                self.step_direction =  -self.step_direction;
+                self.step_direction = -self.step_direction;
             }
 
             if self.step_size > 0.1 {
@@ -49,10 +47,7 @@ impl Controller for ControllerEnergy {
         }
 
         self.t_last = tn;
-        let prev_n = *self.n;
         self.n += self.step_direction * self.step_size;
-        self.changed = prev_n.round() != self.n.round();
-
         *self.n
     }
 }
