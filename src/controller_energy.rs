@@ -59,7 +59,7 @@ impl Controller for ControllerEnergy {
 
 #[inline]
 fn towards_farthest_edge(n: f64, max_threads: f64) -> Direction {
-    if n > max_threads * 0.5 {
+    if n > max_threads * 0.75 {
         Direction::Down
     } else {
         Direction::Up
