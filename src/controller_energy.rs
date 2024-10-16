@@ -38,7 +38,7 @@ impl Controller for ControllerEnergy {
                 self.step_direction = -self.step_direction;
             }
 
-            if self.step_size > 0.1 {
+            if self.step_size > 0.05 {
                 self.step_size = f64::max(self.step_size * 0.6, self.step_size / (1.0 + self.step_size));
             } else {
                 self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
