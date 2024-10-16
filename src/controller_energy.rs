@@ -31,7 +31,7 @@ impl Controller for ControllerEnergy {
         if tn < self.t_last * 0.75 || tn > self.t_last * 1.50 {
             // The previous iteration performed a lot worse, or a lot better
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
-            self.step_size = self.max_threads * 0.45;
+            self.step_size = self.max_threads * 0.5;
         } else {
             if tn > self.t_last {
                 // The previous iteration performed (a bit) better
@@ -42,7 +42,7 @@ impl Controller for ControllerEnergy {
                 self.step_size = f64::max(self.step_size * 0.6, self.step_size / (1.0 + self.step_size));
             } else {
                 self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
-                self.step_size = self.max_threads * 0.45;
+                self.step_size = self.max_threads * 0.5;
             }
         }
 
