@@ -25,7 +25,7 @@ impl ControllerEnergy {
 
 impl Controller for ControllerEnergy {
     fn adjust_threads(&mut self, samples: Vec<Sample>) -> f64 {
-        let scores = samples.into_iter().map(|x| x.energy).collect();
+        let scores = samples.into_iter().map(|x| x.energy / x.runtime).collect();
         let tn = self.selection_algorithm.find_best(scores);
 
         if tn < self.t_last * 0.50 || tn > self.t_last * 1.50 {
