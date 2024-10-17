@@ -8,7 +8,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=compare.out
 
-ITER=100
+ITER=300
 
 cargo build --release --lib --examples
 
@@ -54,20 +54,20 @@ printf "rt,1250,false,"
 ./target/release/examples/matmul_rt 1250 $ITER 16 false
 
 # 1500 threads not pinned, optimum = 8 threads
-printf "oracle,1500,false,"
-./target/release/examples/matmul 1500 $ITER 8 false
-printf "mt,1500,false,"
-./target/release/examples/matmul_mt 1500 $ITER 16 false
-printf "rt,1500,false,"
-./target/release/examples/matmul_rt 1500 $ITER 16 false
+#printf "oracle,1500,false,"
+#./target/release/examples/matmul 1500 $ITER 8 false
+#printf "mt,1500,false,"
+#./target/release/examples/matmul_mt 1500 $ITER 16 false
+#printf "rt,1500,false,"
+#./target/release/examples/matmul_rt 1500 $ITER 16 false
 
 # 1750 threads not pinned, optimum = 8 threads
-printf "oracle,1750,false,"
-./target/release/examples/matmul 1750 $ITER 8 false
-printf "mt,1750,false,"
-./target/release/examples/matmul_mt 1750 $ITER 16 false
-printf "rt,1750,false,"
-./target/release/examples/matmul_rt 1750 $ITER 16 false
+#printf "oracle,1750,false,"
+#./target/release/examples/matmul 1750 $ITER 8 false
+#printf "mt,1750,false,"
+#./target/release/examples/matmul_mt 1750 $ITER 16 false
+#printf "rt,1750,false,"
+#./target/release/examples/matmul_rt 1750 $ITER 16 false
 
 #
 # With thread pinning
@@ -106,17 +106,17 @@ printf "rt,1250,true,"
 ./target/release/examples/matmul_rt 1250 $ITER 16 true
 
 # 1500 threads pinned, optimum = 12 threads
-printf "oracle,1500,true,"
-./target/release/examples/matmul 1500 $ITER 12 true
-printf "mt,1500,true,"
-./target/release/examples/matmul_mt 1500 $ITER 16 true
-printf "rt,1500,true,"
-./target/release/examples/matmul_rt 1500 $ITER 16 true
+#printf "oracle,1500,true,"
+#./target/release/examples/matmul 1500 $ITER 12 true
+#printf "mt,1500,true,"
+#./target/release/examples/matmul_mt 1500 $ITER 16 true
+#printf "rt,1500,true,"
+#./target/release/examples/matmul_rt 1500 $ITER 16 true
 
 # 1750 threads pinned, optimum = 12 threads
-printf "oracle,1750,true,"
-./target/release/examples/matmul 1750 $ITER 12 true
-printf "mt,1750,true,"
-./target/release/examples/matmul_mt 1750 $ITER 16 true
-printf "rt,1750,true,"
-./target/release/examples/matmul_rt 1750 $ITER 16 true
+#printf "oracle,1750,true,"
+#./target/release/examples/matmul 1750 $ITER 12 true
+#printf "mt,1750,true,"
+#./target/release/examples/matmul_mt 1750 $ITER 16 true
+#printf "rt,1750,true,"
+#./target/release/examples/matmul_rt 1750 $ITER 16 true
