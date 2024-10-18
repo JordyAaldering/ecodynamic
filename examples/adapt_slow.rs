@@ -21,7 +21,8 @@ fn main() {
     let mut mtd = MtdBuilder::new(16).build();
     let mut rapl = Rapl::now().unwrap();
 
-    const CYCLES: [(usize, bool); 20] = [
+    const CYCLES: [(usize, bool); 16] = [
+        // Without pinning
         (850, false),
         (900, false),
         (950, false),
@@ -30,10 +31,7 @@ fn main() {
         (1100, false),
         (1150, false),
         (1200, false),
-        (1250, false),
-        (1300, false),
-        (1300, true),
-        (1250, true),
+        // With pinning
         (1200, true),
         (1150, true),
         (1100, true),
