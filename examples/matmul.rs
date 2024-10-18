@@ -42,7 +42,6 @@ fn main() {
         let real = real.elapsed();
         let user = user.elapsed();
         let rapl = rapl.elapsed_mut();
-
         runtime.push(real.as_secs_f64());
         usertime.push(user.as_secs_f64());
         energy.push(rapl.values().sum());
