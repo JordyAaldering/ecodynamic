@@ -11,15 +11,12 @@ use rapl_energy::Rapl;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let print_intermediate: bool = args[1].parse().unwrap();
-    let mut num_threads = 16;
+    let mut max_threads = 16;
     let mut dynamic = true;
     if args.len() > 2 {
-        num_threads = args[2].parse().unwrap();
+        max_threads = args[2].parse().unwrap();
         dynamic = true;
     }
-
-    let mut mtd = Mtd::energy_controller(16);
-    let mut rapl = Rapl::now().unwrap();
 
     const CYCLES: [(usize, bool); 16] = [
         // Without pinning
@@ -42,6 +39,9 @@ fn main() {
         (850, true),
     ];
 
+    let mut mtd = Mtd::energy_controller(max_threads);
+    let mut rapl = Rapl::now().unwrap();
+
     if print_intermediate {
         println!("size,pin,threads,runtime,usertime,energy");
     }
@@ -51,8 +51,6 @@ fn main() {
     let mut rapl_total = 0.0;
 
     for (size, pin_threads) in CYCLES {
-        let mut pool = threadpool(num_threads, pin_threads);
-
         for _ in 0..200 {
             let x = black_box(Matrix::random(size, size));
             let y = black_box(Matrix::random(size, size));
@@ -61,31 +59,25 @@ fn main() {
             let user = ProcessTime::now();
             let real = Instant::now();
 
-            pool.install(|| {
-                let _ = black_box(x.mul(&y));
-            });
+            let _res = if dynamic {
+                mtd.install(pin_threads, || black_box(x.mul(&y)))
+            } else {
+                black_box(x.mul(&y))
+            };
 
             let real = real.elapsed();
             let user = user.elapsed();
             let rapl = rapl.elapsed_mut();
 
-            let real = real.as_secs_f64();
-            let user = user.as_secs_f64();
-            let rapl = rapl.values().sum();
+            let real = real.as_secs_f32();
+            let user = user.as_secs_f32();
+            let energy: f32 = rapl.values().sum();
             real_total += real;
             user_total += user;
-            rapl_total += rapl;
+            rapl_total += energy;
 
             if print_intermediate {
-                println!("{},{},{},{:.8},{:.8},{:.8}", size, pin_threads, mtd.num_threads, real, user, rapl);
-            }
-
-            if dynamic {
-                mtd.update(rapl);
-                num_threads = mtd.num_threads() as usize;
-                if pool.current_num_threads() != num_threads {
-                    pool = threadpool(num_threads, pin_threads);
-                }
+                println!("{},{},{},{},{},{}", size, pin_threads, mtd.num_threads, real, user, energy);
             }
         }
     }

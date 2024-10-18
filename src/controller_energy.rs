@@ -9,7 +9,7 @@ pub struct EnergyController {
 }
 
 impl EnergyController {
-    pub fn new(max_threads: i32) -> Self {
+    pub fn new(max_threads: usize) -> Self {
         Self {
             n: ThreadCount::new(max_threads),
             max_threads: max_threads as f32,

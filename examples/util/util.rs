@@ -43,31 +43,9 @@ impl Matrix {
 }
 
 #[allow(unused)]
-pub fn threadpool(num_threads: usize, pin_threads: bool) -> rayon::ThreadPool {
-    let mut builder = rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads);
-
-    if pin_threads {
-        let cores = core_affinity::get_core_ids().unwrap();
-        let max_threads = cores.len();
-        assert!(num_threads <= max_threads);
-        let thread_indices: Vec<usize> = (0..max_threads).step_by(2)
-            .chain((1..max_threads).step_by(2)).collect();
-
-        builder = builder.start_handler(move |idx| {
-            let thread_idx = thread_indices[idx];
-            let core_id = cores[thread_idx];
-            assert!(core_affinity::set_for_current(core_id));
-        });
-    }
-
-    builder.build().unwrap()
-}
-
-#[allow(unused)]
-pub fn stddev(xs: &Vec<f64>) -> f64 {
-    let n = xs.len() as f64;
-    let mean = xs.iter().sum::<f64>() / n;
-    let variance = xs.iter().map(|x| f64::powi(x - mean, 2)).sum::<f64>() / n;
+pub fn stddev(xs: &Vec<f32>) -> f32 {
+    let n = xs.len() as f32;
+    let mean = xs.iter().sum::<f32>() / n;
+    let variance = xs.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / n;
     variance.sqrt()
 }

@@ -5,7 +5,7 @@ pub struct ThreadCount {
 
 impl ThreadCount {
     #[inline]
-    pub fn new(max: i32) -> Self {
+    pub fn new(max: usize) -> Self {
         Self { n: max as f32, max: max as f32 }
     }
 

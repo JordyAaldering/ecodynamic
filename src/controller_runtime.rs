@@ -1,23 +1,23 @@
 use crate::controller::{Controller, Direction};
 
 pub struct RuntimeController {
-    n: i32,
+    n: usize,
     t1: f32,
     t_last: f32,
     step_size: i32,
     step_direction: Direction,
     // Settings
-    max_threads: i32,
+    max_threads: usize,
     corridor_width: f32,
 }
 
 impl RuntimeController {
-    pub fn new(max_threads: i32) -> Self {
+    pub fn new(max_threads: usize) -> Self {
         Self {
             n: max_threads,
             t1: f32::MAX,
             t_last: f32::MAX,
-            step_size: max_threads,
+            step_size: max_threads as i32,
             step_direction: Direction::Down,
             // Settings
             max_threads,
@@ -32,7 +32,7 @@ impl Controller for RuntimeController {
         if speedup < (1.0 - self.corridor_width) * self.n as f32 {
             // We have fallen outside the corridor
             self.step_direction = Direction::Down;
-            self.step_size = i32::max(1, self.n / 2);
+            self.step_size = i32::max(1, self.n as i32 / 2);
         } else {
             if speedup > self.n as f32 {
                 // In the initial iteration t1 and t_last are f64::MAX so we
@@ -48,8 +48,8 @@ impl Controller for RuntimeController {
         }
 
         self.t_last = tn;
-        self.n += (self.step_direction * self.step_size as f32) as i32;
-        self.n = i32::max(1, i32::min(self.max_threads, self.n));
+        self.n += (self.step_direction * self.step_size as f32) as usize;
+        self.n = usize::max(1, usize::min(self.max_threads, self.n));
         self.n as f32
     }
 }

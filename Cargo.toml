@@ -12,11 +12,10 @@ cbindgen = "0.26.0"
 [dependencies]
 chrono = "0.4.38"
 core_affinity = "0.8.1"
-threadpool = "1.8.1"
+rapl-energy = "0.1.14"
+rayon = "1.10.0"
 
 [dev-dependencies]
 cpu-time = "1.0.0"
-energy-bench = "0.1.17"
+energy-bench = "0.1.18"
 rand = "0.8.5"
-rapl-energy = "0.1.14"
-rayon = "1.10.0"

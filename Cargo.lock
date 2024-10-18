@@ -211,9 +211,9 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
 name = "energy-bench"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d42a799145323e9d54d10817e24d089f53cccd40dc07959537dd30ea626a74ca"
+checksum = "caca0234ed47d30c15fb71a11a9df2e8818c6e325eb504bfe59356036e1d92c5"
 dependencies = [
  "chrono",
  "indexmap 2.6.0",
@@ -418,7 +418,6 @@ dependencies = [
  "rand",
  "rapl-energy",
  "rayon",
- "threadpool",
 ]
 
 [[package]]
@@ -717,15 +716,6 @@ name = "textwrap"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23d434d3f8967a09480fb04132ebe0a3e088c173e6d0ee7897abbdf4eab0f8b9"
-
-[[package]]
-name = "threadpool"
-version = "1.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
-dependencies = [
- "num_cpus",
-]
 
 [[package]]
 name = "tinyvec"
