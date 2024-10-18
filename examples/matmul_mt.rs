@@ -52,7 +52,7 @@ fn main() {
         usertime.push(user);
         energy.push(rapl);
 
-        if true {
+        if false {
             let num_threads_f64 = if let Some((_, lb)) = mtd.controllers.get("parallel") {
                 lb.num_threads
             } else {
