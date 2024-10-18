@@ -8,7 +8,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=compare.out
 
-ITER=300
+ITER=200
 
 cargo build --release --lib --examples
 
