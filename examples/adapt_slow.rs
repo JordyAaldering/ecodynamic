@@ -5,7 +5,7 @@ use util::*;
 use std::{hint::black_box, time::Instant};
 
 use cpu_time::ProcessTime;
-use mtdynamic::MtdBuilder;
+use mtdynamic::Mtd;
 use rapl_energy::Rapl;
 
 fn main() {
@@ -18,7 +18,7 @@ fn main() {
         dynamic = true;
     }
 
-    let mut mtd = MtdBuilder::new(16).build();
+    let mut mtd = Mtd::energy_controller(16);
     let mut rapl = Rapl::now().unwrap();
 
     const CYCLES: [(usize, bool); 16] = [
@@ -71,23 +71,18 @@ fn main() {
 
             let real = real.as_secs_f64();
             let user = user.as_secs_f64();
-            let rapl = rapl.values().sum();
+            let rapl = rapl.values().map(|&x| x as f32).sum();
             real_total += real;
             user_total += user;
             rapl_total += rapl;
 
             if print_intermediate {
-                let num_threads_f64 = if let Some((_, lb)) = mtd.controllers.get("parallel") {
-                    lb.num_threads
-                } else {
-                    16.0
-                };
-                println!("{},{},{},{:.8},{:.8},{:.8}", size, pin_threads, num_threads_f64, real, user, rapl);
+                println!("{},{},{},{:.8},{:.8},{:.8}", size, pin_threads, mtd.num_threads, real, user, rapl);
             }
 
             if dynamic {
-                mtd.update("parallel", real, user, rapl);
-                num_threads = mtd.num_threads("parallel") as usize;
+                mtd.update(rapl);
+                num_threads = mtd.num_threads() as usize;
                 if pool.current_num_threads() != num_threads {
                     pool = threadpool(num_threads, pin_threads);
                 }

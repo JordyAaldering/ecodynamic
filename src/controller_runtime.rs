@@ -1,49 +1,43 @@
-use crate::controller::{Controller, Direction, FrequencyDist, SelectionAlgorithm};
-use crate::letterbox::Sample;
+use crate::controller::{Controller, Direction};
 
-pub struct ControllerRuntime {
+pub struct RuntimeController {
     n: i32,
-    t1: f64,
-    t_last: f64,
+    t1: f32,
+    t_last: f32,
     step_size: i32,
     step_direction: Direction,
     // Settings
     max_threads: i32,
-    corridor_width: f64,
-    selection_algorithm: Box<dyn SelectionAlgorithm>,
+    corridor_width: f32,
 }
 
-impl ControllerRuntime {
-    pub fn new(max_threads: i32) -> ControllerRuntime {
-        ControllerRuntime {
+impl RuntimeController {
+    pub fn new(max_threads: i32) -> Self {
+        Self {
             n: max_threads,
-            t1: f64::MAX,
-            t_last: f64::MAX,
+            t1: f32::MAX,
+            t_last: f32::MAX,
             step_size: max_threads,
             step_direction: Direction::Down,
             // Settings
             max_threads,
             corridor_width: 0.5,
-            selection_algorithm: Box::new(FrequencyDist::new(5, false)),
         }
     }
 }
 
-impl Controller for ControllerRuntime {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f64 {
-        let samples = samples.into_iter().map(|x| x.runtime).collect();
-        let tn = self.selection_algorithm.find_best(samples);
-
+impl Controller for RuntimeController {
+    fn adjust_threads(&mut self, tn: f32) -> f32 {
         let speedup = self.t1 / tn;
-        if speedup < (1.0 - self.corridor_width) * self.n as f64 {
+        if speedup < (1.0 - self.corridor_width) * self.n as f32 {
             // We have fallen outside the corridor
             self.step_direction = Direction::Down;
             self.step_size = i32::max(1, self.n / 2);
         } else {
-            if speedup > self.n as f64 {
+            if speedup > self.n as f32 {
                 // In the initial iteration t1 and t_last are f64::MAX so we
                 // reach this condition, an initialize t1 with an actual value
-                self.t1 = tn * self.n as f64;
+                self.t1 = tn * self.n as f32;
             }
 
             if tn > self.t_last {
@@ -54,8 +48,8 @@ impl Controller for ControllerRuntime {
         }
 
         self.t_last = tn;
-        self.n += (self.step_direction * self.step_size as f64) as i32;
+        self.n += (self.step_direction * self.step_size as f32) as i32;
         self.n = i32::max(1, i32::min(self.max_threads, self.n));
-        self.n as f64
+        self.n as f32
     }
 }

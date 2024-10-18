@@ -1,33 +1,27 @@
-use crate::controller::{Controller, Direction, FrequencyDist, SelectionAlgorithm, ThreadCount};
-use crate::letterbox::Sample;
+use crate::controller::{Controller, Direction, ThreadCount};
 
-pub struct ControllerEnergy {
+pub struct EnergyController {
     n: ThreadCount,
-    step_size: f64,
+    max_threads: f32,
+    step_size: f32,
     step_direction: Direction,
-    max_threads: f64,
-    selection_algorithm: Box<dyn SelectionAlgorithm>,
-    t_last: f64,
+    t_last: f32,
 }
 
-impl ControllerEnergy {
-    pub fn new(max_threads: i32) -> ControllerEnergy {
-        ControllerEnergy {
+impl EnergyController {
+    pub fn new(max_threads: i32) -> Self {
+        Self {
             n: ThreadCount::new(max_threads),
-            step_size: max_threads as f64,
+            max_threads: max_threads as f32,
+            step_size: max_threads as f32,
             step_direction: Direction::Down,
-            max_threads: max_threads as f64,
-            selection_algorithm: Box::new(FrequencyDist::new(4, true)),
             t_last: 0.0,
         }
     }
 }
 
-impl Controller for ControllerEnergy {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f64 {
-        let scores = samples.into_iter().map(|x| x.energy).collect();
-        let tn = self.selection_algorithm.find_best(scores);
-
+impl Controller for EnergyController {
+    fn adjust_threads(&mut self, tn: f32) -> f32 {
         if tn > self.t_last * 1.50 {
             // Previous iteration performed a lot better
             self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
@@ -39,7 +33,7 @@ impl Controller for ControllerEnergy {
             }
 
             if self.step_size > 0.16 {
-                self.step_size = f64::max(self.step_size * 0.6, self.step_size / (0.85 + self.step_size));
+                self.step_size = f32::max(self.step_size * 0.6, self.step_size / (0.85 + self.step_size));
             } else {
                 self.step_direction = towards_farthest_edge(*self.n, self.max_threads);
                 self.step_size = self.max_threads * 0.5;
@@ -52,12 +46,12 @@ impl Controller for ControllerEnergy {
         }
 
         self.n += self.step_direction * self.step_size;
-        *self.n
+        *self.n as f32
     }
 }
 
 #[inline]
-fn towards_farthest_edge(n: f64, max_threads: f64) -> Direction {
+fn towards_farthest_edge(n: f32, max_threads: f32) -> Direction {
     // Prefer to move up; typically we don't want to end up in a case where we are running single-threaded
     if n > max_threads * 0.65 {
         Direction::Down

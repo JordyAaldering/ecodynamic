@@ -4,11 +4,11 @@ mod controller;
 mod letterbox;
 mod mtd;
 
-use std::{ffi::{c_char, CStr}, fs, io::Write, path::Path};
+//use std::{ffi::{c_char, CStr}, fs, io::Write, path::Path};
 
-use letterbox::Sample;
-pub use mtd::{MtdBuilder, MTDynamic};
+pub use mtd::*;
 
+/*
 #[no_mangle]
 extern "C" fn MTDcreate(max_threads: i32, num_measurements_per_adjustment: usize, mtd_out: *mut *mut MTDynamic) {
     let mtd = MtdBuilder::new(max_threads)
@@ -64,3 +64,4 @@ extern "C" fn MTDfree(mtd: *mut MTDynamic) {
 
     drop(mtd);
 }
+*/

@@ -3,27 +3,22 @@ use std::time::Duration;
 use energy_bench::EnergyBench;
 use rand::Rng;
 
-use mtdynamic::{MTDynamic, MtdBuilder};
+use mtdynamic::Mtd;
 
-fn data_fn() -> (MTDynamic, Vec<(f64, f64, f64)>) {
+fn data_fn() -> (Mtd, Vec<f32>) {
     const CYCLES: usize = 1_000_000;
 
-    let mtd = MtdBuilder::new(16).letterbox_size(1).build();
+    let mtd = Mtd::energy_controller(16);
 
     let mut rng = rand::thread_rng();
-    let measurements = (0..CYCLES).map(|_| {
-        let runtime = rng.gen_range(0.001..10.0);
-        let usertime = rng.gen_range(0.001..10.0);
-        let energy = rng.gen_range(0.001..10.0);
-        (runtime, usertime, energy)
-    }).collect();
+    let energy = (0..CYCLES).map(|_| rng.gen_range(0.001..10.0)).collect();
 
-    (mtd, measurements)
+    (mtd, energy)
 }
 
-fn mtd_update((mut mtd, measurements): (MTDynamic, Vec<(f64, f64, f64)>)) {
-    for (runtime, usertime, energy) in measurements {
-        mtd.update("overhead", runtime, usertime, energy);
+fn mtd_update((mut mtd, measurements): (Mtd, Vec<f32>)) {
+    for energy in measurements {
+        mtd.update(energy);
     }
 }
 
