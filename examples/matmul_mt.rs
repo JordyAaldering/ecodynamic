@@ -52,7 +52,7 @@ fn main() {
         usertime.push(user);
         energy.push(rapl);
 
-        if false {
+        if true {
             let num_threads_f64 = if let Some((_, lb)) = mtd.controllers.get("parallel") {
                 lb.num_threads
             } else {
@@ -64,7 +64,7 @@ fn main() {
         mtd.update("parallel", real, user, rapl);
         let t = mtd.num_threads("parallel") as usize;
         if pool.current_num_threads() != t {
-            pool = threadpool(num_threads, pin_threads);
+            pool = threadpool(t, pin_threads);
         }
     }
 
