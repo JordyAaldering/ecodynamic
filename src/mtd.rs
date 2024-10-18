@@ -1,4 +1,4 @@
-use crate::{controller::{Controller, FrequencyDist, SelectionAlgorithm}, controller_energy::EnergyController, controller_runtime::RuntimeController, letterbox::Letterbox};
+use crate::{controller::{Controller, FrequencyDist, SelectionAlgorithm}, controller_energy::EnergyController, controller_fixed::FixedController, controller_runtime::RuntimeController, letterbox::Letterbox};
 
 pub struct Mtd {
     letterbox: Letterbox,
@@ -22,6 +22,15 @@ impl Mtd {
             letterbox: Letterbox::new(20),
             selection: FrequencyDist::new(5, false),
             controller: Box::new(RuntimeController::new(max_threads)),
+            num_threads: max_threads as f32,
+        }
+    }
+
+    pub fn fixed_controller(max_threads: usize) -> Self {
+        Self {
+            letterbox: Letterbox::new(1),
+            selection: FrequencyDist::new(1, false),
+            controller: Box::new(FixedController::new(max_threads)),
             num_threads: max_threads as f32,
         }
     }

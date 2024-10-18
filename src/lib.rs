@@ -1,8 +1,9 @@
-mod controller_energy;
-pub mod controller_runtime;
-mod controller;
-mod letterbox;
 mod mtd;
+mod letterbox;
+mod controller;
+mod controller_energy;
+mod controller_runtime;
+mod controller_fixed;
 
 //use std::{ffi::{c_char, CStr}, fs, io::Write, path::Path};
 
