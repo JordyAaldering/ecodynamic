@@ -89,7 +89,7 @@ fn main() {
                 mtd.update("parallel", real, user, rapl);
                 num_threads = mtd.num_threads("parallel") as usize;
                 if pool.current_num_threads() != num_threads {
-                    pool = threadpool(num_threads, pin_threads);
+                    pool = threadpool(t, pin_threads);
                 }
             }
         }
