@@ -1,4 +1,4 @@
-use crate::controller::{Controller, Direction};
+use super::{direction::Direction, Controller};
 
 pub struct RuntimeController {
     n: usize,

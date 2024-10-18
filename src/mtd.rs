@@ -1,4 +1,4 @@
-use crate::{controller::{Controller, FrequencyDist, SelectionAlgorithm}, controller_energy::EnergyController, controller_fixed::FixedController, controller_runtime::RuntimeController, letterbox::Letterbox};
+use crate::{controller::*, letterbox::Letterbox, selection::{FrequencyDist, SelectionAlgorithm}};
 
 pub struct Mtd {
     letterbox: Letterbox,

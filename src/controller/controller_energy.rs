@@ -1,4 +1,4 @@
-use crate::controller::{Controller, Direction, ThreadCount};
+use super::{direction::Direction, thread_count::ThreadCount, Controller};
 
 pub struct EnergyController {
     n: ThreadCount,
