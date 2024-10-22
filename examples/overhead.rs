@@ -23,5 +23,5 @@ fn main() {
     EnergyBench::new("overhead")
         .with_number_of_measurements(1)
         .with_min_measurement_duration(Duration::new(0, 0))
-        .benchmark("overhead", &mtd_update, &make_mtd);
+        .benchmark("overhead", &make_mtd, &mtd_update);
 }

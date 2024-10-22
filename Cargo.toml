@@ -17,5 +17,5 @@ rayon = "1.10.0"
 
 [dev-dependencies]
 cpu-time = "1.0.0"
-energy-bench = "0.1.18"
+energy-bench = "0.1.19"
 rand = "0.8.5"
