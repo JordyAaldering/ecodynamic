@@ -18,25 +18,25 @@ fn main() {
         dynamic = true;
     }
 
-    const CYCLES: [(usize, bool); 16] = [
+    const CYCLES: [(usize, bool, usize); 16] = [
         // Without pinning
-        (850, false),
-        (900, false),
-        (950, false),
-        (1000, false),
-        (1050, false),
-        (1100, false),
-        (1150, false),
-        (1200, false),
+        ( 850, false, 500),
+        ( 900, false, 450),
+        ( 950, false, 400),
+        (1000, false, 350),
+        (1050, false, 300),
+        (1100, false, 250),
+        (1150, false, 200),
+        (1200, false, 150),
         // With pinning
-        (1200, true),
-        (1150, true),
-        (1100, true),
-        (1050, true),
-        (1000, true),
-        (950, true),
-        (900, true),
-        (850, true),
+        (1200, true, 150),
+        (1150, true, 200),
+        (1100, true, 250),
+        (1050, true, 300),
+        (1000, true, 350),
+        ( 950, true, 400),
+        ( 900, true, 450),
+        ( 850, true, 500),
     ];
 
     let mut mtd = Mtd::energy_controller(max_threads);
@@ -50,8 +50,8 @@ fn main() {
     let mut user_total = 0.0;
     let mut rapl_total = 0.0;
 
-    for (size, pin_threads) in CYCLES {
-        for _ in 0..200 {
+    for (size, pin_threads, iter) in CYCLES {
+        for _ in 0..iter {
             let x = black_box(Matrix::random(size, size));
             let y = black_box(Matrix::random(size, size));
 
