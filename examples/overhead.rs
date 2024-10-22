@@ -12,7 +12,10 @@ fn make_mtd() -> Mtd {
 
 fn mtd_update(mut mtd: Mtd) {
     for _ in 0..CYCLES {
-        let _ = mtd.install(false, || black_box(0));
+        let mut rapl = rapl_energy::Rapl::now().unwrap();
+        let _ = black_box(|| black_box(0));
+        let energy = rapl.elapsed_mut().values().sum();
+        mtd.update(energy);
     }
 }
 
