@@ -84,7 +84,7 @@ extern "C" fn MTDfree(mtd: *mut MTDs) {
             let energies: Vec<f32> = history.iter().map(|(_, energy, _)| *energy).collect();
             let runtime_total: f32 = runtimes.iter().sum();
             let energy_total: f32 = energies.iter().sum();
-            println!("{},{},{},{},{}", name, runtime_total / n, sd(runtimes), energy_total / n, sd(energies));
+            println!("{},{},{},{},{}", runtime_total / n, sd(runtimes), energy_total / n, sd(energies), name);
         }
     }
 }
