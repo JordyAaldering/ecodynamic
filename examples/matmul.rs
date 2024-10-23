@@ -32,15 +32,18 @@ fn main() {
         _ => unreachable!("Unknown controller type: {}", controller_type),
     };
 
+    let mut rapl = Rapl::now().unwrap();
+
     for _ in 0..iter {
         let x = black_box(Matrix::random(size, size));
         let y = black_box(Matrix::random(size, size));
 
-        let rapl = Rapl::now().unwrap();
+        rapl.reset();
         let user = ProcessTime::now();
         let real = Instant::now();
 
-        let _ = mtd.install(pin_threads, || black_box(x.mul(&y)));
+        let pool = threadpool(mtd.num_threads() as usize, pin_threads);
+        let _ = black_box(mtd.install(|| pool.install(|| black_box(x.mul(&y)))));
 
         let real = real.elapsed();
         let user = user.elapsed();

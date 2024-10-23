@@ -55,19 +55,20 @@ fn main() {
             let x = black_box(Matrix::random(size, size));
             let y = black_box(Matrix::random(size, size));
 
-            let _ = rapl.elapsed_mut();
+            rapl.reset();
             let user = ProcessTime::now();
             let real = Instant::now();
 
-            let _res = if dynamic {
-                mtd.install(pin_threads, || black_box(x.mul(&y)))
+            let _ = if dynamic {
+                let pool = threadpool(mtd.num_threads() as usize, pin_threads);
+                black_box(mtd.install(|| pool.install(|| black_box(x.mul(&y)))))
             } else {
                 black_box(x.mul(&y))
             };
 
             let real = real.elapsed();
             let user = user.elapsed();
-            let rapl = rapl.elapsed_mut();
+            let rapl = rapl.elapsed();
 
             let real = real.as_secs_f32();
             let user = user.as_secs_f32();

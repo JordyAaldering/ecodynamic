@@ -1,4 +1,5 @@
 mod mtd;
+mod sample;
 mod letterbox;
 mod selection;
 mod controller;
@@ -21,24 +22,31 @@ extern "C" fn MTDcreate(max_threads: usize, samples_per_update: usize) -> *mut M
 }
 
 #[no_mangle]
-extern "C" fn MTDupdate(mtd: *mut &mut MTDs, funname: *const c_char, sample: f32) {
-    if sample == 0.0 {
-        return;
-    }
-
+extern "C" fn MTDstart(mtd: *mut &mut MTDs, funname: *const c_char) {
     let mtd = unsafe { std::ptr::read(mtd) };
     let funname = unsafe { CStr::from_ptr(funname) };
     let funname = funname.to_str().unwrap().to_string();
 
-    if let Some((controller, history)) = mtd.mtds.get_mut(&funname) {
-        history.push((sample, controller.num_threads));
-        controller.update(sample);
-    } else {
-        let mut controller = Mtd::energy_controller(mtd.max_threads, mtd.samples_per_update);
-        let history = vec![(sample, mtd.max_threads as f32)];
-        controller.update(sample);
-        mtd.mtds.insert(funname, (controller, history));
+    if !mtd.mtds.contains_key(&funname) {
+        let controller = Mtd::energy_controller(mtd.max_threads, mtd.samples_per_update);
+        mtd.mtds.insert(funname.clone(), (controller, Vec::new()));
     }
+
+    let (controller, _) = mtd.mtds.get_mut(&funname).unwrap();
+    controller.sample.start();
+}
+
+#[no_mangle]
+extern "C" fn MTDstop(mtd: *mut &mut MTDs, funname: *const c_char) {
+    let mtd = unsafe { std::ptr::read(mtd) };
+    let funname = unsafe { CStr::from_ptr(funname) };
+    let funname = funname.to_str().unwrap().to_string();
+
+    let (controller, history) = mtd.mtds.get_mut(&funname).unwrap();
+
+    let sample = controller.sample.stop();
+    history.push((sample, controller.num_threads));
+    controller.update(sample);
 }
 
 #[no_mangle]
