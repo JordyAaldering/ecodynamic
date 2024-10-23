@@ -75,7 +75,7 @@ extern "C" fn MTDfree(mtd: *mut MTDs) {
             if let Ok(mut file) = fs::File::create(Path::new("mtd").join(filename)) {
                 file.write("runtime,energy,thread_count\n".as_bytes()).unwrap();
                 for (runtime, energy, thread_count) in &history {
-                    file.write_fmt(format_args!("{},{},{}\n", runtime, energy, thread_count)).unwrap();
+                    file.write_fmt(format_args!("{:.8},{:.8},{:.8}\n", *runtime, *energy, *thread_count)).unwrap();
                 }
             }
 
@@ -84,7 +84,7 @@ extern "C" fn MTDfree(mtd: *mut MTDs) {
             let energies: Vec<f32> = history.iter().map(|(_, energy, _)| *energy).collect();
             let runtime_total: f32 = runtimes.iter().sum();
             let energy_total: f32 = energies.iter().sum();
-            println!("{:.12},{:.12},{:.12},{:.12},{}", runtime_total / n, sd(runtimes), energy_total / n, sd(energies), name);
+            println!("{:.8},{:.8},{:.8},{:.8},{}", runtime_total / n, sd(runtimes), energy_total / n, sd(energies), name);
         }
     }
 }
