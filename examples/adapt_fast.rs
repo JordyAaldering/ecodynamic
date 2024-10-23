@@ -59,11 +59,11 @@ fn main() {
             let user = ProcessTime::now();
             let real = Instant::now();
 
+            let pool = threadpool(mtd.num_threads() as usize, pin_threads);
             let _ = if dynamic {
-                let pool = threadpool(mtd.num_threads() as usize, pin_threads);
                 black_box(mtd.install(|| pool.install(|| black_box(x.mul(&y)))))
             } else {
-                black_box(x.mul(&y))
+                pool.install(|| black_box(x.mul(&y)))
             };
 
             let real = real.elapsed();
