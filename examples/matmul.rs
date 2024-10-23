@@ -26,7 +26,7 @@ fn main() {
     let mut rapls: Vec<f32> = Vec::with_capacity(iter);
 
     let mut mtd = match controller_type {
-        "energy" => Mtd::energy_controller(max_threads),
+        "energy" => Mtd::energy_controller(max_threads, 10),
         "runtime" => Mtd::runtime_controller(max_threads),
         "fixed" => Mtd::fixed_controller(max_threads),
         _ => unreachable!("Unknown controller type: {}", controller_type),

@@ -8,9 +8,9 @@ pub struct Mtd {
 }
 
 impl Mtd {
-    pub fn energy_controller(max_threads: usize) -> Self {
+    pub fn energy_controller(max_threads: usize, samples_per_update: usize) -> Self {
         Self {
-            letterbox: Letterbox::new(10),
+            letterbox: Letterbox::new(samples_per_update),
             selection: FrequencyDist::new(4, true),
             controller: Box::new(EnergyController::new(max_threads)),
             num_threads: max_threads as f32,

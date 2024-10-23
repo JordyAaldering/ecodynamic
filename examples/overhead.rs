@@ -7,7 +7,7 @@ use mtdynamic::Mtd;
 const CYCLES: usize = 1_000_000;
 
 fn make_mtd() -> Mtd {
-    Mtd::energy_controller(16)
+    Mtd::energy_controller(16, 1)
 }
 
 fn mtd_update(mut mtd: Mtd) {

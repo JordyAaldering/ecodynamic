@@ -39,7 +39,7 @@ fn main() {
         (1000, true,  500),
     ];
 
-    let mut mtd = Mtd::energy_controller(max_threads);
+    let mut mtd = Mtd::energy_controller(max_threads, 10);
     let mut rapl = Rapl::now().unwrap();
 
     if print_intermediate {
