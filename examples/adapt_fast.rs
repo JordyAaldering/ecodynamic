@@ -15,7 +15,7 @@ fn main() {
     let mut dynamic = true;
     if args.len() > 2 {
         max_threads = args[2].parse().unwrap();
-        dynamic = true;
+        dynamic = false;
     }
 
     const CYCLES: [(usize, bool, usize); 16] = [
