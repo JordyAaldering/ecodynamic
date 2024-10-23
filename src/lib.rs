@@ -12,7 +12,7 @@ pub use mtd::Mtd;
 struct MTDs {
     max_threads: usize,
     samples_per_update: usize,
-    mtds: HashMap<String, (Mtd, Vec<(f32, f32)>)>,
+    mtds: HashMap<String, (Mtd, Vec<(f32, f32, f32)>)>,
 }
 
 #[no_mangle]
@@ -44,9 +44,9 @@ extern "C" fn MTDstop(mtd: *mut &mut MTDs, funname: *const c_char) {
 
     let (controller, history) = mtd.mtds.get_mut(&funname).unwrap();
 
-    let sample = controller.sample.stop();
-    history.push((sample, controller.num_threads));
-    controller.update(sample);
+    let (runtime, energy) = controller.sample.stop();
+    history.push((runtime, energy, controller.num_threads));
+    controller.update((controller.sample_select)((runtime, energy)));
 }
 
 #[no_mangle]
@@ -73,16 +73,25 @@ extern "C" fn MTDfree(mtd: *mut MTDs) {
             fs::create_dir_all("mtd").unwrap();
             let filename = format!("{}-{}.csv", name, date.format("%Y-%m-%d-%H-%M-%S"));
             if let Ok(mut file) = fs::File::create(Path::new("mtd").join(filename)) {
-                file.write("sample,thread_count\n".as_bytes()).unwrap();
-                for (sample, thread_count) in &history {
-                    file.write_fmt(format_args!("{},{}\n", sample, thread_count)).unwrap();
+                file.write("runtime,energy,thread_count\n".as_bytes()).unwrap();
+                for (runtime, energy, thread_count) in &history {
+                    file.write_fmt(format_args!("{},{},{}\n", runtime, energy, thread_count)).unwrap();
                 }
             }
 
             let n = history.len() as f32;
-            let samples: Vec<f32> = history.into_iter().map(|(x, _)| x).collect();
-            let total: f32 = samples.into_iter().sum();
-            println!("{},{},{}", name, total, total / n);
+            let runtimes: Vec<f32> = history.iter().map(|(runtime, _, _)| *runtime).collect();
+            let energies: Vec<f32> = history.iter().map(|(_, energy, _)| *energy).collect();
+            let runtime_total: f32 = runtimes.iter().sum();
+            let energy_total: f32 = energies.iter().sum();
+            println!("{},{},{},{},{}", name, runtime_total / n, sd(runtimes), energy_total / n, sd(energies));
         }
     }
+}
+
+fn sd(xs: Vec<f32>) -> f32 {
+    let n = xs.len() as f32;
+    let mean = xs.iter().sum::<f32>() / n;
+    let variance = xs.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / n;
+    variance.sqrt()
 }
