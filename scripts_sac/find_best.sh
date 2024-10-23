@@ -10,7 +10,7 @@
 
 ITER=50
 
-printf "pin,size,threads,name,total,avg\n"
+printf "pin,size,threads,runtime,runtimesd,energy,energysd,name\n"
 
 for pin in true false; do
     for size in `seq 500 250 1500`; do
