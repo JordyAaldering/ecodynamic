@@ -13,7 +13,7 @@ ITER=50
 printf "pin,size,threads,runtime,runtimesd,energy,energysd,name\n"
 
 for pin in true false; do
-    for size in `seq 500 250 1500`; do
+    for size in `seq 500 100 1500`; do
         if [ $pin ]; then
             ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$size -DITER=$ITER
         else
