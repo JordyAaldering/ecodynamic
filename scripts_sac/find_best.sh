@@ -6,19 +6,14 @@
 #SBATCH --mem=0
 #SBATCH --cpus-per-task=16
 #SBATCH --time=10:00:00
-#SBATCH --output=find_best_sac.out
+#SBATCH --output=sac_find_best.out
 
 ITER=50
 
-cargo build --release --example matmul
-
-# Warmup
-stress --cpu 16 --timeout 30
-
-printf "pin,size,threads,runtime,runtimestd,usertime,usertimestd,energy,energystd\n"
+printf "pin,size,threads,name,total,avg\n"
 
 for pin in true false; do
-    for size in `seq 500 250 2000`; do
+    for size in `seq 500 250 1500`; do
         if [ $pin ]; then
             ../sac2c/build_r/sac2c_p -noprelude -specmode akd -sigspec akd -t mt_pth -mt_bind simple matmul.sac -o matmul -DP=$size -DITER=$ITER
         else
@@ -27,7 +22,7 @@ for pin in true false; do
 
         for threads in `seq 1 16`; do
             printf "$pin,$size,$threads,"
-            ./target/release/examples/matmul $size $ITER $threads $pin
+            ./matmul -mt $threads
         done
     done
 done

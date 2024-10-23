@@ -82,7 +82,7 @@ extern "C" fn MTDfree(mtd: *mut MTDs) {
             let n = history.len() as f32;
             let samples: Vec<f32> = history.into_iter().map(|(x, _)| x).collect();
             let total: f32 = samples.into_iter().sum();
-            println!("{}\n - Total: {}\n - Avg: {}", name, total, total / n);
+            println!("{},{},{}", name, total, total / n);
         }
     }
 }
