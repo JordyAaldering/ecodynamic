@@ -8,27 +8,16 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=savings.out
 
-cargo build --release --example adapt_fast
+cargo build --release --example savings
 
 # Warmup
 stress --cpu 16 --timeout 30
 
-printf "8,"
-./target/release/examples/adapt_fast false 8
+printf "08,"
+./target/release/examples/savings 8
 printf "12,"
-./target/release/examples/adapt_fast false 12
+./target/release/examples/savings 12
 printf "16,"
-./target/release/examples/adapt_fast false 16
+./target/release/examples/savings 16
 printf "mt,"
-./target/release/examples/adapt_fast false
-
-cargo build --release --example adapt_slow
-
-printf "8,"
-./target/release/examples/adapt_slow false 8
-printf "12,"
-./target/release/examples/adapt_slow false 12
-printf "16,"
-./target/release/examples/adapt_slow false 16
-printf "mt,"
-./target/release/examples/adapt_slow false
+./target/release/examples/savings
