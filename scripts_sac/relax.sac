@@ -6,30 +6,35 @@
 #define ITER 1000
 #endif
 
-inline double[d:shp] sel(int[n] idx, double[n:_,d:shp] a)
+inline
+double +(double a, double b)
 {
-    return { iv -> _sel_VxA_(_cat_VxV_(idx, iv), a) | iv < shp };
+    return _add_SxS_(a, b);
 }
 
-inline double +(double a, double b) { return _add_SxS_(a, b); }
-
-inline double sum(double[d:shp] a)
+inline
+double sum(double[5,5] a)
 {
     return with {
-        (_mul_SxV_(0, shp) <= iv < shp): a[iv];
+        ([0,0] <= iv < [5,5]): _sel_VxA_(iv, a);
     } : fold(+, 0.0);
 }
 
-noinline double[2:shp] relax(double[2:shp] arr, double[m,m] weights)
+noinline
+double[P,P] relax(double[P,P] arr, double[5,5] weights)
 {
-    return { iv -> sum({ ov -> _mul_SxS_(weights[ov], arr[_aplmod_VxV_(_sub_VxS_(ov, _div_SxS_(m, 2)), shp)]) })
-           | iv < shp };
+    return { iv -> sum({ [i,j] ->
+                _mul_SxS_(_sel_VxA_([i,j], weights),
+                          _sel_VxA_([_aplmod_SxS_(_sub_SxS_(i, 2), P),
+                                     _aplmod_SxS_(_sub_SxS_(j, 2), P)],
+                                    arr))
+                       })
+           | iv < [P,P] };
 }
 
 int main()
 {
     arr = { [i,j] -> _tod_S_(_add_SxS_(i, j)) | [i,j] < [P,P] };
-    arr = _hideShape_SxA_(0, arr);
 
     weights = [
         [1.0,  4.0,  7.0,  4.0, 1.0],
@@ -38,8 +43,7 @@ int main()
         [4.0, 20.0, 33.0, 20.0, 4.0],
         [1.0,  4.0,  7.0,  4.0, 1.0]
     ];
-    weights = { iv -> _div_SxS_(weights[iv], sum(weights)) };
-    weights = _hideShape_SxA_(0, weights);
+    weights = { iv -> _div_SxS_(_sel_VxA_(iv, weights), sum(weights)) };
 
     i = 0;
     while (_lt_SxS_(i, ITER)) {
@@ -47,5 +51,5 @@ int main()
         i = _add_SxS_(i, 1);
     }
 
-    return _toi_S_(arr[[0,0]]);
+    return _toi_S_(_sel_VxA_([0,0], arr));
 }

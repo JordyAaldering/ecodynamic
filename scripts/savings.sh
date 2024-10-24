@@ -13,11 +13,11 @@ cargo build --release --example savings
 # Warmup
 stress --cpu 16 --timeout 30
 
-printf "08,"
+printf "8 threads:\n"
 ./target/release/examples/savings 8
-printf "12,"
+printf "12 threads:\n"
 ./target/release/examples/savings 12
-printf "16,"
+printf "16 threads:\n"
 ./target/release/examples/savings 16
-printf "mt,"
+printf "Dynamic adaptation:\n"
 ./target/release/examples/savings
