@@ -9,11 +9,11 @@ use mtdynamic::Mtd;
 const ITER_TIME: Duration = Duration::from_secs(5 * 60);
 
 fn iter(mtd: &mut Mtd, size: usize, pin_threads: bool) {
+    let x = black_box(Matrix::random(size, size));
+    let y = black_box(Matrix::random(size, size));
+
     let start = Instant::now();
     while start.elapsed() < ITER_TIME {
-        let x = black_box(Matrix::random(size, size));
-        let y = black_box(Matrix::random(size, size));
-
         let num_threads = mtd.num_threads() as usize;
         let pool = threadpool(num_threads, pin_threads);
         let _ = black_box(mtd.install(|| pool.install(|| x.mul(&y))));
