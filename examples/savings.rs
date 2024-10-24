@@ -6,7 +6,7 @@ use std::{hint::black_box, time::{Duration, Instant}};
 
 use mtdynamic::Mtd;
 
-const ITER_TIME: Duration = Duration::from_secs(60);
+const ITER_TIME: Duration = Duration::from_secs(5 * 60);
 
 fn iter(mtd: &mut Mtd, size: usize, pin_threads: bool) {
     let start = Instant::now();
