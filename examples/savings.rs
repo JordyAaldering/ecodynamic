@@ -34,7 +34,7 @@ fn main() {
         Mtd::fixed_controller(max_threads)
     };
 
-    iter(&mut mtd, 500, true);
-    iter(&mut mtd, 1500, true);
-    iter(&mut mtd, 1500, false);
+    iter(&mut mtd, 750, true);
+    iter(&mut mtd, 1250, true);
+    iter(&mut mtd, 1250, false);
 }
