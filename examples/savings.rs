@@ -45,5 +45,7 @@ fn main() {
     let (r3, e3) = iter(&mut mtd, 600, 750, false);
     let (r4, e4) = iter(&mut mtd, 100, 1250, false);
 
+    println!("Runtime: {} + {} + {} + {}", r1, r2, r3, r4);
+    println!("Energy: {} + {} + {} + {}", e1, e2, e3, e4);
     println!("{},{}", (r1 + r2 + r3 + r4), (e1 + e2 + e3 + e4));
 }
