@@ -14,6 +14,7 @@ fn iter(mtd: &mut Mtd, size: usize, pin_threads: bool) {
 
     let start = Instant::now();
     while start.elapsed() < ITER_TIME {
+        println!("{:?}", start.elapsed());
         let num_threads = mtd.num_threads() as usize;
         let pool = threadpool(num_threads, pin_threads);
         let _ = black_box(mtd.install(|| pool.install(|| x.mul(&y))));
@@ -34,8 +35,7 @@ fn main() {
         Mtd::fixed_controller(max_threads)
     };
 
-    iter(&mut mtd, 500, false);
-    iter(&mut mtd, 1500, false);
     iter(&mut mtd, 500, true);
     iter(&mut mtd, 1500, true);
+    iter(&mut mtd, 1500, false);
 }

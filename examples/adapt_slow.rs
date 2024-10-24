@@ -11,12 +11,11 @@ use rapl_energy::Rapl;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let print_intermediate: bool = args[1].parse().unwrap();
-    let mut max_threads = 16;
-    let mut dynamic = true;
-    if args.len() > 2 {
-        max_threads = args[2].parse().unwrap();
-        dynamic = false;
-    }
+    let (max_threads, do_dynamic) = if let Some(max_threads) = args.get(2) {
+        (max_threads.parse().unwrap(), false)
+    } else {
+        (16, true)
+    };
 
     const CYCLES: [(usize, bool, usize); 16] = [
         // Without pinning
@@ -39,7 +38,12 @@ fn main() {
         ( 850, true, 500),
     ];
 
-    let mut mtd = Mtd::energy_controller(max_threads, 10);
+    let mut mtd = if do_dynamic {
+        Mtd::energy_controller(max_threads, 10)
+    } else {
+        Mtd::fixed_controller(max_threads)
+    };
+
     let mut rapl = Rapl::now().unwrap();
 
     if print_intermediate {
@@ -59,12 +63,9 @@ fn main() {
             let user = ProcessTime::now();
             let real = Instant::now();
 
-            let pool = threadpool(mtd.num_threads() as usize, pin_threads);
-            let _ = if dynamic {
-                black_box(mtd.install(|| pool.install(|| black_box(x.mul(&y)))))
-            } else {
-                pool.install(|| black_box(x.mul(&y)))
-            };
+            let num_threads = mtd.num_threads() as usize;
+            let pool = threadpool(num_threads, pin_threads);
+            let _ = black_box(mtd.install(|| pool.install(|| x.mul(&y))));
 
             let real = real.elapsed();
             let user = user.elapsed();
