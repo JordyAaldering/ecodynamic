@@ -39,11 +39,11 @@ fn main() {
         Mtd::fixed_controller(max_threads)
     };
 
-    // 1250x1250 takes about 6 times as long as 750x750
-    let (r1, e1) = iter(&mut mtd, 600, 750, true);
-    let (r2, e2) = iter(&mut mtd, 100, 1250, true);
-    let (r3, e3) = iter(&mut mtd, 600, 750, false);
-    let (r4, e4) = iter(&mut mtd, 100, 1250, false);
+    // 1500x1500 takes about 10 times as long as 750x750
+    let (r1, e1) = iter(&mut mtd, 1000, 750, true);
+    let (r2, e2) = iter(&mut mtd, 100, 1500, true);
+    let (r3, e3) = iter(&mut mtd, 1000, 750, false);
+    let (r4, e4) = iter(&mut mtd, 100, 1500, false);
 
     println!("Runtime: {} + {} + {} + {}", r1, r2, r3, r4);
     println!("Energy: {} + {} + {} + {}", e1, e2, e3, e4);
