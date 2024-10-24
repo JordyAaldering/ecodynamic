@@ -3,26 +3,26 @@ mod util;
 use rapl_energy::Rapl;
 use util::*;
 
-use std::{hint::black_box, time::{Duration, Instant}};
+use std::{hint::black_box, time::Instant};
 
 use mtdynamic::Mtd;
 
-const ITER_TIME: Duration = Duration::from_secs(5 * 60);
-
-fn iter(mtd: &mut Mtd, size: usize, pin_threads: bool) -> f32 {
+fn iter(mtd: &mut Mtd, iter: usize, size: usize, pin_threads: bool) -> (f32, f32) {
     let x = black_box(Matrix::random(size, size));
     let y = black_box(Matrix::random(size, size));
 
     let rapl = Rapl::now().unwrap();
-
     let start = Instant::now();
-    while start.elapsed() < ITER_TIME {
+
+    for _ in 0..iter {
         let num_threads = mtd.num_threads() as usize;
         let pool = threadpool(num_threads, pin_threads);
         let _ = black_box(mtd.install(|| pool.install(|| x.mul(&y))));
     }
 
-    rapl.elapsed().into_values().sum()
+    let elapsed = start.elapsed();
+    let energy = rapl.elapsed();
+    (elapsed.as_secs_f32(), energy.into_values().sum())
 }
 
 fn main() {
@@ -39,11 +39,11 @@ fn main() {
         Mtd::fixed_controller(max_threads)
     };
 
-    let mut energy = 0.0;
-    energy += iter(&mut mtd, 750, true);
-    energy += iter(&mut mtd, 1250, true);
-    energy += iter(&mut mtd, 1250, false);
+    // 1250x1250 takes about 6 times as long as 750x750
+    let (r1, e1) = iter(&mut mtd, 600, 750, true);
+    let (r2, e2) = iter(&mut mtd, 100, 1250, true);
+    let (r3, e3) = iter(&mut mtd, 600, 750, false);
+    let (r4, e4) = iter(&mut mtd, 100, 1250, false);
 
-    let runtime = ITER_TIME.as_secs_f32() * 3.0;
-    println!("{},{}", runtime, energy);
+    println!("{},{}", (r1 + r2 + r3 + r4), (e1 + e2 + e3 + e4));
 }
