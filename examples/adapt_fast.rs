@@ -10,8 +10,7 @@ use rapl_energy::Rapl;
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-    let print_intermediate: bool = args[1].parse().unwrap();
-    let (max_threads, do_dynamic) = if let Some(max_threads) = args.get(2) {
+    let (max_threads, do_dynamic) = if let Some(max_threads) = args.get(1) {
         (max_threads.parse().unwrap(), false)
     } else {
         (16, true)
@@ -46,9 +45,7 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    if print_intermediate {
-        println!("size,pin,threads,runtime,usertime,energy");
-    }
+    println!("size,pin,threads,runtime,usertime,energy");
 
     let mut real_total = 0.0;
     let mut user_total = 0.0;
@@ -78,13 +75,7 @@ fn main() {
             user_total += user;
             rapl_total += energy;
 
-            if print_intermediate {
-                println!("{},{},{},{:},{:},{:}", size, pin_threads, mtd.num_threads, real, user, energy);
-            }
+            println!("{},{},{},{:},{:},{:}", size, pin_threads, mtd.num_threads, real, user, energy);
         }
-    }
-
-    if !print_intermediate {
-        println!("{},{},{}", real_total, user_total, rapl_total);
     }
 }

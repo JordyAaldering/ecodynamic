@@ -11,4 +11,4 @@
 # Warmup
 stress --cpu 16 --timeout 30
 
-cargo run --release --example adapt_fast true
+cargo run --release --example adapt_fast
