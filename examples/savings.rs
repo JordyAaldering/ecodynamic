@@ -14,7 +14,6 @@ fn iter(mtd: &mut Mtd, size: usize, pin_threads: bool) {
 
     let start = Instant::now();
     while start.elapsed() < ITER_TIME {
-        println!("{:?}", start.elapsed());
         let num_threads = mtd.num_threads() as usize;
         let pool = threadpool(num_threads, pin_threads);
         let _ = black_box(mtd.install(|| pool.install(|| x.mul(&y))));
