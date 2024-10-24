@@ -16,25 +16,19 @@ fn main() {
         (16, true)
     };
 
-    const CYCLES: [(usize, bool, usize); 16] = [
+    const CYCLES: [(usize, bool); 10] = [
         // Without pinning
-        ( 500, false, 1000),
-        ( 750, false,  750),
-        (1000, false,  500),
-        (1250, false,  150),
-        (1500, false,  100),
-        ( 500, false, 1000),
-        ( 750, false,  750),
-        (1000, false,  500),
+        ( 500, false),
+        ( 750, false),
+        (1000, false),
+        (1250, false),
+        (1500, false),
         // With pinning
-        ( 500, true, 1000),
-        ( 750, true,  750),
-        (1000, true,  500),
-        (1250, true,  150),
-        (1500, true,  100),
-        ( 500, true, 1000),
-        ( 750, true,  750),
-        (1000, true,  500),
+        ( 500, true),
+        ( 750, true),
+        (1000, true),
+        (1250, true),
+        (1500, true),
     ];
 
     let mut mtd = if do_dynamic {
@@ -47,15 +41,11 @@ fn main() {
 
     println!("size,pin,threads,runtime,usertime,energy");
 
-    let mut real_total = 0.0;
-    let mut user_total = 0.0;
-    let mut rapl_total = 0.0;
+    for (size, pin_threads) in CYCLES {
+        let x = black_box(Matrix::random(size, size));
+        let y = black_box(Matrix::random(size, size));
 
-    for (size, pin_threads, iter) in CYCLES {
-        for _ in 0..iter {
-            let x = black_box(Matrix::random(size, size));
-            let y = black_box(Matrix::random(size, size));
-
+        for _ in 0..200 {
             rapl.reset();
             let user = ProcessTime::now();
             let real = Instant::now();
@@ -71,11 +61,8 @@ fn main() {
             let real = real.as_secs_f32();
             let user = user.as_secs_f32();
             let energy: f32 = rapl.values().sum();
-            real_total += real;
-            user_total += user;
-            rapl_total += energy;
 
-            println!("{},{},{},{:},{:},{:}", size, pin_threads, mtd.num_threads, real, user, energy);
+            println!("{},{},{},{},{},{}", size, pin_threads, mtd.num_threads, real, user, energy);
         }
     }
 }

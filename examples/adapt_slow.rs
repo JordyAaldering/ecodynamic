@@ -9,33 +9,30 @@ use mtdynamic::Mtd;
 use rapl_energy::Rapl;
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let print_intermediate: bool = args[1].parse().unwrap();
-    let (max_threads, do_dynamic) = if let Some(max_threads) = args.get(2) {
+    let args: Vec<_> = std::env::args().collect();
+    let (max_threads, do_dynamic) = if let Some(max_threads) = args.get(1) {
         (max_threads.parse().unwrap(), false)
     } else {
         (16, true)
     };
 
-    const CYCLES: [(usize, bool, usize); 16] = [
+    const CYCLES: [(usize, bool); 14] = [
         // Without pinning
-        ( 850, false, 500),
-        ( 900, false, 450),
-        ( 950, false, 400),
-        (1000, false, 350),
-        (1050, false, 300),
-        (1100, false, 250),
-        (1150, false, 200),
-        (1200, false, 150),
+        ( 900, false),
+        ( 950, false),
+        (1000, false),
+        (1050, false),
+        (1100, false),
+        (1150, false),
+        (1200, false),
         // With pinning
-        (1200, true, 150),
-        (1150, true, 200),
-        (1100, true, 250),
-        (1050, true, 300),
-        (1000, true, 350),
-        ( 950, true, 400),
-        ( 900, true, 450),
-        ( 850, true, 500),
+        (1200, true),
+        (1150, true),
+        (1100, true),
+        (1050, true),
+        (1000, true),
+        ( 950, true),
+        ( 900, true),
     ];
 
     let mut mtd = if do_dynamic {
@@ -46,19 +43,13 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    if print_intermediate {
-        println!("size,pin,threads,runtime,usertime,energy");
-    }
+    println!("size,pin,threads,runtime,usertime,energy");
 
-    let mut real_total = 0.0;
-    let mut user_total = 0.0;
-    let mut rapl_total = 0.0;
+    for (size, pin_threads) in CYCLES {
+        let x = black_box(Matrix::random(size, size));
+        let y = black_box(Matrix::random(size, size));
 
-    for (size, pin_threads, iter) in CYCLES {
-        for _ in 0..iter {
-            let x = black_box(Matrix::random(size, size));
-            let y = black_box(Matrix::random(size, size));
-
+        for _ in 0..200 {
             rapl.reset();
             let user = ProcessTime::now();
             let real = Instant::now();
@@ -74,17 +65,8 @@ fn main() {
             let real = real.as_secs_f32();
             let user = user.as_secs_f32();
             let energy: f32 = rapl.values().sum();
-            real_total += real;
-            user_total += user;
-            rapl_total += energy;
 
-            if print_intermediate {
-                println!("{},{},{},{},{},{}", size, pin_threads, mtd.num_threads, real, user, energy);
-            }
+            println!("{},{},{},{},{},{}", size, pin_threads, mtd.num_threads, real, user, energy);
         }
-    }
-
-    if !print_intermediate {
-        println!("{},{},{}", real_total, user_total, rapl_total);
     }
 }
