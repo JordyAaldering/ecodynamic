@@ -67,35 +67,19 @@ inline
 struct Vector3 acc(struct Body b1, struct Body b2)
 {
     dir = b2.pos - b1.pos;
-    factor = _eq_SxS_(l2norm(dir), 0.0)
+    factor = _eq_SxS_(pow3(l2norm(dir)), 0.0)
         ? 0.0
         : _div_SxS_(b2.mass, pow3(l2norm(dir)));
     return factor * dir;
 }
 
 inline
-struct Vector3 rsum(struct Vector3[P] x)
-{
-    return with {
-        ([0] <= [i] < [P]) : x[[i]];
-    }: fold(+, Vector3 { 0.0, 0.0, 0.0 });
-}
-
-inline
 struct Vector3[P] acc_v(struct Body[P] bodies)
 {
-    return { [i] -> rsum({ [j] -> acc(bodies[[i]], bodies[[j]])
-                         | [j] < [P] })
+    return { [i] -> with {
+                        ([0] <= [j] < [P]) : acc(bodies[[i]], bodies[[j]]);
+                    }: fold(+, Vector3 { 0.0, 0.0, 0.0 })
            | [i] < [P] };
-}
-
-noinline
-struct Body[P] timestep(struct Body[P] bodies, double dt)
-{
-    acceleration = acc_v(bodies);
-    bodies.pos += dt * bodies.vel;
-    bodies.vel += dt * acceleration;
-    return bodies;
 }
 
 inline
@@ -109,6 +93,15 @@ struct Body body(int i)
     };
 }
 
+noinline
+struct Body[P] timestep(struct Body[P] bodies, double dt)
+{
+    acceleration = acc_v(bodies);
+    bodies.pos += dt * bodies.vel;
+    bodies.vel += dt * acceleration;
+    return bodies;
+}
+
 int main()
 {
     bodies = { [i] -> body(i) | [i] < [P] };
@@ -119,5 +112,5 @@ int main()
         i = _add_SxS_(i, 1);
     }
 
-    return _toi_S_(_add_SxS_(bodies[[0]].pos.x, bodies[[1]].vel.y));
+    return _toi_S_(_add_SxS_(bodies[[0]].pos.x, bodies[[0]].vel.y));
 }
