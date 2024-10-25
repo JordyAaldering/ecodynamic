@@ -8,14 +8,20 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=sac_find_best_nbody.out
 
-printf "size,threads,runtime,runtimesd,energy,energysd,name\n"
+printf "pin,size,threads,runtime,runtimesd,energy,energysd,name\n"
 
-for size in 100 1000 10000; do
-    ../sac2c/build_r/sac2c_p -noprelude -t mt_pth -mt_bind simple scripts_sac/nbody.sac -o nbody -DP=$size
+for pin in true false; do
+    for size in 10000 50000 100000; do
+        if [ $pin ]; then
+            ../sac2c/build_r/sac2c_p -noprelude -t mt_pth -mt_bind simple scripts_sac/nbody.sac -o nbody -DP=$size
+        else
+            ../sac2c/build_r/sac2c_p -noprelude -t mt_pth scripts_sac/nbody.sac -o nbody -DP=$size
+        fi
 
-    for threads in `seq 1 16`; do
-        printf "$size,$threads,"
-        ./nbody -mt $threads
+        for threads in `seq 1 16`; do
+            printf "$pin,$size,$threads,"
+            ./nbody -mt $threads
+        done
     done
 done
 
