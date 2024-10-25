@@ -40,8 +40,8 @@ fn main() {
     };
 
     // 1500x1500 takes about 10 times as long as 750x750
-    let (r1, e1) = iter(&mut mtd, 1000, 750, true);
-    let (r2, e2) = iter(&mut mtd, 100, 1500, true);
+    let (r1, e1) = iter(&mut mtd, 100, 1500, true);
+    let (r2, e2) = iter(&mut mtd, 1000, 750, true);
     let (r3, e3) = iter(&mut mtd, 1000, 750, false);
     let (r4, e4) = iter(&mut mtd, 100, 1500, false);
 
