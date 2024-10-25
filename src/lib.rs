@@ -77,7 +77,7 @@ extern "C" fn MTDfree(mtd: *mut MTDs) {
             let energy_total: f32 = energies.iter().sum();
 
             if runtime_total > 0.001 {
-                println!("{:.8},{:.8},{:.8},{:.8},{}", runtime_total / n, sd(runtimes), energy_total / n, sd(energies), name);
+                println!("{:.8},{:.8},{:.8},{:.8}", runtime_total / n, sd(runtimes), energy_total / n, sd(energies));
 
                 fs::create_dir_all("mtd").unwrap();
                 let filename = format!("{}-{}.csv", name, date.format("%Y-%m-%d-%H-%M-%S"));
