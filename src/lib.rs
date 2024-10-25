@@ -76,7 +76,7 @@ extern "C" fn MTDfree(mtd: *mut MTDs) {
             let runtime_total: f32 = runtimes.iter().sum();
             let energy_total: f32 = energies.iter().sum();
 
-            if runtime_total > 0.001 {
+            if (runtime_total / n) > 0.0001 {
                 println!("{:.8},{:.8},{:.8},{:.8}", runtime_total / n, sd(runtimes), energy_total / n, sd(energies));
 
                 fs::create_dir_all("mtd").unwrap();
