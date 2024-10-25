@@ -10,23 +10,17 @@ inline
 double +(double a, double b) { return _add_SxS_(a, b); }
 
 inline
-double[d:shp] sel(int[n] idx, double[n:_,d:shp] a)
-{
-    return { iv -> _sel_VxA_(_cat_VxV_(idx, iv), a) | iv < shp };
-}
-
-inline
 double sum(double[n] a)
 {
     return with {
-        ([0] <= iv < [n]): a[iv];
-    } : fold(+, 0.0);
+        ([0] <= iv < [n]): _sel_VxA_(iv, a);
+    }: fold(+, 0.0);
 }
 
 noinline
 double[u,w] matmul(double[u,v] a, double[v,w] b)
 {
-    return { [i,j] -> sum(_mul_VxV_(a[[i]], b[.,j])) };
+    return { [i,j] -> sum({ [p] -> _mul_SxS_(_sel_VxA_([i,p], a), _sel_VxA_([p,j], b)) }) };
 }
 
 int main()
@@ -40,5 +34,5 @@ int main()
         i = _add_SxS_(i, 1);
     }
 
-    return _toi_S_(sum({ [i] -> sum(a[[i]]) }));
+    return _toi_S_(sum({ [i] -> sum({ [j] -> _sel_VxA_([i,j], a) }) }));
 }

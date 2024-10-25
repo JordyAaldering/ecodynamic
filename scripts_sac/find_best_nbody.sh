@@ -11,7 +11,7 @@
 printf "pin,size,threads,runtime,runtimesd,energy,energysd,name\n"
 
 for pin in true false; do
-    for size in 1000 10000 25000; do
+    for size in 1000 5000 10000 25000; do
         if [ $pin ]; then
             ../sac2c/build_r/sac2c_p -noprelude -t mt_pth -mt_bind simple scripts_sac/nbody.sac -o nbody -DP=$size
         else
