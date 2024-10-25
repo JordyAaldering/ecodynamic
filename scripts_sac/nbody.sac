@@ -3,7 +3,7 @@
 #endif
 
 #ifndef ITER
-#define ITER 1000
+#define ITER 100
 #endif
 
 struct Vector3 {

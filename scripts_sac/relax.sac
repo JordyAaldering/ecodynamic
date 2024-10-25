@@ -3,7 +3,7 @@
 #endif
 
 #ifndef ITER
-#define ITER 1000
+#define ITER 100
 #endif
 
 inline
@@ -23,13 +23,13 @@ double sum(double[5,5] a)
 noinline
 double[P,P] relax(double[P,P] arr, double[5,5] weights)
 {
-    return { iv -> sum({ [i,j] ->
+    return { [x,y] -> sum({ [i,j] ->
                 _mul_SxS_(_sel_VxA_([i,j], weights),
-                          _sel_VxA_([_aplmod_SxS_(_sub_SxS_(i, 2), P),
-                                     _aplmod_SxS_(_sub_SxS_(j, 2), P)],
+                          _sel_VxA_([_mod_SxS_(_add_SxS_(_add_SxS_(P, x), _sub_SxS_(i, 2)), P),
+                                     _mod_SxS_(_add_SxS_(_add_SxS_(P, y), _sub_SxS_(j, 2)), P)],
                                     arr))
                        })
-           | iv < [P,P] };
+           | [x,y] < [P,P] };
 }
 
 int main()
