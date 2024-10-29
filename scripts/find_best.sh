@@ -21,7 +21,7 @@ for pin in true false; do
     for size in `seq 500 100 1500`; do
         for threads in `seq 1 16`; do
             printf "$pin,$size,$threads,"
-            ./target/release/examples/matmul $size $ITER $threads $pin
+            ./target/release/examples/matmul $size $ITER $threads $pin "fixed"
         done
     done
 done
