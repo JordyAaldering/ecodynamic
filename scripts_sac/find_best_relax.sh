@@ -8,7 +8,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --output=sac_find_best_relax.out
 
-printf "pin,size,threads,runtime,runtimesd,energy,energysd,name\n"
+printf "pin,size,threads,runtime,runtimesd,energy,energysd\n"
 
 for pin in true false; do
     for size in 1000 5000 10000 25000; do

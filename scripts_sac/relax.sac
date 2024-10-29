@@ -13,20 +13,20 @@ double +(double a, double b)
 }
 
 inline
-double sum(double[5,5] a)
+double sum(double[3,3] a)
 {
     return with {
-        ([0,0] <= iv < [5,5]): _sel_VxA_(iv, a);
+        ([0,0] <= iv < [3,3]): _sel_VxA_(iv, a);
     } : fold(+, 0.0);
 }
 
 noinline
-double[P,P] relax(double[P,P] arr, double[5,5] weights)
+double[P,P] relax(double[P,P] arr, double[3,3] weights)
 {
     return { [x,y] -> sum({ [i,j] ->
                 _mul_SxS_(_sel_VxA_([i,j], weights),
-                          _sel_VxA_([_mod_SxS_(_add_SxS_(_add_SxS_(P, x), _sub_SxS_(i, 2)), P),
-                                     _mod_SxS_(_add_SxS_(_add_SxS_(P, y), _sub_SxS_(j, 2)), P)],
+                          _sel_VxA_([_mod_SxS_(_add_SxS_(_add_SxS_(P, x), _sub_SxS_(i, 1)), P),
+                                     _mod_SxS_(_add_SxS_(_add_SxS_(P, y), _sub_SxS_(j, 1)), P)],
                                     arr))
                        })
            | [x,y] < [P,P] };
@@ -37,13 +37,19 @@ int main()
     arr = { [i,j] -> _tod_S_(_add_SxS_(i, j)) | [i,j] < [P,P] };
 
     weights = [
-        [1.0,  4.0,  7.0,  4.0, 1.0],
-        [4.0, 20.0, 33.0, 20.0, 4.0],
-        [7.0, 33.0, 55.0, 33.0, 7.0],
-        [4.0, 20.0, 33.0, 20.0, 4.0],
-        [1.0,  4.0,  7.0,  4.0, 1.0]
+        [0.05, 0.15, 0.05],
+        [0.15, 0.20, 0.15],
+        [0.05, 0.15, 0.05]
     ];
-    weights = { iv -> _div_SxS_(_sel_VxA_(iv, weights), sum(weights)) };
+
+    //weights = [
+    //    [1.0,  4.0,  7.0,  4.0, 1.0],
+    //    [4.0, 20.0, 33.0, 20.0, 4.0],
+    //    [7.0, 33.0, 55.0, 33.0, 7.0],
+    //    [4.0, 20.0, 33.0, 20.0, 4.0],
+    //    [1.0,  4.0,  7.0,  4.0, 1.0]
+    //];
+    //weights = { iv -> _div_SxS_(_sel_VxA_(iv, weights), sum(weights)) };
 
     i = 0;
     while (_lt_SxS_(i, ITER)) {
