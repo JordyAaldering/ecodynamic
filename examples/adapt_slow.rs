@@ -18,21 +18,21 @@ fn main() {
 
     const CYCLES: [(usize, bool); 14] = [
         // Without pinning
-        ( 900, false),
-        ( 950, false),
-        (1000, false),
-        (1050, false),
-        (1100, false),
-        (1150, false),
         (1200, false),
+        (1150, false),
+        (1100, false),
+        (1050, false),
+        (1000, false),
+        ( 950, false),
+        ( 900, false),
         // With pinning
-        (1200, true),
-        (1150, true),
-        (1100, true),
-        (1050, true),
-        (1000, true),
-        ( 950, true),
         ( 900, true),
+        ( 950, true),
+        (1000, true),
+        (1050, true),
+        (1100, true),
+        (1150, true),
+        (1200, true),
     ];
 
     let mut mtd = if do_dynamic {
