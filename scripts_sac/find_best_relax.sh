@@ -10,8 +10,8 @@
 
 printf "pin,size,threads,runtime,runtimesd,energy,energysd\n"
 
-for pin in true false; do
-    for size in 1000 5000 10000 25000 30000; do
+for pin in true; do
+    for size in 1000 5000 10000 25000 50000; do
         if [ $pin ]; then
             ../sac2c/build_r/sac2c_p -noprelude -maxwlur 25 -t mt_pth -mt_bind simple scripts_sac/relax.sac -o relax -DP=$size
         else
