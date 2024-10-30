@@ -1,4 +1,4 @@
-pin,size,threads,runtime,runtimesd,energy,energysd
+pin,size,threads,runtime,runtimesd,energy,energysd,name
 true,500,1,0.15408196,0.00013996,2.30629444,0.02214274
 true,500,2,0.15676466,0.00251675,2.48745871,0.03828913
 true,500,3,0.10311905,0.00185663,1.97926319,0.03725579
