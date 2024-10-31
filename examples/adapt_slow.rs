@@ -4,7 +4,6 @@ use util::*;
 
 use std::{hint::black_box, time::Instant};
 
-use cpu_time::ProcessTime;
 use mtdynamic::Mtd;
 use rapl_energy::Rapl;
 
@@ -43,7 +42,7 @@ fn main() {
 
     let mut rapl = Rapl::now().unwrap();
 
-    println!("size,pin,threads,runtime,usertime,energy");
+    println!("size,pin,threads,runtime,energy");
 
     for (size, pin_threads) in CYCLES {
         let x = black_box(Matrix::random(size, size));
@@ -51,22 +50,17 @@ fn main() {
 
         for _ in 0..200 {
             rapl.reset();
-            let user = ProcessTime::now();
-            let real = Instant::now();
+            let instant = Instant::now();
 
             let num_threads = mtd.num_threads() as usize;
             let pool = threadpool(num_threads, pin_threads);
             let _ = black_box(mtd.install(|| pool.install(|| x.mul(&y))));
 
-            let real = real.elapsed();
-            let user = user.elapsed();
-            let rapl = rapl.elapsed();
-
-            let real = real.as_secs_f32();
-            let user = user.as_secs_f32();
-            let energy: f32 = rapl.values().sum();
-
-            println!("{},{},{},{},{},{}", size, pin_threads, mtd.num_threads, real, user, energy);
+            let runtime = instant.elapsed();
+            let energy = rapl.elapsed();
+            let runtime = runtime.as_secs_f32();
+            let energy: f32 = energy.values().sum();
+            println!("{},{},{},{},{}", size, pin_threads, mtd.num_threads, runtime, energy);
         }
     }
 }

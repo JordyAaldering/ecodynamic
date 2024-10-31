@@ -4,7 +4,6 @@ use util::*;
 
 use std::{hint::black_box, time::Instant};
 
-use cpu_time::ProcessTime;
 use mtdynamic::Mtd;
 use rapl_energy::Rapl;
 
@@ -28,9 +27,8 @@ fn main() {
         _ => unreachable!("Unknown controller type: {}", controller_type),
     };
 
-    let mut reals: Vec<f32> = Vec::with_capacity(iter);
-    let mut users: Vec<f32> = Vec::with_capacity(iter);
-    let mut rapls: Vec<f32> = Vec::with_capacity(iter);
+    let mut runtimes: Vec<f32> = Vec::with_capacity(iter);
+    let mut energies: Vec<f32> = Vec::with_capacity(iter);
 
     let mut rapl = Rapl::now().unwrap();
 
@@ -39,30 +37,23 @@ fn main() {
         let y = black_box(Matrix::random(size, size));
 
         rapl.reset();
-        let user = ProcessTime::now();
-        let real = Instant::now();
+        let instant = Instant::now();
 
         let num_threads = mtd.num_threads() as usize;
         let pool = threadpool(num_threads, pin_threads);
         let _ = black_box(mtd.install(|| pool.install(|| x.mul(&y))));
 
-        let real = real.elapsed();
-        let user = user.elapsed();
-        let rapl = rapl.elapsed();
-        let real = real.as_secs_f32();
-        let user = user.as_secs_f32();
-        let rapl = rapl.values().sum();
-        reals.push(real);
-        users.push(user);
-        rapls.push(rapl);
-
-        //println!("{},{},{},{},{},{},{}", controller_type, size, pin_threads, mtd.num_threads, real, user, rapl);
+        let runtime = instant.elapsed();
+        let energy = rapl.elapsed();
+        let runtime = runtime.as_secs_f32();
+        let energy = energy.values().sum();
+        runtimes.push(runtime);
+        energies.push(energy);
     }
 
     let n = iter as f32;
-    println!("{:.8},{:.8},{:.8},{:.8},{:.8},{:.8}",
-        reals.iter().sum::<f32>() / n, stddev(&reals),
-        users.iter().sum::<f32>() / n, stddev(&users),
-        rapls.iter().sum::<f32>() / n, stddev(&rapls),
+    println!("{:.8},{:.8},{:.8},{:.8}",
+        runtimes.iter().sum::<f32>() / n, stddev(&runtimes),
+        energies.iter().sum::<f32>() / n, stddev(&energies),
     );
 }
