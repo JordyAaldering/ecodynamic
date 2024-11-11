@@ -15,7 +15,7 @@ cargo build --release --lib --examples
 # Warmup
 stress --cpu 16 --timeout 30
 
-printf "type,size,pin,runtime,runtimestd,usertime,usertimestd,energy,energystd\n"
+printf "type,size,pin,runtime,runtimesd,energy,energysd\n"
 
 #
 # Without thread pinning
