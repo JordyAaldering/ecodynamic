@@ -22,7 +22,7 @@ impl EnergyController {
 
 impl Controller for EnergyController {
     fn adjust_threads(&mut self, e_avg: f32) -> f32 {
-        let e_avg = round_digits(e_avg, 3);
+        let e_avg = round_digits(e_avg, 2);
         if e_avg > self.e_prev * 1.50 {
             // Previous iteration performed a lot better
             self.step_direction = towards_farthest_edge(*self.num_threads, self.max_threads);
