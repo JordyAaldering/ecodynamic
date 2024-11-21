@@ -1,8 +1,7 @@
-mod direction;
-mod thread_count;
 mod controller_energy;
 mod controller_runtime;
 mod controller_fixed;
+mod direction;
 
 pub use controller_energy::EnergyController;
 pub use controller_runtime::RuntimeController;
