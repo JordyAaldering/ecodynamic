@@ -1,10 +1,10 @@
-use crate::{controller::*, letterbox::Letterbox, sample::Sample, selection::{FrequencyDist, SelectionAlgorithm}};
+use crate::{controller::*, letterbox::Letterbox, sample::Sample, selection::{FrequencyDist, Median, SelectionAlgorithm}};
 
 pub struct Mtd {
     pub sample: Sample,
     pub sample_select: fn((f32, f32)) -> f32,
     letterbox: Letterbox,
-    selection: FrequencyDist,
+    selection: Box<dyn SelectionAlgorithm>,
     controller: Box<dyn Controller>,
     pub num_threads: f32,
 }
@@ -15,7 +15,7 @@ impl Mtd {
             sample: Sample::new(),
             sample_select: |(_runtime, energy)| energy,
             letterbox: Letterbox::new(samples_per_update),
-            selection: FrequencyDist::new(4, true),
+            selection: Box::new(Median { }),
             controller: Box::new(EnergyController::new(max_threads)),
             num_threads: max_threads as f32,
         }
@@ -26,7 +26,7 @@ impl Mtd {
             sample: Sample::new(),
             sample_select: |(runtime, _energy)| runtime,
             letterbox: Letterbox::new(20),
-            selection: FrequencyDist::new(5, false),
+            selection: Box::new(FrequencyDist::new(5, false)),
             controller: Box::new(RuntimeController::new(max_threads)),
             num_threads: max_threads as f32,
         }
@@ -37,7 +37,7 @@ impl Mtd {
             sample: Sample::new(),
             sample_select: |_| 0.0,
             letterbox: Letterbox::new(1),
-            selection: FrequencyDist::new(1, false),
+            selection: Box::new(FrequencyDist::new(1, false)),
             controller: Box::new(FixedController::new(max_threads)),
             num_threads: max_threads as f32,
         }
