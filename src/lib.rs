@@ -1,7 +1,6 @@
 mod mtd;
 mod sample;
 mod letterbox;
-mod selection;
 mod controller;
 
 use std::{collections::HashMap, ffi::{c_char, CStr}, fs, io::Write, path::Path};
@@ -44,9 +43,9 @@ extern "C" fn MTDstop(mtd: *mut &mut MTDs, funname: *const c_char) {
 
     let (controller, history) = mtd.mtds.get_mut(&funname).unwrap();
 
-    let (runtime, energy) = controller.sample.stop();
-    history.push((runtime, energy, controller.num_threads));
-    controller.update((controller.sample_select)((runtime, energy)));
+    let sample = controller.sample.stop();
+    history.push((sample.runtime, sample.energy, controller.num_threads));
+    controller.update(sample);
 }
 
 #[no_mangle]

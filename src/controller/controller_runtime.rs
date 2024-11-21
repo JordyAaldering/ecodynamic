@@ -1,3 +1,5 @@
+use crate::sample::Sample;
+
 use super::{direction::Direction, Controller};
 
 pub struct RuntimeController {
@@ -23,7 +25,9 @@ impl RuntimeController {
 }
 
 impl Controller for RuntimeController {
-    fn adjust_threads(&mut self, tn: f32) -> f32 {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f32 {
+        let tn = frequency_dist(samples);
+
         let speedup = self.t1 / tn;
         if speedup < 0.5 * self.num_threads as f32 {
             // We have fallen outside the corridor
@@ -48,4 +52,30 @@ impl Controller for RuntimeController {
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
         self.num_threads as f32
     }
+}
+
+const FREQDIST_RANGES: usize = 5;
+
+fn frequency_dist(samples: Vec<Sample>) -> f32 {
+    let mut samples: Vec<f32> = samples.into_iter().map(|sample| sample.runtime).collect();
+    samples.sort_by(|a, b| a.partial_cmp(&b).unwrap());
+
+    let min = samples[0];
+    let max = samples[samples.len() - 1];
+    let dist_size = (max - min) / FREQDIST_RANGES as f32;
+    let mut dist_max = (1..=FREQDIST_RANGES).map(|i| min + dist_size * i as f32).collect::<Vec<f32>>();
+    dist_max[FREQDIST_RANGES - 1] = max;
+
+    let mut dist = vec![Vec::new(); FREQDIST_RANGES];
+    let mut dist_index = 0;
+    for x in samples {
+        while x > dist_max[dist_index] {
+            dist_index += 1;
+        }
+
+        dist[dist_index].push(x);
+    }
+
+    let biggest_dist = dist.into_iter().max_by_key(Vec::len).unwrap();
+    biggest_dist[0]
 }

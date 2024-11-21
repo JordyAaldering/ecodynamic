@@ -1,3 +1,5 @@
+use crate::sample::Sample;
+
 use super::{direction::Direction, Controller};
 
 pub struct EnergyController {
@@ -21,11 +23,13 @@ impl EnergyController {
 }
 
 impl Controller for EnergyController {
-    fn adjust_threads(&mut self, e_avg: f32) -> f32 {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f32 {
+        let e_avg = median(samples);
+
         if e_avg > self.e_prev * 1.50 {
             // Previous iteration performed a lot better
-            self.step_direction = reset_direction(self.num_threads, self.max_threads);
-            self.step_size = self.max_threads * 0.5;
+            self.reset_direction();
+            self.reset_step_size();
         } else {
             if e_avg > self.e_prev {
                 // Previous iteration performed (a bit) better
@@ -33,31 +37,41 @@ impl Controller for EnergyController {
             }
 
             if self.step_size > 0.16 {
-                self.step_size = f32::max(self.step_size * 0.5, self.step_size / (0.85 + self.step_size));
+                self.step_size = f32::max(self.step_size * 0.6, self.step_size / (0.85 + self.step_size));
             } else {
-                self.step_direction = reset_direction(self.num_threads, self.max_threads);
-                self.step_size = self.max_threads * 0.5;
+                self.reset_direction();
+                self.reset_step_size();
             }
         }
 
-        //if e_avg < self.e_prev || e_avg > self.e_prev * 1.02 {
-        //    // Only update if there was a significant change
-            self.e_prev = e_avg;
-        //}
-
+        self.e_prev = e_avg;
         self.num_threads += self.step_direction * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
         self.num_threads
     }
 }
 
-// Reset the step direction with a slight preference for increasing the thread count;
-// since typically we don't want to end up in a case where we are single-threaded.
-#[inline]
-fn reset_direction(n: f32, max_threads: f32) -> Direction {
-    if n < max_threads * 0.65 {
-        Direction::Up
-    } else {
-        Direction::Down
+impl EnergyController {
+    /// Reset the step direction with a slight preference for increasing the thread count;
+    /// since typically we don't want to end up in a case where we are single-threaded.
+    #[inline]
+    fn reset_direction(&mut self) {
+        self.step_direction = if self.num_threads < self.max_threads * 0.65 {
+            Direction::Up
+        } else {
+            Direction::Down
+        };
     }
+
+    /// Reset step size to half the number of maximum threads.
+    #[inline]
+    fn reset_step_size(&mut self) {
+        self.step_size = self.max_threads * 0.5;
+    }
+}
+
+fn median(mut samples: Vec<Sample>) -> f32 {
+    let idx = samples.len() / 2;
+    samples.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+    samples[idx].energy
 }
