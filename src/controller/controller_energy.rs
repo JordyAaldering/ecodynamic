@@ -24,7 +24,8 @@ impl EnergyController {
 
 impl Controller for EnergyController {
     fn adjust_threads(&mut self, samples: Vec<Sample>) -> f32 {
-        let e_avg = median(samples);
+        let energy_samples = samples.into_iter().map(|sample| sample.energy).collect::<Vec<_>>();
+        let e_avg = statistical::median(&energy_samples);
 
         if e_avg > self.e_prev * 1.50 {
             // Previous iteration performed a lot better
@@ -37,8 +38,10 @@ impl Controller for EnergyController {
             }
 
             if self.step_size > 0.16 {
+                // Decrease step size
                 self.step_size = f32::max(self.step_size * 0.6, self.step_size / (0.85 + self.step_size));
             } else {
+                // Escape local optimum
                 self.reset_direction();
                 self.reset_step_size();
             }
@@ -68,10 +71,4 @@ impl EnergyController {
     fn reset_step_size(&mut self) {
         self.step_size = self.max_threads * 0.5;
     }
-}
-
-fn median(mut samples: Vec<Sample>) -> f32 {
-    let idx = samples.len() / 2;
-    samples.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
-    samples[idx].energy
 }

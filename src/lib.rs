@@ -3,15 +3,17 @@ mod sample;
 mod letterbox;
 mod controller;
 
-use std::{collections::HashMap, ffi::{c_char, CStr}, fs, io::Write, path::Path};
-
 pub use mtd::Mtd;
+use sample::{SampleInstant, Sample};
+
+use std::collections::HashMap;
+use std::ffi::{c_char, CStr};
 
 #[repr(C)]
 struct MTDs {
     max_threads: usize,
     samples_per_update: usize,
-    mtds: HashMap<String, (Mtd, Vec<(f32, f32, f32)>)>,
+    mtds: HashMap<String, (Mtd, Vec<(Sample, f32)>)>,
 }
 
 #[no_mangle]
@@ -21,7 +23,7 @@ extern "C" fn MTDcreate(max_threads: usize, samples_per_update: usize) -> *mut M
 }
 
 #[no_mangle]
-extern "C" fn MTDstart(mtd: *mut &mut MTDs, funname: *const c_char) {
+extern "C" fn MTDstart(mtd: *mut &mut MTDs, funname: *const c_char) -> Box<SampleInstant> {
     let mtd = unsafe { std::ptr::read(mtd) };
     let funname = unsafe { CStr::from_ptr(funname) };
     let funname = funname.to_str().unwrap().to_string();
@@ -31,20 +33,20 @@ extern "C" fn MTDstart(mtd: *mut &mut MTDs, funname: *const c_char) {
         mtd.mtds.insert(funname.clone(), (controller, Vec::new()));
     }
 
-    let (controller, _) = mtd.mtds.get_mut(&funname).unwrap();
-    controller.sample.start();
+    Box::new(SampleInstant::now())
 }
 
 #[no_mangle]
-extern "C" fn MTDstop(mtd: *mut &mut MTDs, funname: *const c_char) {
+extern "C" fn MTDstop(mtd: *mut &mut MTDs, now: Box<SampleInstant>, funname: *const c_char) {
+    let sample = now.elapsed();
+
     let mtd = unsafe { std::ptr::read(mtd) };
     let funname = unsafe { CStr::from_ptr(funname) };
     let funname = funname.to_str().unwrap().to_string();
 
     let (controller, history) = mtd.mtds.get_mut(&funname).unwrap();
 
-    let sample = controller.sample.stop();
-    history.push((sample.runtime, sample.energy, controller.num_threads));
+    history.push((sample.clone(), controller.num_threads));
     controller.update(sample);
 }
 
@@ -65,35 +67,18 @@ extern "C" fn MTDnumThreads(mtd: *mut &mut MTDs, funname: *const c_char) -> i32 
 extern "C" fn MTDfree(mtd: *mut MTDs) {
     let mtd = unsafe { std::ptr::read(mtd) };
 
-    let date = chrono::offset::Local::now();
+    let (_, history) = mtd.mtds
+        .into_values()
+        .max_by_key(|(_, history)| history.len())
+        .unwrap();
 
-    for (name, (_, history)) in mtd.mtds {
-        if history.len() > 10 {
-            let n = history.len() as f32;
-            let runtimes: Vec<f32> = history.iter().map(|(runtime, _, _)| *runtime).collect();
-            let energies: Vec<f32> = history.iter().map(|(_, energy, _)| *energy).collect();
-            let runtime_total: f32 = runtimes.iter().sum();
-            let energy_total: f32 = energies.iter().sum();
+    let runtimes = history.iter().map(|(sample, _)| sample.runtime).collect::<Vec<_>>();
+    let energies = history.iter().map(|(sample, _)| sample.energy).collect::<Vec<_>>();
 
-            if (runtime_total / n) > 0.0001 {
-                println!("{:.8},{:.8},{:.8},{:.8}", runtime_total / n, sd(runtimes), energy_total / n, sd(energies));
+    let runtime_avg = statistical::mean(&runtimes);
+    let energy_avg = statistical::mean(&energies);
+    let runtime_sd = statistical::population_standard_deviation(&runtimes, None);
+    let energy_sd = statistical::population_standard_deviation(&energies, None);
 
-                fs::create_dir_all("mtd").unwrap();
-                let filename = format!("{}-{}.csv", name, date.format("%Y-%m-%d-%H-%M-%S"));
-                if let Ok(mut file) = fs::File::create(Path::new("mtd").join(filename)) {
-                    file.write("runtime,energy,thread_count\n".as_bytes()).unwrap();
-                    for (runtime, energy, thread_count) in &history {
-                        file.write_fmt(format_args!("{:.8},{:.8},{:.8}\n", *runtime, *energy, *thread_count)).unwrap();
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn sd(xs: Vec<f32>) -> f32 {
-    let n = xs.len() as f32;
-    let mean = xs.iter().sum::<f32>() / n;
-    let variance = xs.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / n;
-    variance.sqrt()
+    println!("{:.8},{:.8},{:.8},{:.8}", runtime_avg, runtime_sd, energy_avg, energy_sd);
 }

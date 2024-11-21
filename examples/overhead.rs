@@ -1,6 +1,6 @@
-use std::{hint::black_box, time::Duration};
+use std::hint::black_box;
 
-use energy_bench::EnergyBench;
+use energy_bench::EnergyBenchBuilder;
 
 use mtdynamic::Mtd;
 
@@ -17,8 +17,7 @@ fn mtd_update(mut mtd: Mtd) {
 }
 
 fn main() {
-    EnergyBench::new("overhead")
-        .with_number_of_measurements(1)
-        .with_min_measurement_duration(Duration::new(0, 0))
+    EnergyBenchBuilder::new("overhead")
+        .build()
         .benchmark("overhead", &make_mtd, &mtd_update);
 }

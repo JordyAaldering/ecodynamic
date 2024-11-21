@@ -1,10 +1,12 @@
+use std::ops::{Mul, Neg};
+
 #[derive(Copy, Clone)]
 pub enum Direction {
     Up,
     Down,
 }
 
-impl std::ops::Neg for Direction {
+impl Neg for Direction {
     type Output = Direction;
 
     #[inline]
@@ -16,11 +18,11 @@ impl std::ops::Neg for Direction {
     }
 }
 
-impl std::ops::Mul<i32> for Direction {
+impl Mul<i32> for Direction {
     type Output = i32;
 
     #[inline]
-    fn mul(self, rhs: i32) -> Self::Output {
+    fn mul(self, rhs: i32) -> i32 {
         match self {
             Direction::Up => rhs,
             Direction::Down => -rhs,
@@ -28,11 +30,11 @@ impl std::ops::Mul<i32> for Direction {
     }
 }
 
-impl std::ops::Mul<f32> for Direction {
+impl Mul<f32> for Direction {
     type Output = f32;
 
     #[inline]
-    fn mul(self, rhs: f32) -> Self::Output {
+    fn mul(self, rhs: f32) -> f32 {
         match self {
             Direction::Up => rhs,
             Direction::Down => -rhs,

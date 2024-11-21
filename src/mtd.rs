@@ -1,7 +1,6 @@
-use crate::{controller::*, letterbox::Letterbox, sample::{Sample, SampleStart}};
+use crate::{controller::*, letterbox::Letterbox, sample::{Sample, SampleInstant}};
 
 pub struct Mtd {
-    pub sample: SampleStart,
     letterbox: Letterbox,
     controller: Box<dyn Controller>,
     pub num_threads: f32,
@@ -10,7 +9,6 @@ pub struct Mtd {
 impl Mtd {
     pub fn energy_controller(max_threads: usize, samples_per_update: usize) -> Self {
         Self {
-            sample: SampleStart::new(),
             letterbox: Letterbox::new(samples_per_update),
             controller: Box::new(EnergyController::new(max_threads)),
             num_threads: max_threads as f32,
@@ -19,7 +17,6 @@ impl Mtd {
 
     pub fn runtime_controller(max_threads: usize) -> Self {
         Self {
-            sample: SampleStart::new(),
             letterbox: Letterbox::new(20),
             controller: Box::new(RuntimeController::new(max_threads)),
             num_threads: max_threads as f32,
@@ -28,7 +25,6 @@ impl Mtd {
 
     pub fn fixed_controller(max_threads: usize) -> Self {
         Self {
-            sample: SampleStart::new(),
             letterbox: Letterbox::new(1),
             controller: Box::new(FixedController::new(max_threads)),
             num_threads: max_threads as f32,
@@ -40,11 +36,11 @@ impl Mtd {
         F: FnOnce() -> R + Send,
         R: Send,
     {
-        self.sample.start();
+        let now = SampleInstant::now();
 
         let res = f();
 
-        let sample = self.sample.stop();
+        let sample = now.elapsed();
         self.update(sample);
 
         res
