@@ -27,7 +27,7 @@ impl Controller for EnergyController {
             self.step_direction = reset_direction(self.num_threads, self.max_threads);
             self.step_size = self.max_threads * 0.5;
         } else {
-            if e_avg > self.e_prev {
+            if e_avg > self.e_prev * 1.02 {
                 // Previous iteration performed (a bit) better
                 self.step_direction = -self.step_direction;
             }
@@ -40,7 +40,11 @@ impl Controller for EnergyController {
             }
         }
 
-        self.e_prev = e_avg;
+        if e_avg < self.e_prev || e_avg > self.e_prev * 1.02 {
+            // Only update if there was a significant change
+            self.e_prev = e_avg;
+        }
+
         self.num_threads += self.step_direction * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
         self.num_threads
