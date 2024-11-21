@@ -1,84 +1,65 @@
-mod mtd;
-mod sample;
-mod letterbox;
 mod controller;
+mod letterbox;
+mod sample;
+mod libc;
 
-pub use mtd::Mtd;
-use sample::{SampleInstant, Sample};
+use controller::*;
+use letterbox::Letterbox;
+use sample::*;
 
-use std::collections::HashMap;
-use std::ffi::{c_char, CStr};
-
-#[repr(C)]
-struct MTDs {
-    max_threads: usize,
-    samples_per_update: usize,
-    mtds: HashMap<String, (Mtd, Vec<(Sample, f32)>)>,
+pub struct Mtd {
+    letterbox: Letterbox,
+    controller: Box<dyn Controller>,
+    pub num_threads: f32,
 }
 
-#[no_mangle]
-extern "C" fn MTDcreate(max_threads: usize, samples_per_update: usize) -> *mut MTDs {
-    let mtds = MTDs { max_threads, samples_per_update, mtds: HashMap::new() };
-    Box::into_raw(Box::new(mtds))
-}
-
-#[no_mangle]
-extern "C" fn MTDstart(mtd: *mut &mut MTDs, funname: *const c_char) -> Box<SampleInstant> {
-    let mtd = unsafe { std::ptr::read(mtd) };
-    let funname = unsafe { CStr::from_ptr(funname) };
-    let funname = funname.to_str().unwrap().to_string();
-
-    if !mtd.mtds.contains_key(&funname) {
-        let controller = Mtd::energy_controller(mtd.max_threads, mtd.samples_per_update);
-        mtd.mtds.insert(funname.clone(), (controller, Vec::new()));
+impl Mtd {
+    pub fn energy_controller(max_threads: usize, samples_per_update: usize) -> Self {
+        Self {
+            letterbox: Letterbox::new(samples_per_update),
+            controller: Box::new(EnergyController::new(max_threads)),
+            num_threads: max_threads as f32,
+        }
     }
 
-    Box::new(SampleInstant::now())
-}
-
-#[no_mangle]
-extern "C" fn MTDstop(mtd: *mut &mut MTDs, now: Box<SampleInstant>, funname: *const c_char) {
-    let sample = now.elapsed();
-
-    let mtd = unsafe { std::ptr::read(mtd) };
-    let funname = unsafe { CStr::from_ptr(funname) };
-    let funname = funname.to_str().unwrap().to_string();
-
-    let (controller, history) = mtd.mtds.get_mut(&funname).unwrap();
-
-    history.push((sample.clone(), controller.num_threads));
-    controller.update(sample);
-}
-
-#[no_mangle]
-extern "C" fn MTDnumThreads(mtd: *mut &mut MTDs, funname: *const c_char) -> i32 {
-    let mtd = unsafe { std::ptr::read(mtd) };
-    let funname = unsafe { CStr::from_ptr(funname) };
-    let funname = funname.to_str().unwrap().to_string();
-
-    if let Some((controller, _)) = mtd.mtds.get_mut(&funname) {
-        controller.num_threads()
-    } else {
-        mtd.max_threads as i32
+    pub fn runtime_controller(max_threads: usize) -> Self {
+        Self {
+            letterbox: Letterbox::new(20),
+            controller: Box::new(RuntimeController::new(max_threads)),
+            num_threads: max_threads as f32,
+        }
     }
-}
 
-#[no_mangle]
-extern "C" fn MTDfree(mtd: *mut MTDs) {
-    let mtd = unsafe { std::ptr::read(mtd) };
+    pub fn fixed_controller(max_threads: usize) -> Self {
+        Self {
+            letterbox: Letterbox::new(1),
+            controller: Box::new(FixedController::new(max_threads)),
+            num_threads: max_threads as f32,
+        }
+    }
 
-    let (_, history) = mtd.mtds
-        .into_values()
-        .max_by_key(|(_, history)| history.len())
-        .unwrap();
+    pub fn install<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce() -> R + Send,
+        R: Send,
+    {
+        let now = SampleInstant::now();
 
-    let runtimes = history.iter().map(|(sample, _)| sample.runtime).collect::<Vec<_>>();
-    let energies = history.iter().map(|(sample, _)| sample.energy).collect::<Vec<_>>();
+        let res = f();
 
-    let runtime_avg = statistical::mean(&runtimes);
-    let energy_avg = statistical::mean(&energies);
-    let runtime_sd = statistical::population_standard_deviation(&runtimes, None);
-    let energy_sd = statistical::population_standard_deviation(&energies, None);
+        let sample = now.elapsed();
+        self.update(sample);
 
-    println!("{:.8},{:.8},{:.8},{:.8}", runtime_avg, runtime_sd, energy_avg, energy_sd);
+        res
+    }
+
+    pub fn update(&mut self, sample: Sample) {
+        if let Some(samples) = self.letterbox.push(sample) {
+            self.num_threads = self.controller.adjust_threads(samples);
+        }
+    }
+
+    pub fn num_threads(&self) -> i32 {
+        self.num_threads.round() as i32
+    }
 }

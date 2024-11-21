@@ -12,7 +12,7 @@ cbindgen = "0.26.0"
 [dependencies]
 chrono = "0.4.38"
 core_affinity = "0.8.1"
-rapl-energy = "0.1.15"
+rapl-energy = "0.1.18"
 rayon = "1.10.0"
 statistical = "1.0.0"
 
