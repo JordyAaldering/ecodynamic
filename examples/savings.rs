@@ -1,6 +1,6 @@
 #[path = "util/util.rs"]
 mod util;
-use rapl_energy::Rapl;
+use rapl_energy::{EnergyProbe, Rapl};
 use util::*;
 
 use std::{hint::black_box, time::Instant};
@@ -11,7 +11,7 @@ fn iter(mtd: &mut Mtd, iter: usize, size: usize, pin_threads: bool) -> (f32, f32
     let x = black_box(Matrix::random(size, size));
     let y = black_box(Matrix::random(size, size));
 
-    let rapl = Rapl::now().unwrap();
+    let rapl = Rapl::now(false).unwrap();
     let start = Instant::now();
 
     for _ in 0..iter {

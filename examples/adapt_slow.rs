@@ -5,7 +5,7 @@ use util::*;
 use std::{hint::black_box, time::Instant};
 
 use mtdynamic::Mtd;
-use rapl_energy::Rapl;
+use rapl_energy::{EnergyProbe, Rapl};
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
@@ -40,7 +40,7 @@ fn main() {
         Mtd::fixed_controller(max_threads)
     };
 
-    let mut rapl = Rapl::now().unwrap();
+    let mut rapl = Rapl::now(false).unwrap();
 
     println!("size,pin,threads,runtime,energy");
 

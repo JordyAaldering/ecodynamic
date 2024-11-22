@@ -25,14 +25,14 @@ impl EnergyController {
 impl Controller for EnergyController {
     fn adjust_threads(&mut self, samples: Vec<Sample>) -> f32 {
         let energy_samples = samples.into_iter().map(|sample| sample.energy).collect::<Vec<_>>();
-        let e_avg = statistical::median(&energy_samples);
+        let e_next = statistical::median(&energy_samples);
 
-        if e_avg > self.e_prev * 1.50 {
+        if e_next > self.e_prev * 1.50 {
             // Previous iteration performed a lot better
             self.reset_direction();
             self.reset_step_size();
         } else {
-            if e_avg > self.e_prev {
+            if e_next > self.e_prev {
                 // Previous iteration performed (a bit) better
                 self.step_direction = -self.step_direction;
             }
@@ -47,7 +47,7 @@ impl Controller for EnergyController {
             }
         }
 
-        self.e_prev = e_avg;
+        self.e_prev = e_next;
         self.num_threads += self.step_direction * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
         self.num_threads

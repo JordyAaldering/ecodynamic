@@ -6,8 +6,8 @@ use mtdynamic::Mtd;
 
 const CYCLES: usize = 1_000_000;
 
-fn make_mtd() -> Mtd {
-    Mtd::energy_controller(16, 1)
+fn make_mtd(samples_per_update: usize) -> Mtd {
+    Mtd::energy_controller(16, samples_per_update)
 }
 
 fn mtd_update(mut mtd: Mtd) {
@@ -17,7 +17,10 @@ fn mtd_update(mut mtd: Mtd) {
 }
 
 fn main() {
-    EnergyBenchBuilder::new("overhead")
-        .build()
-        .benchmark("overhead", &make_mtd, &mtd_update);
+    let mut bench = EnergyBenchBuilder::new("overhead")
+        .build();
+
+    bench.benchmark(1, &|| make_mtd(1), &mtd_update);
+    bench.benchmark(10, &|| make_mtd(10), &mtd_update);
+    bench.benchmark(20, &|| make_mtd(20), &mtd_update);
 }

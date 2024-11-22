@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use rapl_energy::{Energy, Rapl};
+use rapl_energy::{EnergyProbe, Rapl};
 
 pub struct SampleInstant {
     now: Instant,
@@ -15,7 +15,7 @@ pub struct Sample {
 
 impl SampleInstant {
     pub fn now() -> Self {
-        let rapl = Rapl::now().unwrap();
+        let rapl = Rapl::now(false).unwrap();
         let now = Instant::now();
         Self { now, rapl }
     }

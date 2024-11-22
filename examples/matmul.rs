@@ -5,7 +5,7 @@ use util::*;
 use std::{hint::black_box, time::Instant};
 
 use mtdynamic::Mtd;
-use rapl_energy::Rapl;
+use rapl_energy::{EnergyProbe, Rapl};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -30,7 +30,7 @@ fn main() {
     let mut runtimes: Vec<f32> = Vec::with_capacity(iter);
     let mut energies: Vec<f32> = Vec::with_capacity(iter);
 
-    let mut rapl = Rapl::now().unwrap();
+    let mut rapl = Rapl::now(false).unwrap();
 
     for _ in 0..iter {
         let x = black_box(Matrix::random(size, size));
