@@ -28,22 +28,18 @@ impl Controller for EnergyController {
         let e_next = statistical::median(&energy_samples);
 
         if e_next > self.e_prev * 1.50 {
-            // Previous iteration performed a lot better
             self.reset_direction();
-            self.reset_step_size();
+            self.step_size = self.max_threads * 0.5;
         } else {
             if e_next > self.e_prev {
-                // Previous iteration performed (a bit) better
                 self.step_direction = -self.step_direction;
             }
 
-            if self.step_size > 0.16 {
-                // Decrease step size
+            if self.step_size > 0.155 {
                 self.step_size = f32::max(self.step_size * 0.6, self.step_size / (0.85 + self.step_size));
             } else {
-                // Escape local optimum
                 self.reset_direction();
-                self.reset_step_size();
+                self.step_size = self.max_threads * 0.5;
             }
         }
 
@@ -59,16 +55,10 @@ impl EnergyController {
     /// since typically we don't want to end up in a case where we are single-threaded.
     #[inline]
     fn reset_direction(&mut self) {
-        self.step_direction = if self.num_threads < self.max_threads * 0.65 {
+        self.step_direction = if self.num_threads < self.max_threads * 0.55 {
             Direction::Up
         } else {
             Direction::Down
         };
-    }
-
-    /// Reset step size to half the number of maximum threads.
-    #[inline]
-    fn reset_step_size(&mut self) {
-        self.step_size = self.max_threads * 0.5;
     }
 }

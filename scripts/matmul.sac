@@ -3,7 +3,7 @@
 #endif
 
 #ifndef ITER
-#define ITER 50
+#define ITER 250
 #endif
 
 inline
@@ -20,7 +20,7 @@ double sum(double[n] a)
 noinline
 double[u,w] matmul(double[u,v] a, double[v,w] b)
 {
-    return { [i,j] -> sum({ [p] -> _mul_SxS_(_sel_VxA_([i,p], a), _sel_VxA_([p,j], b)) }) };
+    return { [i,j] -> sum({ [k] -> _mul_SxS_(_sel_VxA_([i,k], a), _sel_VxA_([k,j], b)) }) };
 }
 
 int main()
@@ -28,11 +28,9 @@ int main()
     a = { [i,j] -> _tod_S_(i) | [i,j] < [P,P] };
     b = { [i,j] -> _tod_S_(j) | [i,j] < [P,P] };
 
-    i = 0;
-    while (_lt_SxS_(i, ITER)) {
+    for (i = 0; _lt_SxS_(i, ITER); i = _add_SxS_(i, 1)) {
         a = matmul(a, b);
-        i = _add_SxS_(i, 1);
     }
 
-    return _toi_S_(sum({ [i] -> sum({ [j] -> _sel_VxA_([i,j], a) }) }));
+    return _toi_S_(_sel_VxA_(_hideValue_SxA_(0, [0,0]), a));
 }

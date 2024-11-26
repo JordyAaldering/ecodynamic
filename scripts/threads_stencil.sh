@@ -6,20 +6,20 @@
 #SBATCH --mem=0
 #SBATCH --cpus-per-task=16
 #SBATCH --time=10:00:00
-#SBATCH --output=sac_find_best_nbody.out
+#SBATCH --output=threads_stencil.out
 
 printf "size,threads,runtime,runtimesd,energy,energysd\n"
 
 for size in 10000 25000 40000; do
-    ../sac2c/build_r/sac2c_p -noprelude -t mt_pth -mt_bind simple scripts_sac/nbody.sac -o nbody -DP=$size
+    ../sac2c/build_r/sac2c_p -t mt_pth scripts/stencil.sac -o stencil -DP=$size
 
     for threads in `seq 1 16`; do
         printf "$size,$threads,"
-        ./nbody -mt $threads
+        numactl --interleave all ./stencil -mt $threads
     done
 done
 
-rm nbody
-rm nbody.c
-rm nbody.i
-rm nbody.o
+rm stencil
+rm stencil.c
+rm stencil.i
+rm stencil.o

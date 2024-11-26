@@ -9,11 +9,7 @@ pub struct Matrix {
 
 impl Matrix {
     pub fn new(data: Vec<Vec<f64>>) -> Self {
-        Matrix {
-            rows: data.len(),
-            cols: data[0].len(),
-            data,
-        }
+        Self { rows: data.len(), cols: data[0].len(), data }
     }
 
     pub fn random(x: usize, y: usize) -> Self {
@@ -41,25 +37,15 @@ impl Matrix {
     }
 }
 
-pub fn threadpool(num_threads: usize, pin_threads: bool) -> rayon::ThreadPool {
-    let mut builder = rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads);
-
-    if pin_threads {
-        let cores = core_affinity::get_core_ids().unwrap();
-        let max_threads = cores.len();
-        assert!(num_threads <= max_threads);
-        let thread_indices: Vec<usize> = (0..max_threads).step_by(2)
-            .chain((1..max_threads).step_by(2)).collect();
-
-        builder = builder.start_handler(move |idx| {
-            let thread_idx = thread_indices[idx];
-            let core_id = cores[thread_idx];
-            assert!(core_affinity::set_for_current(core_id));
-        });
-    }
-
-    builder.build().unwrap()
+pub fn threadpool(num_threads: usize) -> rayon::ThreadPool {
+    let cores = core_affinity::get_core_ids().unwrap();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .start_handler(move |idx| {
+            assert!(core_affinity::set_for_current(cores[idx]));
+        })
+        .build()
+        .unwrap()
 }
 
 #[allow(unused)]

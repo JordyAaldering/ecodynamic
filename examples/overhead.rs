@@ -12,7 +12,7 @@ fn make_mtd(samples_per_update: usize) -> Mtd {
 
 fn mtd_update(mut mtd: Mtd) {
     for _ in 0..CYCLES {
-        let _ = black_box(mtd.install(|| black_box(0)));
+        black_box(mtd.install(|| black_box(0)));
     }
 }
 
