@@ -1,5 +1,3 @@
-use crate::sample::Sample;
-
 use super::{direction::Direction, Controller};
 
 pub struct RuntimeController {
@@ -12,12 +10,12 @@ pub struct RuntimeController {
 }
 
 impl RuntimeController {
-    pub fn new(max_threads: usize) -> Self {
+    pub fn new(max_threads: i32) -> Self {
         Self {
-            num_threads: max_threads as i32,
-            max_threads: max_threads as i32,
+            num_threads: max_threads,
+            max_threads: max_threads,
             step_direction: Direction::Down,
-            step_size: max_threads as i32,
+            step_size: max_threads,
             t_prev: f32::MAX,
             t1: f32::MAX,
         }
@@ -25,7 +23,7 @@ impl RuntimeController {
 }
 
 impl Controller for RuntimeController {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f32 {
+    fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
         let tn = frequency_dist(samples);
 
         let speedup = self.t1 / tn;
@@ -50,14 +48,13 @@ impl Controller for RuntimeController {
         self.t_prev = tn;
         self.num_threads += self.step_direction * self.step_size;
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
-        self.num_threads as f32
+        self.num_threads
     }
 }
 
 const FREQDIST_RANGES: usize = 5;
 
-fn frequency_dist(samples: Vec<Sample>) -> f32 {
-    let mut samples: Vec<f32> = samples.into_iter().map(|sample| sample.runtime).collect();
+fn frequency_dist(mut samples: Vec<f32>) -> f32 {
     samples.sort_by(|a, b| a.partial_cmp(&b).unwrap());
 
     let min = samples[0];

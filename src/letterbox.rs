@@ -1,8 +1,6 @@
-use crate::sample::Sample;
-
 pub struct Letterbox {
     size: usize,
-    samples: Option<Vec<Sample>>,
+    samples: Option<Vec<f32>>,
 }
 
 impl Letterbox {
@@ -10,7 +8,7 @@ impl Letterbox {
         Self { size, samples: None }
     }
 
-    pub fn push(&mut self, sample: Sample) -> Option<Vec<Sample>> {
+    pub fn push(&mut self, sample: f32) -> Option<Vec<f32>> {
         let samples = self.samples.get_or_insert_with(|| Vec::with_capacity(self.size));
         samples.push(sample);
 

@@ -1,5 +1,3 @@
-use crate::sample::Sample;
-
 use super::{direction::Direction, Controller};
 
 pub struct EnergyController {
@@ -11,7 +9,7 @@ pub struct EnergyController {
 }
 
 impl EnergyController {
-    pub fn new(max_threads: usize) -> Self {
+    pub fn new(max_threads: i32) -> Self {
         Self {
             num_threads: max_threads as f32,
             max_threads: max_threads as f32,
@@ -23,9 +21,8 @@ impl EnergyController {
 }
 
 impl Controller for EnergyController {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) -> f32 {
-        let energy_samples = samples.into_iter().map(|sample| sample.energy).collect::<Vec<_>>();
-        let e_next = statistical::median(&energy_samples);
+    fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
+        let e_next = statistical::median(&samples);
 
         if e_next > self.e_prev * 1.50 {
             // Previous iteration performed a lot better
@@ -50,7 +47,7 @@ impl Controller for EnergyController {
         self.e_prev = e_next;
         self.num_threads += self.step_direction * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
-        self.num_threads
+        self.num_threads.round() as i32
     }
 }
 
