@@ -1,5 +1,6 @@
 mod controller;
 mod letterbox;
+pub mod shm;
 
 pub use controller::*;
 pub use letterbox::Letterbox;

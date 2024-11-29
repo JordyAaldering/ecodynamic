@@ -6,6 +6,10 @@ edition = "2021"
 [lib]
 crate-type = ["lib", "cdylib"]
 
+[[bin]]
+name = "energy_controller"
+path = "src/bin/energy_controller.rs"
+
 [build-dependencies]
 cbindgen = "0.26.0"
 
@@ -15,4 +19,6 @@ rapl-energy = "0.1.19"
 rayon = "1.10.0"
 
 [dependencies]
+ctrlc = "3.4.5"
+libc = "0.2.166"
 statistical = "1.0.0"
