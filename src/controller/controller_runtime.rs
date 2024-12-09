@@ -1,4 +1,5 @@
-use super::direction::Direction;
+const _UP: i32 = 1;
+const DOWN: i32 = -1;
 
 pub struct RuntimeController {
     num_threads: i32,
@@ -6,7 +7,7 @@ pub struct RuntimeController {
     t1: f32,
     t_prev: f32,
     step_size: i32,
-    step_direction: Direction,
+    step_direction: i32,
 }
 
 impl RuntimeController {
@@ -14,7 +15,7 @@ impl RuntimeController {
         Self {
             num_threads: max_threads,
             max_threads: max_threads,
-            step_direction: Direction::Down,
+            step_direction: DOWN,
             step_size: max_threads,
             t_prev: f32::MAX,
             t1: f32::MAX,
@@ -29,7 +30,7 @@ impl RuntimeController {
         let speedup = self.t1 / tn;
         if speedup < 0.5 * self.num_threads as f32 {
             // We have fallen outside the corridor
-            self.step_direction = Direction::Down;
+            self.step_direction = DOWN;
             self.step_size = i32::max(1, self.num_threads as i32 / 2);
         } else {
             if speedup > self.num_threads as f32 {

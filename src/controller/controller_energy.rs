@@ -1,10 +1,11 @@
-use super::direction::Direction;
+const UP: i32 = 1;
+const DOWN: i32 = -1;
 
 #[repr(C)]
 pub struct EnergyController {
     pub num_threads: f32,
     max_threads: f32,
-    step_direction: Direction,
+    step_direction: i32,
     step_size: f32,
     e_prev: f32,
 }
@@ -14,7 +15,7 @@ impl EnergyController {
         Self {
             num_threads: max_threads as f32,
             max_threads: max_threads as f32,
-            step_direction: Direction::Down,
+            step_direction: DOWN,
             step_size: max_threads as f32,
             e_prev: 0.0,
         }
@@ -46,7 +47,7 @@ impl EnergyController {
         }
 
         self.e_prev = e_next;
-        self.num_threads += self.step_direction * self.step_size;
+        self.num_threads += self.step_direction as f32 * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
         self.num_threads.round() as i32
     }
@@ -56,9 +57,9 @@ impl EnergyController {
     #[inline]
     fn reset_direction(&mut self) {
         self.step_direction = if self.num_threads < self.max_threads * 0.65 {
-            Direction::Up
+            UP
         } else {
-            Direction::Down
+            DOWN
         };
     }
 
