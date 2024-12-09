@@ -15,11 +15,11 @@ pub unsafe fn init_semaphore() -> *mut sem_t {
     sem
 }
 
-pub unsafe fn init_letterbox<'a>() -> (i32, &'a mut Letterbox) {
+pub unsafe fn init_letterbox<'a>() -> (i32, &'a mut Letterbox<64>) {
     let fd = shm_open(SHM_LETTERBOX_NAME, O_RDWR | O_CREAT | O_EXCL, (S_IRUSR | S_IWUSR) as u32);
     println!("shm_open returned {}", fd);
     assert!(fd >= 0);
-    let res = ftruncate(fd, std::mem::size_of::<Letterbox>() as off_t);
+    let res = ftruncate(fd, std::mem::size_of::<Letterbox<64>>() as off_t);
     println!("ftruncate returned {}", res);
     assert_eq!(res, 0);
     let lb = Letterbox::from_mmap(fd);

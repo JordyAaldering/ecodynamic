@@ -8,22 +8,22 @@ use crate::{EnergyController, SHM_LETTERBOX_NAME, SHM_SEMAPHORE_NAME};
 /// pointers) to incoming (runtime/energy measurements) and outgoing
 /// (thread-count) data.
 #[repr(C)]
-pub struct Letterbox {
+pub struct Letterbox<const NUM_BUCKETS: usize = 64, const NUM_SAMPLES: usize = 20> {
     len: usize,
-    pub buckets: [Bucket; 32],
+    pub buckets: [Bucket<NUM_SAMPLES>; NUM_BUCKETS],
 }
 
 #[repr(C)]
-pub enum Bucket {
+pub enum Bucket<const NUM_SAMPLES: usize> {
     Empty,
-    Occupied(pid_t, uintptr_t, Incoming, Outgoing),
+    Occupied(pid_t, uintptr_t, Incoming<NUM_SAMPLES>, Outgoing),
     Tombstone,
 }
 
 #[repr(C)]
-pub struct Incoming {
+pub struct Incoming<const NUM_SAMPLES: usize> {
     pub len: usize,
-    pub data: [f32; 20],
+    pub data: [f32; NUM_SAMPLES],
 }
 
 #[repr(transparent)]
@@ -93,7 +93,7 @@ unsafe extern "C" fn MTD_free_pid(lb: &mut Letterbox) {
     }
 }
 
-impl Letterbox {
+impl<const NUM_BUCKETS: usize, const NUM_SAMPLES: usize> Letterbox<NUM_BUCKETS, NUM_SAMPLES> {
     pub unsafe fn from_mmap<'a>(fd: i32) -> &'a mut Self {
         let ptr = libc::mmap(
             std::ptr::null_mut(),
@@ -118,7 +118,7 @@ impl Letterbox {
                 Bucket::Empty |
                 Bucket::Tombstone => {
                     println!("found a spot for {}", key);
-                    let mut data = [0.0; 20];
+                    let mut data = [0.0; NUM_SAMPLES];
                     data[0] = value;
                     *bucket = Bucket::Occupied(
                         pid,
@@ -134,7 +134,7 @@ impl Letterbox {
         }
     }
 
-    pub fn get(&self, key: uintptr_t) -> Option<(&Incoming, &Outgoing)> {
+    pub fn get(&self, key: uintptr_t) -> Option<(&Incoming<NUM_SAMPLES>, &Outgoing)> {
         let start_idx = self.get_hash(key);
 
         let (lhs, rhs) = self.buckets.split_at(start_idx);
@@ -150,7 +150,7 @@ impl Letterbox {
         None
     }
 
-    pub fn get_mut(&mut self, key: uintptr_t) -> Option<(&mut Incoming, &mut Outgoing)> {
+    pub fn get_mut(&mut self, key: uintptr_t) -> Option<(&mut Incoming<NUM_SAMPLES>, &mut Outgoing)> {
         let start_idx = self.get_hash(key);
 
         let (lhs, rhs) = self.buckets.split_at_mut(start_idx);
