@@ -1,6 +1,6 @@
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
-use mtdynamic::{Bucket, SEM_NAME};
+use mtdynamic::{Bucket, SHM_LETTERBOX_NAME, SHM_SEMAPHORE_NAME};
 
 fn ctrlc_handler() -> Arc<AtomicBool> {
     let running = Arc::new(AtomicBool::new(true));
@@ -10,7 +10,7 @@ fn ctrlc_handler() -> Arc<AtomicBool> {
         r.store(false, Ordering::Relaxed);
 
         unsafe {
-            let sem = libc::sem_open(SEM_NAME, 0);
+            let sem = libc::sem_open(SHM_SEMAPHORE_NAME, 0);
             libc::sem_post(sem);
         }
     }).unwrap();
@@ -19,15 +19,8 @@ fn ctrlc_handler() -> Arc<AtomicBool> {
 }
 
 fn main() {
-    unsafe {
-        libc::shm_unlink(mtdynamic::SHM_NAME)
-    };
-
     println!("creating sem");
-    let sem = unsafe {
-        mtdynamic::init_semaphore()
-    };
-
+    let sem = unsafe { mtdynamic::init_semaphore() };
     let (fd, lb) = unsafe { mtdynamic::init_letterbox() };
     println!("Letterbox created");
 
@@ -61,8 +54,13 @@ fn main() {
 
     unsafe {
         println!("Unlinking semaphore");
-        libc::sem_unlink(SEM_NAME);
+        let res = libc::sem_unlink(SHM_SEMAPHORE_NAME);
+        assert_eq!(res, 0);
         println!("Freeing shared memory");
-        mtdynamic::free_shm(fd);
+        let res = libc::shm_unlink(SHM_LETTERBOX_NAME);
+        assert_eq!(res, 0);
+        println!("Closing shared");
+        let res = libc::close(fd);
+        assert_eq!(res, 0);
     };
 }

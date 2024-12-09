@@ -23,7 +23,7 @@ impl EnergyController {
 
 impl EnergyController {
     pub fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
-        let e_next = statistical::median(&samples);
+        let e_next = median(samples);
 
         if e_next > self.e_prev * 1.50 {
             // Previous iteration performed a lot better
@@ -67,4 +67,9 @@ impl EnergyController {
     fn reset_step_size(&mut self) {
         self.step_size = self.max_threads * 0.5;
     }
+}
+
+fn median(mut vec: Vec<f32>) -> f32 {
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    vec[vec.len() / 2]
 }

@@ -1,8 +1,8 @@
-use libc::{getpid, pid_t, uintptr_t};
+use libc::{getpid, pid_t, sem_post, uintptr_t};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use crate::{EnergyController, SHM_NAME};
+use crate::{EnergyController, SHM_LETTERBOX_NAME, SHM_SEMAPHORE_NAME};
 
 /// A letterbox is a hashmap-like mapping from unique identifiers (function
 /// pointers) to incoming (runtime/energy measurements) and outgoing
@@ -35,7 +35,7 @@ pub struct Outgoing {
 unsafe extern "C" fn MTD_letterbox_open() -> *mut Letterbox {
     use libc::{shm_open, O_RDWR, S_IRUSR, S_IWUSR};
     println!("opening letterbox");
-    let fd = shm_open(SHM_NAME, O_RDWR, (S_IRUSR | S_IWUSR) as u32);
+    let fd = shm_open(SHM_LETTERBOX_NAME, O_RDWR, (S_IRUSR | S_IWUSR) as u32);
     if fd < 0 {
         eprintln!("resource controller is not running");
         std::ptr::null_mut()
@@ -45,18 +45,26 @@ unsafe extern "C" fn MTD_letterbox_open() -> *mut Letterbox {
 }
 
 #[no_mangle]
-unsafe extern "C" fn MTD_letterbox_push(lb: &mut Letterbox, key: uintptr_t, value: f32) -> usize {
+unsafe extern "C" fn MTD_letterbox_push(lb: &mut Letterbox, key: uintptr_t, value: f32) {
     let pid = unsafe { getpid() };
 
     println!("push {:?} = {}", key, value);
     if let Some((incoming, _)) = lb.get_mut(key) {
+        assert!(incoming.len < 20);
         incoming.data[incoming.len] = value;
-        let res = incoming.len + 1;
-        incoming.len = res % 20;
-        res
+        incoming.len += 1;
+
+        if incoming.len == 20 {
+            let sem = libc::sem_open(SHM_SEMAPHORE_NAME, 0);
+            assert_ne!(sem, std::ptr::null_mut());
+            let res = sem_post(sem);
+            assert_eq!(res, 0);
+            incoming.len = 0;
+        }
     } else {
+        println!("pushing new fptr {}", key);
+        assert!(lb.len < lb.buckets.len());
         lb.insert(pid, key, value);
-        1
     }
 }
 
@@ -95,10 +103,12 @@ impl Letterbox {
             fd,
             0
         );
+        assert_ne!(ptr, std::ptr::null_mut());
         &mut *(ptr as *mut Self)
     }
 
     pub fn insert(&mut self, pid: pid_t, key: uintptr_t, value: f32) {
+        assert!(self.len < self.buckets.len());
         let start_idx = self.get_hash(key);
 
         let (lhs, rhs) = self.buckets.split_at_mut(start_idx);
@@ -107,6 +117,7 @@ impl Letterbox {
             match bucket {
                 Bucket::Empty |
                 Bucket::Tombstone => {
+                    println!("found a spot for {}", key);
                     let mut data = [0.0; 20];
                     data[0] = value;
                     *bucket = Bucket::Occupied(
@@ -115,7 +126,8 @@ impl Letterbox {
                         Incoming { len: 1, data },
                         Outgoing { controller: EnergyController::new(16) }
                     );
-                    break;
+                    println!("inserted {}", key);
+                    return;
                 }
                 _ => { },
             }
