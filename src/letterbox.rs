@@ -3,7 +3,10 @@ use libc::{getpid, pid_t, sem_post, uintptr_t};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::{SHM_LETTERBOX_NAME, SHM_SEMAPHORE_NAME};
-use crate::controller_energy::EnergyController;
+
+// todo: depending on feature set controller, measuring method, and num samples
+type Controller = crate::EnergyController;
+//type Controller = crate::RuntimeController;
 
 /// A letterbox is a hashmap-like mapping from unique identifiers (function
 /// pointers) to incoming (runtime/energy measurements) and outgoing
@@ -17,7 +20,7 @@ pub struct Letterbox {
 #[repr(C)]
 pub enum Bucket<const NUM_SAMPLES: usize> {
     Empty,
-    Occupied(pid_t, uintptr_t, Incoming<NUM_SAMPLES>, Outgoing),
+    Occupied(pid_t, uintptr_t, Controller, Incoming<NUM_SAMPLES>, i32),
     Tombstone,
 }
 
@@ -25,11 +28,6 @@ pub enum Bucket<const NUM_SAMPLES: usize> {
 pub struct Incoming<const NUM_SAMPLES: usize> {
     pub len: usize,
     pub data: [f32; NUM_SAMPLES],
-}
-
-#[repr(transparent)]
-pub struct Outgoing {
-    pub controller: EnergyController,
 }
 
 #[no_mangle]
@@ -50,7 +48,7 @@ unsafe extern "C" fn MTD_letterbox_push(lb: &mut Letterbox, key: uintptr_t, valu
     let pid = unsafe { getpid() };
 
     println!("push {:?} = {}", key, value);
-    if let Some((incoming, _)) = lb.get_mut(key) {
+    if let Some(incoming) = lb.get_incoming_mut(key) {
         assert!(incoming.len < 20);
         incoming.data[incoming.len] = value;
         incoming.len += 1;
@@ -71,8 +69,8 @@ unsafe extern "C" fn MTD_letterbox_push(lb: &mut Letterbox, key: uintptr_t, valu
 
 #[no_mangle]
 unsafe extern "C" fn MTD_thread_count(lb: &mut Letterbox, key: uintptr_t) -> u32 {
-    if let Some((_, controller)) = lb.get(key) {
-        controller.controller.num_threads.round() as u32
+    if let Some(thread_count) = lb.get_threads(key) {
+        *thread_count as u32
     } else {
         16
     }
@@ -85,7 +83,8 @@ unsafe extern "C" fn MTD_free_pid(lb: &mut Letterbox) {
 
     for bucket in lb.buckets.iter_mut() {
         match bucket {
-            Bucket::Occupied(pid2, _, _, _) if pid == *pid2 => {
+            Bucket::Occupied(pid2, fptr, ..) if pid == *pid2 => {
+                println!("Cleaning {}:{}", pid, fptr);
                 *bucket = Bucket::Tombstone;
                 lb.len -= 1;
             }
@@ -124,8 +123,9 @@ impl Letterbox {
                     *bucket = Bucket::Occupied(
                         pid,
                         key,
+                        Controller::new(16),
                         Incoming { len: 1, data },
-                        Outgoing { controller: EnergyController::new(16) }
+                        16
                     );
                     println!("inserted {}", key);
                     return;
@@ -135,7 +135,7 @@ impl Letterbox {
         }
     }
 
-    pub fn get(&self, key: uintptr_t) -> Option<(&Incoming<20>, &Outgoing)> {
+    pub fn get_threads(&self, key: uintptr_t) -> Option<&i32> {
         let start_idx = self.get_hash(key);
 
         let (lhs, rhs) = self.buckets.split_at(start_idx);
@@ -143,7 +143,7 @@ impl Letterbox {
         for bucket in rhs.iter().chain(lhs.iter()) {
             match bucket {
                 Bucket::Empty => return None,
-                Bucket::Occupied(_, k, i, o) if key == *k => return Some((i, o)),
+                Bucket::Occupied(_, k, _, _, o) if key == *k => return Some(o),
                 _ => { },
             }
         }
@@ -151,7 +151,7 @@ impl Letterbox {
         None
     }
 
-    pub fn get_mut(&mut self, key: uintptr_t) -> Option<(&mut Incoming<20>, &mut Outgoing)> {
+    pub fn get_incoming_mut(&mut self, key: uintptr_t) -> Option<&mut Incoming<20>> {
         let start_idx = self.get_hash(key);
 
         let (lhs, rhs) = self.buckets.split_at_mut(start_idx);
@@ -159,7 +159,7 @@ impl Letterbox {
         for bucket in rhs.iter_mut().chain(lhs.iter_mut()) {
             match bucket {
                 Bucket::Empty => return None,
-                Bucket::Occupied(_, k, i, o) if key == *k => return Some((i, o)),
+                Bucket::Occupied(_, k, _, incoming, _) if key == *k => return Some(incoming),
                 _ => { },
             }
         }

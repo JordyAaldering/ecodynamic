@@ -1,6 +1,6 @@
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
-use mtdynamic::{Bucket, SHM_LETTERBOX_NAME, SHM_SEMAPHORE_NAME};
+use mtdynamic::{Bucket, Controller, SHM_LETTERBOX_NAME, SHM_SEMAPHORE_NAME};
 
 fn ctrlc_handler() -> Arc<AtomicBool> {
     let running = Arc::new(AtomicBool::new(true));
@@ -35,16 +35,14 @@ fn main() {
             break
         }
 
-        println!("got signal, woo!");
-
         // Signal received to update thread-count
         for bucket in &mut lb.buckets {
             match bucket {
-                Bucket::Occupied(pid, fptr, incoming, outgoing) => {
+                Bucket::Occupied(pid, fptr, ctrl, incoming, thread_count) => {
                     if incoming.len == 0 {
                         println!("pid {} fun ptr {:?} needs update", pid, fptr);
-                        outgoing.controller.adjust_threads(incoming.data.to_vec());
-                        println!("Updated thread-count of {:?} to {}", fptr, outgoing.controller.num_threads);
+                        *thread_count = ctrl.adjust_threads(incoming.data.to_vec());
+                        println!("Updated thread-count of {:?} to {}", fptr, *thread_count);
                     }
                 },
                 _ => { },

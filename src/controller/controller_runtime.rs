@@ -1,3 +1,7 @@
+use std::time::Instant;
+
+use super::Controller;
+
 const _UP: i32 = 1;
 const DOWN: i32 = -1;
 
@@ -23,8 +27,19 @@ impl RuntimeController {
     }
 }
 
+#[allow(unused)]
 impl RuntimeController {
-    pub fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
+    fn sample_start() -> Instant {
+        Instant::now()
+    }
+
+    fn sample_stop(sample: Instant) -> f32 {
+        sample.elapsed().as_secs_f32()
+    }
+}
+
+impl Controller for RuntimeController {
+    fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
         let tn = frequency_dist(samples);
 
         let speedup = self.t1 / tn;
