@@ -47,11 +47,11 @@ fn main() {
         // Signal received to update thread-count
         for bucket in &mut lb.buckets {
             match bucket {
-                Bucket::Occupied(uid, incoming, outgoing) => {
+                Bucket::Occupied(pid, fptr, incoming, outgoing) => {
                     if incoming.len == 0 {
-                        println!("fun ptr {:?} needs update", uid);
+                        println!("pid {} fun ptr {:?} needs update", pid, fptr);
                         outgoing.controller.adjust_threads(incoming.data.to_vec());
-                        println!("Updated thread-count of {:?} to {}", uid, outgoing.controller.num_threads);
+                        println!("Updated thread-count of {:?} to {}", fptr, outgoing.controller.num_threads);
                     }
                 },
                 _ => { },

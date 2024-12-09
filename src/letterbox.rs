@@ -1,4 +1,4 @@
-use libc::uintptr_t;
+use libc::{getpid, pid_t, uintptr_t};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
@@ -16,7 +16,7 @@ pub struct Letterbox {
 #[repr(C)]
 pub enum Bucket {
     Empty,
-    Occupied(uintptr_t, Incoming, Outgoing),
+    Occupied(pid_t, uintptr_t, Incoming, Outgoing),
     Tombstone,
 }
 
@@ -46,6 +46,8 @@ unsafe extern "C" fn MTD_letterbox_open() -> *mut Letterbox {
 
 #[no_mangle]
 unsafe extern "C" fn MTD_letterbox_push(lb: &mut Letterbox, key: uintptr_t, value: f32) -> usize {
+    let pid = unsafe { getpid() };
+
     println!("push {:?} = {}", key, value);
     if let Some((incoming, _)) = lb.get_mut(key) {
         incoming.data[incoming.len] = value;
@@ -53,7 +55,7 @@ unsafe extern "C" fn MTD_letterbox_push(lb: &mut Letterbox, key: uintptr_t, valu
         incoming.len = res % 20;
         res
     } else {
-        lb.insert(key, value);
+        lb.insert(pid, key, value);
         1
     }
 }
@@ -64,6 +66,22 @@ unsafe extern "C" fn MTD_thread_count(lb: &mut Letterbox, key: uintptr_t) -> u32
         controller.controller.num_threads.round() as u32
     } else {
         16
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn MTD_free_pid(lb: &mut Letterbox) {
+    let pid = unsafe { getpid() };
+    println!("Freeing letterboxes of {}", pid);
+
+    for bucket in lb.buckets.iter_mut() {
+        match bucket {
+            Bucket::Occupied(pid2, _, _, _) if pid == *pid2 => {
+                *bucket = Bucket::Tombstone;
+                lb.len -= 1;
+            }
+            _ => { },
+        }
     }
 }
 
@@ -80,7 +98,7 @@ impl Letterbox {
         &mut *(ptr as *mut Self)
     }
 
-    pub fn insert(&mut self, key: uintptr_t, value: f32) {
+    pub fn insert(&mut self, pid: pid_t, key: uintptr_t, value: f32) {
         let start_idx = self.get_hash(key);
 
         let (lhs, rhs) = self.buckets.split_at_mut(start_idx);
@@ -92,13 +110,14 @@ impl Letterbox {
                     let mut data = [0.0; 20];
                     data[0] = value;
                     *bucket = Bucket::Occupied(
+                        pid,
                         key,
                         Incoming { len: 1, data },
                         Outgoing { controller: EnergyController::new(16) }
                     );
                     break;
                 }
-                Bucket::Occupied(_, _, _) => { },
+                _ => { },
             }
         }
     }
@@ -111,7 +130,7 @@ impl Letterbox {
         for bucket in rhs.iter().chain(lhs.iter()) {
             match bucket {
                 Bucket::Empty => return None,
-                Bucket::Occupied(k, i, o) if key == *k => return Some((i, o)),
+                Bucket::Occupied(_, k, i, o) if key == *k => return Some((i, o)),
                 _ => { },
             }
         }
@@ -127,7 +146,7 @@ impl Letterbox {
         for bucket in rhs.iter_mut().chain(lhs.iter_mut()) {
             match bucket {
                 Bucket::Empty => return None,
-                Bucket::Occupied(k, i, o) if key == *k => return Some((i, o)),
+                Bucket::Occupied(_, k, i, o) if key == *k => return Some((i, o)),
                 _ => { },
             }
         }

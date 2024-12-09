@@ -9,7 +9,6 @@ fn main() {
         .with_crate(lib_dir)
         .with_language(cbindgen::Language::C)
         .with_include_guard("MTD_MTDYNAMIC")
-        .with_sys_include("semaphore.h")
         .with_cpp_compat(true)
         .generate()
         .expect("Unable to generate bindings")

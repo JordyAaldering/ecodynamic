@@ -1,10 +1,10 @@
 use std::ops::{Mul, Neg};
 
-#[repr(C)]
+#[repr(i32)]
 #[derive(Copy, Clone)]
 pub enum Direction {
-    Up,
-    Down,
+    Up = -1,
+    Down = 1,
 }
 
 impl Neg for Direction {
