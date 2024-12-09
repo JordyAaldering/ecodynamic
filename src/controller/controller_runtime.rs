@@ -1,4 +1,4 @@
-use super::{direction::Direction, Controller};
+use super::direction::Direction;
 
 pub struct RuntimeController {
     num_threads: i32,
@@ -22,8 +22,8 @@ impl RuntimeController {
     }
 }
 
-impl Controller for RuntimeController {
-    fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
+impl RuntimeController {
+    pub fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
         let tn = frequency_dist(samples);
 
         let speedup = self.t1 / tn;

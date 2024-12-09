@@ -1,5 +1,6 @@
 use std::ops::{Mul, Neg};
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub enum Direction {
     Up,
