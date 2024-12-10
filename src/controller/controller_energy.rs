@@ -1,5 +1,3 @@
-use rapl_energy::{EnergyProbe, Rapl};
-
 use super::Controller;
 
 const UP: i32 = 1;
@@ -9,8 +7,8 @@ const DOWN: i32 = -1;
 pub struct EnergyController {
     num_threads: f32,
     max_threads: f32,
-    step_direction: i32,
     step_size: f32,
+    step_direction: i32,
     e_prev: f32,
 }
 
@@ -19,21 +17,10 @@ impl EnergyController {
         Self {
             num_threads: max_threads as f32,
             max_threads: max_threads as f32,
-            step_direction: DOWN,
             step_size: max_threads as f32,
+            step_direction: DOWN,
             e_prev: 0.0,
         }
-    }
-}
-
-#[allow(unused)]
-impl EnergyController {
-    fn sample_start() -> Rapl {
-        Rapl::now(false).expect("RAPL not found")
-    }
-
-    fn sample_stop(sample: Rapl) -> f32 {
-        sample.elapsed().into_values().sum()
     }
 }
 
@@ -42,22 +29,18 @@ impl Controller for EnergyController {
         let e_next = median(samples);
 
         if e_next > self.e_prev * 1.50 {
-            // Previous iteration performed a lot better
+            self.step_size = self.max_threads * 0.5;
             self.reset_direction();
-            self.reset_step_size();
         } else {
             if e_next > self.e_prev {
-                // Previous iteration performed (a bit) better
                 self.step_direction = -self.step_direction;
             }
 
             if self.step_size > 0.16 {
-                // Decrease step size
                 self.step_size = f32::max(self.step_size * 0.6, self.step_size / (0.85 + self.step_size));
             } else {
-                // Escape local optimum
+                self.step_size = self.max_threads * 0.5;
                 self.reset_direction();
-                self.reset_step_size();
             }
         }
 
@@ -78,12 +61,6 @@ impl EnergyController {
         } else {
             DOWN
         };
-    }
-
-    /// Reset step size to half the number of maximum threads.
-    #[inline]
-    fn reset_step_size(&mut self) {
-        self.step_size = self.max_threads * 0.5;
     }
 }
 

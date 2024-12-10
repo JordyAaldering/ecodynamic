@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use super::Controller;
 
 const _UP: i32 = 1;
@@ -8,10 +6,10 @@ const DOWN: i32 = -1;
 pub struct RuntimeController {
     num_threads: i32,
     max_threads: i32,
-    t1: f32,
-    t_prev: f32,
     step_size: i32,
     step_direction: i32,
+    t_prev: f32,
+    t1: f32,
 }
 
 impl RuntimeController {
@@ -19,22 +17,11 @@ impl RuntimeController {
         Self {
             num_threads: max_threads,
             max_threads: max_threads,
-            step_direction: DOWN,
             step_size: max_threads,
+            step_direction: DOWN,
             t_prev: f32::MAX,
             t1: f32::MAX,
         }
-    }
-}
-
-#[allow(unused)]
-impl RuntimeController {
-    fn sample_start() -> Instant {
-        Instant::now()
-    }
-
-    fn sample_stop(sample: Instant) -> f32 {
-        sample.elapsed().as_secs_f32()
     }
 }
 

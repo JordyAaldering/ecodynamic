@@ -7,8 +7,8 @@ edition = "2021"
 crate-type = ["lib", "cdylib"]
 
 [[bin]]
-name = "energy_controller"
-path = "src/bin/energy_controller.rs"
+name = "controller"
+path = "src/bin/controller.rs"
 
 [build-dependencies]
 cbindgen = "0.27.0"
@@ -16,4 +16,3 @@ cbindgen = "0.27.0"
 [dependencies]
 ctrlc = "3.4.5"
 libc = "0.2.166"
-rapl-energy = "0.1.19"
