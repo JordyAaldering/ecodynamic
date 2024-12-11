@@ -1,6 +1,22 @@
-use std::env;
+use std::{env, fs, path::Path};
 
 fn main() {
+    build_config();
+    build_header();
+}
+
+fn build_config() {
+    let num_samples: usize = env::var("NUM_SAMPLES").map_or(20, |s| s.parse().unwrap());
+
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let path = Path::new(&out_dir).join("config.rs");
+    fs::write(&path, format!("pub const NUM_SAMPLES: usize = {};", num_samples)).unwrap();
+
+    // Rebuild project if environment variable changed
+    println!("cargo:rerun-if-env-changed=NUM_SAMPLES");
+}
+
+fn build_header() {
     let lib_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap();
     let path = format!("target/{}/mtdynamic.h", profile);

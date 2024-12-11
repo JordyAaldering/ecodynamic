@@ -15,4 +15,4 @@ cbindgen = "0.27.0"
 
 [dependencies]
 ctrlc = "3.4.5"
-libc = "0.2.166"
+libc = "0.2.168"

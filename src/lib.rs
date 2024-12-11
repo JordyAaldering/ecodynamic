@@ -1,3 +1,5 @@
+include!(concat!(env!("OUT_DIR"), "/config.rs"));
+
 mod controller;
 mod letterbox;
 
