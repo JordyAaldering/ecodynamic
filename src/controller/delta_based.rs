@@ -1,10 +1,8 @@
-use super::Controller;
-
 const UP: i32 = 1;
 const DOWN: i32 = -1;
 
 #[repr(C)]
-pub struct EnergyController {
+pub struct Controller {
     num_threads: f32,
     max_threads: f32,
     step_size: f32,
@@ -12,7 +10,7 @@ pub struct EnergyController {
     e_prev: f32,
 }
 
-impl EnergyController {
+impl Controller {
     pub fn new(max_threads: i32) -> Self {
         Self {
             num_threads: max_threads as f32,
@@ -22,10 +20,8 @@ impl EnergyController {
             e_prev: 0.0,
         }
     }
-}
 
-impl Controller for EnergyController {
-    fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
+    pub fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
         let e_next = median(samples);
 
         if e_next > self.e_prev * 1.50 {
@@ -49,9 +45,7 @@ impl Controller for EnergyController {
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
         self.num_threads.round() as i32
     }
-}
 
-impl EnergyController {
     /// Reset the step direction with a slight preference for increasing the thread count;
     /// since typically we don't want to end up in a case where we are single-threaded.
     #[inline]

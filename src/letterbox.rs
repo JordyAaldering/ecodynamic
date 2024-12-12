@@ -1,37 +1,33 @@
 use libc::{pid_t, uintptr_t};
 
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::mem;
-use std::ptr;
+use std::{hash::{DefaultHasher, Hash, Hasher}, mem, ptr};
 
-// todo: depending on feature set controller, measuring method, and num samples
-type Controller = crate::EnergyController;
-//type Controller = crate::RuntimeController;
+use crate::{controller::Controller, NUM_LETTERBOXES, NUM_SAMPLES};
 
 #[repr(C)]
 pub struct Letterbox {
     pub len: usize,
-    pub buckets: [BucketType<20>; 64],
+    pub buckets: [BucketType; NUM_LETTERBOXES],
 }
 
 #[repr(C)]
-pub enum BucketType<const NUM_SAMPLES: usize> {
+pub enum BucketType {
     Empty,
     Tombstone,
-    Occupied(Bucket<NUM_SAMPLES>),
+    Occupied(Bucket),
 }
 
 #[repr(C)]
-pub struct Bucket<const NUM_SAMPLES: usize> {
+pub struct Bucket {
     pub pid: pid_t,
     pub fptr: uintptr_t,
     pub ctrl: Controller,
-    pub samples: Incoming<NUM_SAMPLES>,
+    pub samples: Incoming,
     pub thread_count: i32,
 }
 
 #[repr(C)]
-pub struct Incoming<const NUM_SAMPLES: usize> {
+pub struct Incoming {
     pub len: usize,
     pub data: [f32; NUM_SAMPLES],
 }
@@ -54,7 +50,7 @@ impl Letterbox {
                 BucketType::Empty |
                 BucketType::Tombstone => {
                     println!("found a spot for {}", key);
-                    let mut data = [0.0; 20];
+                    let mut data = [0.0; NUM_SAMPLES];
                     data[0] = value;
                     *bucket = BucketType::Occupied(Bucket {
                         pid: pid,
@@ -85,7 +81,7 @@ impl Letterbox {
         None
     }
 
-    pub fn get_incoming_mut(&mut self, key: uintptr_t) -> Option<&mut Incoming<20>> {
+    pub fn get_incoming_mut(&mut self, key: uintptr_t) -> Option<&mut Incoming> {
         let start_idx = self.get_hash(key);
         for bucket in self.iter_mut_from(start_idx) {
             match bucket {
@@ -99,12 +95,12 @@ impl Letterbox {
         None
     }
 
-    fn iter_from(&self, start_idx: usize) -> impl Iterator<Item = &BucketType<20>> {
+    fn iter_from(&self, start_idx: usize) -> impl Iterator<Item = &BucketType> {
         let (lhs, rhs) = self.buckets.split_at(start_idx);
         rhs.iter().chain(lhs.iter())
     }
 
-    fn iter_mut_from(&mut self, start_idx: usize) -> impl Iterator<Item = &mut BucketType<20>> {
+    fn iter_mut_from(&mut self, start_idx: usize) -> impl Iterator<Item = &mut BucketType> {
         let (lhs, rhs) = self.buckets.split_at_mut(start_idx);
         rhs.iter_mut().chain(lhs.iter_mut())
     }

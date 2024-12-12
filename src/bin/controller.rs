@@ -1,7 +1,7 @@
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
 use libc::{ftruncate, off_t, sem_t, shm_open, O_CREAT, O_EXCL, O_RDWR, S_IRUSR, S_IWUSR};
-use mtdynamic::{Bucket, BucketType, Controller, Letterbox, SHM_LETTERBOX_NAME, SHM_SEMAPHORE_NAME};
+use mtdynamic::{Bucket, BucketType, Letterbox, SHM_LETTERBOX_NAME, SHM_SEMAPHORE_NAME};
 
 unsafe fn init_semaphore() -> *mut sem_t {
     let sem = libc::sem_open(SHM_SEMAPHORE_NAME, O_RDWR | O_CREAT | O_EXCL, (S_IRUSR | S_IWUSR) as u32, 0);

@@ -1,9 +1,8 @@
-use super::Controller;
-
 const _UP: i32 = 1;
 const DOWN: i32 = -1;
 
-pub struct RuntimeController {
+#[repr(C)]
+pub struct Controller {
     num_threads: i32,
     max_threads: i32,
     step_size: i32,
@@ -12,7 +11,7 @@ pub struct RuntimeController {
     t1: f32,
 }
 
-impl RuntimeController {
+impl Controller {
     pub fn new(max_threads: i32) -> Self {
         Self {
             num_threads: max_threads,
@@ -23,10 +22,8 @@ impl RuntimeController {
             t1: f32::MAX,
         }
     }
-}
 
-impl Controller for RuntimeController {
-    fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
+    pub fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
         let tn = frequency_dist(samples);
 
         let speedup = self.t1 / tn;

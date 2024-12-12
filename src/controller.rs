@@ -1,9 +1,9 @@
-mod controller_energy;
-mod controller_runtime;
+#[cfg(feature = "delta-based")]
+pub mod delta_based;
+#[cfg(feature = "delta-based")]
+pub use delta_based::Controller;
 
-pub use controller_energy::EnergyController;
-pub use controller_runtime::RuntimeController;
-
-pub trait Controller {
-    fn adjust_threads(&mut self, samples: Vec<f32>) -> i32;
-}
+#[cfg(feature = "corridor-based")]
+pub mod corridor_based;
+#[cfg(feature = "corridor-based")]
+pub use corridor_based::Controller;

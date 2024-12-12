@@ -1,38 +1,49 @@
 use std::{env, fs, path::Path};
 
 fn main() {
-    build_config();
-    build_header();
-}
+    let delta_based = env::var("CARGO_FEATURE_DELTA_BASED").is_ok();
+    let corridor_based = env::var("CARGO_FEATURE_CORRIDOR_BASED").is_ok();
+    assert!(delta_based ^ corridor_based);
 
-fn build_config() {
-    let num_samples: usize = env::var("NUM_SAMPLES").map_or(20, |s| s.parse().unwrap());
+    let num_letterboxes: usize = env::var("NUM_LETTERBOXES").map_or(256, |s| s.parse().unwrap());
+    let num_samples: usize = env::var("NUM_SAMPLES").map_or(10, |s| s.parse().unwrap());
 
+    // Build configuration file
     let out_dir = env::var("OUT_DIR").unwrap();
     let path = Path::new(&out_dir).join("config.rs");
-    fs::write(&path, format!("pub const NUM_SAMPLES: usize = {};", num_samples)).unwrap();
+
+    fs::write(
+        &path,
+        [
+            format!("pub const NUM_LETTERBOXES: usize = {};", num_letterboxes),
+            format!("pub const NUM_SAMPLES: usize = {};", num_samples),
+        ].join("\n")
+    ).unwrap();
 
     // Rebuild project if environment variable changed
+    println!("cargo:rerun-if-env-changed=NUM_LETTERBOXES");
     println!("cargo:rerun-if-env-changed=NUM_SAMPLES");
-}
 
-fn build_header() {
+    // Build header file
     let lib_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap();
     let path = format!("target/{}/mtdynamic.h", profile);
 
-    let config = cbindgen::Config {
-        usize_is_size_t: true,
-        ..Default::default()
-    };
+    let mut config = cbindgen::Config::from_root_or_default(".");
+    config.defines.insert("delta-based".to_string(), "delta-based".to_string());
+
+    let defines = [
+        String::new(),
+        format!("#define {}", if delta_based { "DELTA_BASED" } else { "CORRIDOR_BASED" }),
+        format!("#define NUM_LETTERBOXES {}", num_letterboxes),
+        format!("#define NUM_SAMPLES {}", num_samples),
+    ].join("\n");
 
     cbindgen::Builder::new()
         .with_config(config)
         .with_crate(lib_dir)
-        .with_cpp_compat(true)
-        .with_language(cbindgen::Language::C)
-        .with_include_guard("MTD_MTDYNAMIC")
         .with_sys_include("semaphore.h")
+        .with_after_include(defines)
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(path);

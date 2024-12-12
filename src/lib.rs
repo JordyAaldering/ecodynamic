@@ -1,7 +1,7 @@
 include!(concat!(env!("OUT_DIR"), "/config.rs"));
 
-mod controller;
-mod letterbox;
+pub mod controller;
+pub mod letterbox;
 
 pub use controller::*;
 pub use letterbox::*;
