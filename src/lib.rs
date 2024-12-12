@@ -61,9 +61,9 @@ unsafe extern "C" fn MTD_free_buckets(lb: &mut Letterbox) {
 
     for bucket in lb.buckets.iter_mut() {
         match bucket {
-            BucketType::Occupied(Bucket { pid, fptr, .. }) if self_pid == *pid => {
+            Bucket::Occupied { pid, fptr, .. } if self_pid == *pid => {
                 println!("Cleaning {}:{}", self_pid, fptr);
-                *bucket = BucketType::Tombstone;
+                *bucket = Bucket::Tombstone;
                 lb.len -= 1;
             }
             _ => { },

@@ -1,7 +1,8 @@
 language = "C"
-cpp_compat = true
+#cpp_compat = true
 include_guard = "MTD_MTDYNAMIC"
 usize_is_size_t = true
+tab_width = 4
 
 [defines]
 "feature = delta-based" = "DELTA_BASED"

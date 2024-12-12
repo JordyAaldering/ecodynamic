@@ -29,7 +29,7 @@ fn main() {
     let profile = env::var("PROFILE").unwrap();
     let path = format!("target/{}/mtdynamic.h", profile);
 
-    let mut config = cbindgen::Config::from_root_or_default(".");
+    let mut config = cbindgen::Config::from_file("cbindgen.toml").unwrap();
     config.defines.insert("delta-based".to_string(), "delta-based".to_string());
 
     let defines = [

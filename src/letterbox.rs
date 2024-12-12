@@ -7,23 +7,20 @@ use crate::{controller::Controller, NUM_LETTERBOXES, NUM_SAMPLES};
 #[repr(C)]
 pub struct Letterbox {
     pub len: usize,
-    pub buckets: [BucketType; NUM_LETTERBOXES],
+    pub buckets: [Bucket; NUM_LETTERBOXES],
 }
 
 #[repr(C)]
-pub enum BucketType {
+pub enum Bucket {
     Empty,
     Tombstone,
-    Occupied(Bucket),
-}
-
-#[repr(C)]
-pub struct Bucket {
-    pub pid: pid_t,
-    pub fptr: uintptr_t,
-    pub ctrl: Controller,
-    pub samples: Incoming,
-    pub thread_count: i32,
+    Occupied {
+        pid: pid_t,
+        fptr: uintptr_t,
+        ctrl: Controller,
+        samples: Incoming,
+        thread_count: i32,
+    },
 }
 
 #[repr(C)]
@@ -47,18 +44,18 @@ impl Letterbox {
         let start_idx = self.get_hash(key);
         for bucket in self.iter_mut_from(start_idx) {
             match bucket {
-                BucketType::Empty |
-                BucketType::Tombstone => {
+                Bucket::Empty |
+                Bucket::Tombstone => {
                     println!("found a spot for {}", key);
                     let mut data = [0.0; NUM_SAMPLES];
                     data[0] = value;
-                    *bucket = BucketType::Occupied(Bucket {
+                    *bucket = Bucket::Occupied {
                         pid: pid,
                         fptr: key,
                         ctrl: Controller::new(16),
                         samples: Incoming { len: 1, data },
                         thread_count: 16
-                    });
+                    };
                     println!("inserted {}", key);
                     return;
                 }
@@ -71,8 +68,8 @@ impl Letterbox {
         let start_idx = self.get_hash(key);
         for bucket in self.iter_from(start_idx) {
             match bucket {
-                BucketType::Empty => return None,
-                BucketType::Occupied (Bucket { fptr, thread_count, .. }) if key == *fptr
+                Bucket::Empty => return None,
+                Bucket::Occupied { fptr, thread_count, .. } if key == *fptr
                     => return Some(thread_count),
                 _ => { /* tombstone or not a match; keep going */ },
             }
@@ -85,8 +82,8 @@ impl Letterbox {
         let start_idx = self.get_hash(key);
         for bucket in self.iter_mut_from(start_idx) {
             match bucket {
-                BucketType::Empty => return None,
-                BucketType::Occupied(Bucket { fptr, samples, .. }) if key == *fptr
+                Bucket::Empty => return None,
+                Bucket::Occupied { fptr, samples, .. } if key == *fptr
                     => return Some(samples),
                 _ => { },
             }
@@ -95,12 +92,12 @@ impl Letterbox {
         None
     }
 
-    fn iter_from(&self, start_idx: usize) -> impl Iterator<Item = &BucketType> {
+    fn iter_from(&self, start_idx: usize) -> impl Iterator<Item = &Bucket> {
         let (lhs, rhs) = self.buckets.split_at(start_idx);
         rhs.iter().chain(lhs.iter())
     }
 
-    fn iter_mut_from(&mut self, start_idx: usize) -> impl Iterator<Item = &mut BucketType> {
+    fn iter_mut_from(&mut self, start_idx: usize) -> impl Iterator<Item = &mut Bucket> {
         let (lhs, rhs) = self.buckets.split_at_mut(start_idx);
         rhs.iter_mut().chain(lhs.iter_mut())
     }
