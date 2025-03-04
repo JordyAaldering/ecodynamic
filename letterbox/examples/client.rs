@@ -1,13 +1,13 @@
 use std::os::unix::net::UnixStream;
 use std::io::{Read, Write};
 
-fn main() -> std::io::Result<()> {
-    let socket_path = "/tmp/rust_unix_socket";
+const SOCKET_PATH: &str = "/tmp/rust_unix_socket";
 
+fn main() -> std::io::Result<()> {
     let pid = std::process::id() as i32;
     let fid = 0i32;
 
-    let mut stream = UnixStream::connect(socket_path)?;
+    let mut stream = UnixStream::connect(SOCKET_PATH)?;
 
     let number = std::env::args().collect::<Vec<_>>()[1].parse::<i32>().unwrap();
 
