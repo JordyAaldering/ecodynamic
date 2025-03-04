@@ -56,6 +56,10 @@ impl Controller {
             DOWN
         };
     }
+
+    pub fn threads(&self) -> i32 {
+        self.num_threads.round() as i32
+    }
 }
 
 fn median(mut vec: Vec<f32>) -> f32 {

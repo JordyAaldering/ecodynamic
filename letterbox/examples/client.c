@@ -10,8 +10,8 @@
 int main() {
     int sockfd;
     struct sockaddr_un addr;
-    int number = 42;
-    int received_number;
+    int send[3] = {10, 20, 30};
+    int received;
 
     // Create a Unix domain socket
     sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -32,23 +32,23 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf("Sending: %d\n", number);
+    printf("Sending: (%d, %d) -> %d\n", send[0], send[1], send[2]);
 
     // Send the integer to the server
-    if (write(sockfd, &number, sizeof(int)) == -1) {
+    if (write(sockfd, &send, sizeof(send)) == -1) {
         perror("write");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
 
     // Read the incremented number from the server
-    if (read(sockfd, &received_number, sizeof(int)) == -1) {
+    if (read(sockfd, &received, sizeof(int)) == -1) {
         perror("read");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
 
-    printf("Received: %d\n", received_number);
+    printf("Received: %d\n", received);
 
     // Close the socket
     close(sockfd);
