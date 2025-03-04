@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define SOCKET_PATH "/tmp/rust_unix_socket"
+#define SOCKET_PATH "/tmp/mtdynamic_letterbox"
 
 int main() {
     int sockfd;

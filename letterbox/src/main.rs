@@ -6,7 +6,7 @@ use std::fs;
 //use controller::corridor_controller::Controller;
 use controller::delta_controller::Controller;
 
-const SOCKET_PATH: &str = "/tmp/rust_unix_socket";
+const SOCKET_PATH: &str = "/tmp/mtdynamic_letterbox";
 
 #[derive(Default)]
 pub struct Letterbox<const N: usize> {

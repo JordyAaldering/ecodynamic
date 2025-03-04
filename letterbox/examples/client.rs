@@ -1,7 +1,7 @@
 use std::os::unix::net::UnixStream;
 use std::io::{Read, Write};
 
-const SOCKET_PATH: &str = "/tmp/rust_unix_socket";
+const SOCKET_PATH: &str = "/tmp/mtdynamic_letterbox";
 
 fn main() -> std::io::Result<()> {
     let pid = std::process::id() as i32;
