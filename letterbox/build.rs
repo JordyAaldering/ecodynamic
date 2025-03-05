@@ -5,8 +5,6 @@ fn main() {
 
     cbindgen::Builder::new()
         .with_crate(lib_dir)
-        .with_no_includes()
-        .with_sys_include("stdint")
         .with_include_guard("_MTDYNAMIC_H_")
         .include_item("Incoming")
         .include_item("Outgoing")
