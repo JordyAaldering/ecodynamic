@@ -1,23 +1,25 @@
+mod message;
+
 use std::collections::HashMap;
 use std::os::unix::net::UnixListener;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::fs;
 
 //use controller::corridor_controller::Controller;
 use controller::delta_controller::Controller;
+use message::Message;
 
 const SOCKET_PATH: &str = "/tmp/mtdynamic_letterbox";
 
 #[derive(Default)]
 pub struct Letterbox<const N: usize> {
-    /// Mapping from (process id, function id) to energy/runtime values.
     letterboxes: HashMap<(i32, i32), (Controller, Samples<N>)>,
 }
 
 impl<const N: usize> Letterbox<N> {
-    pub fn update(&mut self, pid: i32, fid: i32, value: f32) -> i32 {
-        if let Some((controller, samples)) = self.letterboxes.get_mut(&(pid, fid)) {
-            samples.push(value);
+    pub fn update(&mut self, msg: Message) -> i32 {
+        if let Some((controller, samples)) = self.letterboxes.get_mut(&(msg.pid, msg.fid)) {
+            samples.push(msg.val);
 
             if samples.len >= N {
                 controller.adjust_threads(samples.take())
@@ -26,8 +28,8 @@ impl<const N: usize> Letterbox<N> {
             }
         } else {
             let controller = Controller::new(16);
-            let samples = Samples::from(value);
-            self.letterboxes.insert((pid, fid), (controller, samples));
+            let samples = Samples::from(msg.val);
+            self.letterboxes.insert((msg.pid, msg.fid), (controller, samples));
             16
         }
     }
@@ -58,8 +60,7 @@ impl<const N: usize> From<f32> for Samples<N> {
     }
 }
 
-fn main() -> std::io::Result<()> {
-
+fn main() -> io::Result<()> {
     // Remove any existing socket file
     if fs::metadata(SOCKET_PATH).is_ok() {
         fs::remove_file(SOCKET_PATH)?;
@@ -69,28 +70,24 @@ fn main() -> std::io::Result<()> {
     let listener = UnixListener::bind(SOCKET_PATH)?;
     println!("Server listening on {}", SOCKET_PATH);
 
+    // Create a letterbox
     let mut letterbox: Letterbox<10> = Letterbox::default();
+    let mut buffer = [0u8; 12];
 
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
-                println!("Client connected");
-
-                let mut buffer = [0u8; 3 * std::mem::size_of::<i32>()];
-
                 // Read from stream
                 stream.read_exact(&mut buffer)?;
-                let pid = i32::from_ne_bytes(buffer[0..4].try_into().unwrap());
-                let fid = i32::from_ne_bytes(buffer[4..8].try_into().unwrap());
-                let value = f32::from_ne_bytes(buffer[8..12].try_into().unwrap());
-                println!("Received: ({}, {}) -> {}", pid, fid, value);
+                let msg = Message::from(buffer);
+                println!("Recv: {:?}", msg);
 
                 // Update letterbox
-                let threads = letterbox.update(pid, fid, value);
+                let threads = letterbox.update(msg);
 
                 // Write to stream
                 stream.write_all(&threads.to_ne_bytes())?;
-                println!("Set thread-count of ({}, {}) to {}", pid, fid, threads);
+                println!("Send: {}", threads);
             }
             Err(e) => {
                 eprintln!("Connection failed: {}", e);
@@ -98,5 +95,5 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    fs::remove_file(SOCKET_PATH)
+    unreachable!()
 }
