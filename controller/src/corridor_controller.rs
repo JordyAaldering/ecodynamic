@@ -1,12 +1,11 @@
-const _UP: i32 = 1;
-const DOWN: i32 = -1;
+use crate::direction::Direction;
 
 #[repr(C)]
 pub struct Controller {
     num_threads: i32,
     max_threads: i32,
     step_size: i32,
-    step_direction: i32,
+    step_direction: Direction,
     t_prev: f32,
     t1: f32,
 }
@@ -17,7 +16,7 @@ impl Controller {
             num_threads: max_threads,
             max_threads: max_threads,
             step_size: max_threads,
-            step_direction: DOWN,
+            step_direction: Direction::Down,
             t_prev: f32::MAX,
             t1: f32::MAX,
         }
@@ -29,7 +28,7 @@ impl Controller {
         let speedup = self.t1 / tn;
         if speedup < 0.5 * self.num_threads as f32 {
             // We have fallen outside the corridor
-            self.step_direction = DOWN;
+            self.step_direction = Direction::Down;
             self.step_size = i32::max(1, self.num_threads as i32 / 2);
         } else {
             if speedup > self.num_threads as f32 {

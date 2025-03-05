@@ -1,12 +1,11 @@
-const UP: i32 = 1;
-const DOWN: i32 = -1;
+use crate::direction::Direction;
 
 #[repr(C)]
 pub struct Controller {
     num_threads: f32,
     max_threads: f32,
     step_size: f32,
-    step_direction: i32,
+    step_direction: Direction,
     e_prev: f32,
 }
 
@@ -16,7 +15,7 @@ impl Controller {
             num_threads: max_threads as f32,
             max_threads: max_threads as f32,
             step_size: max_threads as f32,
-            step_direction: DOWN,
+            step_direction: Direction::Down,
             e_prev: 0.0,
         }
     }
@@ -41,7 +40,7 @@ impl Controller {
         }
 
         self.e_prev = e_next;
-        self.num_threads += self.step_direction as f32 * self.step_size;
+        self.num_threads += self.step_direction * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
         self.num_threads.round() as i32
     }
@@ -51,9 +50,9 @@ impl Controller {
     #[inline]
     fn reset_direction(&mut self) {
         self.step_direction = if self.num_threads < self.max_threads * 0.65 {
-            UP
+            Direction::Up
         } else {
-            DOWN
+            Direction::Down
         };
     }
 
