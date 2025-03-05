@@ -1,5 +1,3 @@
-mod message;
-
 use std::collections::HashMap;
 use std::os::unix::net::UnixListener;
 use std::io::{self, Read, Write};
@@ -7,7 +5,7 @@ use std::fs;
 
 //use controller::corridor_controller::Controller;
 use controller::delta_controller::Controller;
-use message::Message;
+use letterbox::{Incoming, Outgoing};
 
 const SOCKET_PATH: &str = "/tmp/mtdynamic_letterbox";
 
@@ -17,8 +15,8 @@ pub struct Letterbox<const N: usize> {
 }
 
 impl<const N: usize> Letterbox<N> {
-    pub fn update(&mut self, msg: Message) -> i32 {
-        if let Some((controller, samples)) = self.letterboxes.get_mut(&(msg.pid, msg.fid)) {
+    pub fn update(&mut self, msg: Incoming) -> Outgoing {
+        let threads = if let Some((controller, samples)) = self.letterboxes.get_mut(&(msg.pid, msg.fid)) {
             samples.push(msg.val);
 
             if samples.len >= N {
@@ -32,7 +30,8 @@ impl<const N: usize> Letterbox<N> {
             let samples = Samples::from(msg.val);
             self.letterboxes.insert((msg.pid, msg.fid), (controller, samples));
             max_threads
-        }
+        };
+        Outgoing { threads }
     }
 }
 
@@ -80,15 +79,16 @@ fn main() -> io::Result<()> {
             Ok(mut stream) => {
                 // Read from stream
                 stream.read_exact(&mut buffer)?;
-                let msg = Message::from(buffer);
-                println!("Recv: {:?}", msg);
+                let incoming = Incoming::from(buffer);
+                println!("Recv: {:?}", incoming);
 
                 // Update letterbox
-                let threads = letterbox.update(msg);
+                let outgoing = letterbox.update(incoming);
 
                 // Write to stream
-                stream.write_all(&threads.to_ne_bytes())?;
-                println!("Send: {}", threads);
+                println!("Send: {:?}", outgoing);
+                let buf: [u8; 4] = outgoing.to_bytes();
+                stream.write_all(&buf)?;
             }
             Err(e) => {
                 eprintln!("Connection failed: {}", e);

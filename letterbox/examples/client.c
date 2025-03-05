@@ -6,13 +6,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define SOCKET_PATH "/tmp/mtdynamic_letterbox"
+#include "../../mtdynamic.h"
 
-struct Send {
-    int pid;
-    int fid;
-    float value;
-};
+#define SOCKET_PATH "/tmp/mtdynamic_letterbox"
 
 void foo(void) { }
 
@@ -37,12 +33,12 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    struct Send send;
+    struct Incoming send;
     send.pid = (int)getpid();
     send.fid = (int)((uintptr_t)foo);
-    send.value = 1.234;
+    send.val = 1.234;
 
-    printf("Sending: (%d, %d) -> %f\n", send.pid, send.fid, send.value);
+    printf("Send: (%d, %d, %f)\n", send.pid, send.fid, send.val);
 
     // Send the integer to the server
     if (write(sockfd, &send, sizeof(send)) == -1) {
@@ -52,14 +48,14 @@ int main() {
     }
 
     // Read the incremented number from the server
-    int received;
-    if (read(sockfd, &received, sizeof(int)) == -1) {
+    struct Outgoing recv;
+    if (read(sockfd, &recv, sizeof(recv)) == -1) {
         perror("read");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
 
-    printf("Received: %d\n", received);
+    printf("Recv: %d\n", recv.threads);
 
     // Close the socket
     close(sockfd);
