@@ -7,7 +7,7 @@ use std::fs;
 use controller::delta_controller::Controller;
 use letterbox::{Incoming, Outgoing};
 
-const SOCKET_PATH: &str = "/tmp/mtdynamic_letterbox";
+const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 
 #[derive(Default)]
 pub struct Letterbox<const N: usize> {
@@ -62,13 +62,13 @@ impl<const N: usize> From<f32> for Samples<N> {
 
 fn main() -> io::Result<()> {
     // Remove any existing socket file
-    if fs::metadata(SOCKET_PATH).is_ok() {
-        fs::remove_file(SOCKET_PATH)?;
+    if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
+        fs::remove_file(MTD_LETTERBOX_PATH)?;
     }
 
     // Create a listener
-    let listener = UnixListener::bind(SOCKET_PATH)?;
-    println!("Server listening on {}", SOCKET_PATH);
+    let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
+    println!("Server listening on {}", MTD_LETTERBOX_PATH);
 
     // Create a letterbox
     let mut letterbox: Letterbox<10> = Letterbox::default();

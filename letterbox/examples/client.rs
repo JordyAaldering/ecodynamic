@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 
 use letterbox::{Incoming, Outgoing};
 
-const SOCKET_PATH: &str = "/tmp/mtdynamic_letterbox";
+const SOCKET_PATH: &str = "/tmp/mtd_letterbox";
 
 fn main() -> std::io::Result<()> {
     let mut stream = UnixStream::connect(SOCKET_PATH)?;
