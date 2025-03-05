@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 controller = { path = "../controller" }
+num_cpus = "1.16.0"
