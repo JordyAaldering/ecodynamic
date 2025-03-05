@@ -15,12 +15,12 @@ pub struct Letterbox<const N: usize> {
 }
 
 impl<const N: usize> Letterbox<N> {
-    pub fn update(&mut self, pid: i32, fid: i32, value: i32) -> i32 {
+    pub fn update(&mut self, pid: i32, fid: i32, value: f32) -> i32 {
         if let Some((controller, samples)) = self.letterboxes.get_mut(&(pid, fid)) {
             samples.push(value);
 
             if samples.len >= N {
-                controller.adjust_threads(samples.take().map(|x| x as f32).to_vec())
+                controller.adjust_threads(samples.take())
             } else {
                 controller.threads()
             }
@@ -34,27 +34,25 @@ impl<const N: usize> Letterbox<N> {
 }
 
 struct Samples<const N: usize> {
-    elems: [i32; N],
+    elems: [f32; N],
     len: usize,
 }
 
 impl<const N: usize> Samples<N> {
-    fn take(&mut self) -> [i32; N] {
-        let res = self.elems;
-        self.elems = [0; N];
-        res
+    fn take(&mut self) -> Vec<f32> {
+        self.elems.to_vec()
     }
 
-    fn push(&mut self, value: i32) {
+    fn push(&mut self, value: f32) {
         assert!(self.len < N);
         self.elems[self.len] = value;
         self.len += 1;
     }
 }
 
-impl<const N: usize> From<i32> for Samples<N> {
-    fn from(value: i32) -> Self {
-        let mut elems = [0; N];
+impl<const N: usize> From<f32> for Samples<N> {
+    fn from(value: f32) -> Self {
+        let mut elems = [0f32; N];
         elems[0] = value;
         Self { elems, len: 1 }
     }
@@ -83,8 +81,8 @@ fn main() -> std::io::Result<()> {
                 // Read from stream
                 stream.read_exact(&mut buffer)?;
                 let pid = i32::from_ne_bytes(buffer[0..4].try_into().unwrap());
-                let fid = i32::from_ne_bytes(buffer[0..4].try_into().unwrap());
-                let value = i32::from_ne_bytes(buffer[0..4].try_into().unwrap());
+                let fid = i32::from_ne_bytes(buffer[4..8].try_into().unwrap());
+                let value = f32::from_ne_bytes(buffer[8..12].try_into().unwrap());
                 println!("Received: ({}, {}) -> {}", pid, fid, value);
 
                 // Update letterbox

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -7,20 +8,24 @@
 
 #define SOCKET_PATH "/tmp/mtdynamic_letterbox"
 
-int main() {
-    int sockfd;
-    struct sockaddr_un addr;
-    int send[3] = {10, 20, 30};
-    int received;
+struct Send {
+    int pid;
+    int fid;
+    float value;
+};
 
+void foo(void) { }
+
+int main() {
     // Create a Unix domain socket
-    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sockfd == -1) {
         perror("socket");
         exit(EXIT_FAILURE);
     }
 
     // Set up the socket address structure
+    struct sockaddr_un addr;
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
@@ -32,7 +37,12 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf("Sending: (%d, %d) -> %d\n", send[0], send[1], send[2]);
+    struct Send send;
+    send.pid = (int)getpid();
+    send.fid = (int)((uintptr_t)foo);
+    send.value = 1.234;
+
+    printf("Sending: (%d, %d) -> %f\n", send.pid, send.fid, send.value);
 
     // Send the integer to the server
     if (write(sockfd, &send, sizeof(send)) == -1) {
@@ -42,6 +52,7 @@ int main() {
     }
 
     // Read the incremented number from the server
+    int received;
     if (read(sockfd, &received, sizeof(int)) == -1) {
         perror("read");
         close(sockfd);

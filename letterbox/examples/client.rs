@@ -9,15 +9,14 @@ fn main() -> std::io::Result<()> {
 
     let mut stream = UnixStream::connect(SOCKET_PATH)?;
 
-    let number = std::env::args().collect::<Vec<_>>()[1].parse::<i32>().unwrap();
+    let value = std::env::args().collect::<Vec<_>>()[1].parse::<f32>().unwrap();
 
     // Write 'measurement' to stream
-    let numbers = [pid, fid, number];
-    println!("Sending: {:?}", numbers);
+    println!("Sending: ({}, {}) -> {:?}", pid, fid, value);
     let mut buffer = Vec::new();
-    for &num in &numbers {
-        buffer.extend_from_slice(&num.to_ne_bytes());
-    }
+    buffer.extend_from_slice(&pid.to_ne_bytes());
+    buffer.extend_from_slice(&fid.to_ne_bytes());
+    buffer.extend_from_slice(&value.to_ne_bytes());
     stream.write_all(&buffer)?;
 
     // Read thread-count from stream
