@@ -13,7 +13,7 @@ fn main() -> std::io::Result<()> {
 
     loop {
         // Write to stream
-        let incoming = Incoming { uid: 0, val: 42.37 };
+        let incoming = Incoming { max: 16, uid: 0, val: 42.37 };
         println!("Send: {:?}", incoming);
         stream.write_all(&incoming.to_bytes())?;
 

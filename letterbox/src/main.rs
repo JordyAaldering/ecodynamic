@@ -25,11 +25,10 @@ impl<const N: usize> Letterbox<N> {
                 controller.threads()
             }
         } else {
-            let max_threads = num_cpus::get() as i32;
-            let controller = Controller::new(max_threads);
+            let controller = Controller::new(msg.max);
             let samples = Samples::from(msg.val);
             self.letterboxes.insert(msg.uid, (controller, samples));
-            max_threads
+            msg.max
         };
         Outgoing { threads }
     }

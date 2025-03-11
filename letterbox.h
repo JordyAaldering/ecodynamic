@@ -6,6 +6,7 @@
 #define MTD_LETTERBOX_PATH "/tmp/mtd_letterbox"
 
 struct Incoming {
+    int32_t max;
     int32_t uid;
     float val;
 };

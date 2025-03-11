@@ -33,6 +33,7 @@ int main() {
     while (1) {
         // Write to stream
         struct Incoming send;
+        send.max = 16;
         send.uid = (int)((uintptr_t)foo);
         send.val = 1.234;
         printf("Send: (%d, %f)\n", send.uid, send.val);

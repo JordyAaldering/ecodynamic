@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 controller = { path = "../controller" }
-num_cpus = "1.16.0"
 
 [build-dependencies]
 cbindgen = "0.28.0"
