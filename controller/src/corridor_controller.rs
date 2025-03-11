@@ -49,6 +49,10 @@ impl Controller {
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
         self.num_threads
     }
+
+    pub fn threads(&self) -> i32 {
+        self.num_threads
+    }
 }
 
 const FREQDIST_RANGES: usize = 5;
