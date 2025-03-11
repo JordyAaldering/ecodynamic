@@ -60,7 +60,7 @@ impl<const N: usize> From<f32> for Samples<N> {
 }
 
 fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
-    let mut letterbox: Letterbox<10> = Letterbox::default();
+    let mut letterbox: Letterbox<20> = Letterbox::default();
     let mut buffer = [0u8; mem::size_of::<Sample>()];
 
     loop {

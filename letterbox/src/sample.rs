@@ -12,7 +12,7 @@ const SIZE: usize = mem::size_of::<Sample>();
 
 impl Sample {
     pub fn to_bytes(self) -> [u8; SIZE] {
-        let [m0, m1, m2, m3] = self.uid.to_ne_bytes();
+        let [m0, m1, m2, m3] = self.max.to_ne_bytes();
         let [u0, u1, u2, u3] = self.uid.to_ne_bytes();
         let [v0, v1, v2, v3] = self.val.to_ne_bytes();
         [m0, m1, m2, m3,

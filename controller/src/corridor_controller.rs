@@ -25,14 +25,13 @@ impl Controller {
     pub fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
         let tn = frequency_dist(samples);
 
-        let speedup = self.t1 / tn;
-        if speedup < 0.5 * self.num_threads as f32 {
+        if self.t1 / tn < 0.5 * self.num_threads as f32 {
             // We have fallen outside the corridor
             self.step_direction = Direction::Down;
-            self.step_size = i32::max(1, self.num_threads as i32 / 2);
+            self.step_size = i32::max(1, self.num_threads / 2);
         } else {
-            if speedup > self.num_threads as f32 {
-                // In the initial iteration t1 and t_last are f64::MAX so we
+            if self.t1 / tn > self.num_threads as f32 {
+                // In the initial iteration t1 and t_prev are f32::MAX so we
                 // reach this condition, an initialize t1 with an actual value
                 self.t1 = tn * self.num_threads as f32;
             }
