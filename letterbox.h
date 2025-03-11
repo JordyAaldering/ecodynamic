@@ -5,7 +5,7 @@
 
 #define MTD_LETTERBOX_PATH "/tmp/mtd_letterbox"
 
-struct Incoming {
+struct Sample {
     int32_t max;
     int32_t uid;
     float val;

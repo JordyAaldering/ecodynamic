@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 use std::thread::sleep;
 use std::time::Duration;
 
-use letterbox::{Incoming, Outgoing};
+use letterbox::{Sample, Outgoing};
 
 const SOCKET_PATH: &str = "/tmp/mtd_letterbox";
 
@@ -13,7 +13,7 @@ fn main() -> std::io::Result<()> {
 
     loop {
         // Write to stream
-        let incoming = Incoming { max: 16, uid: 0, val: 42.37 };
+        let incoming = Sample { max: 16, uid: 0, val: 42.37 };
         println!("Send: {:?}", incoming);
         stream.write_all(&incoming.to_bytes())?;
 

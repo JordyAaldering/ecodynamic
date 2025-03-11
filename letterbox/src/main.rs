@@ -3,9 +3,9 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::{self, Read, Write};
 use std::{fs, mem};
 
-//use controller::corridor_controller::Controller;
-use controller::delta_controller::Controller;
-use letterbox::{Incoming, Outgoing};
+use controller::corridor_controller::Controller;
+//use controller::delta_controller::Controller;
+use letterbox::{Sample, Outgoing};
 
 const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 
@@ -15,7 +15,7 @@ pub struct Letterbox<const N: usize> {
 }
 
 impl<const N: usize> Letterbox<N> {
-    pub fn update(&mut self, msg: Incoming) -> Outgoing {
+    pub fn update(&mut self, msg: Sample) -> Outgoing {
         let threads = if let Some((controller, samples)) = self.letterboxes.get_mut(&msg.uid) {
             samples.push(msg.val);
 
@@ -61,13 +61,13 @@ impl<const N: usize> From<f32> for Samples<N> {
 
 fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
     let mut letterbox: Letterbox<10> = Letterbox::default();
-    let mut buffer = [0u8; mem::size_of::<Incoming>()];
+    let mut buffer = [0u8; mem::size_of::<Sample>()];
 
     loop {
         // Try to read from the stream
         match stream.read_exact(&mut buffer) {
             Ok(()) => {
-                let incoming = Incoming::from(buffer);
+                let incoming = Sample::from(buffer);
                 println!("Recv: {:?}", incoming);
 
                 // Update letterbox

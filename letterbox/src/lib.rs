@@ -1,5 +1,5 @@
-mod incoming;
+mod sample;
 mod outgoing;
 
-pub use incoming::Incoming;
+pub use sample::Sample;
 pub use outgoing::Outgoing;

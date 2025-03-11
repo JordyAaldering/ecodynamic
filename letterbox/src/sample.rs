@@ -2,15 +2,15 @@ use std::mem;
 
 #[repr(C)]
 #[derive(Debug)]
-pub struct Incoming {
+pub struct Sample {
     pub max: i32,
     pub uid: i32,
     pub val: f32,
 }
 
-const SIZE: usize = mem::size_of::<Incoming>();
+const SIZE: usize = mem::size_of::<Sample>();
 
-impl Incoming {
+impl Sample {
     pub fn to_bytes(self) -> [u8; SIZE] {
         let [m0, m1, m2, m3] = self.uid.to_ne_bytes();
         let [u0, u1, u2, u3] = self.uid.to_ne_bytes();
@@ -21,7 +21,7 @@ impl Incoming {
     }
 }
 
-impl From<[u8; SIZE]> for Incoming {
+impl From<[u8; SIZE]> for Sample {
     fn from(buffer: [u8; SIZE]) -> Self {
         let [m0, m1, m2, m3,
              u0, u1, u2, u3,

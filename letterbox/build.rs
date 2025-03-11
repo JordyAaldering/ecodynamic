@@ -9,7 +9,7 @@ fn main() {
         .with_sys_include("stdint.h")
         .with_include_guard("_MTD_LETTERBOX_H_")
         .with_after_include("\n#define MTD_LETTERBOX_PATH \"/tmp/mtd_letterbox\"")
-        .include_item("Incoming")
+        .include_item("Sample")
         .include_item("Outgoing")
         .generate()
         .expect("Unable to generate bindings")
