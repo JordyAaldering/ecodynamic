@@ -30,29 +30,32 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // Write to stream
-    struct Incoming send;
-    send.pid = (int)getpid();
-    send.fid = (int)((uintptr_t)foo);
-    send.val = 1.234;
-    printf("Send: (%d, %d, %f)\n", send.pid, send.fid, send.val);
+    while (1) {
+        // Write to stream
+        struct Incoming send;
+        send.uid = (int)((uintptr_t)foo);
+        send.val = 1.234;
+        printf("Send: (%d, %f)\n", send.uid, send.val);
 
-    if (write(sockfd, &send, sizeof(send)) == -1) {
-        perror("write");
-        close(sockfd);
-        exit(EXIT_FAILURE);
+        if (write(sockfd, &send, sizeof(send)) == -1) {
+            perror("write");
+            close(sockfd);
+            exit(EXIT_FAILURE);
+        }
+
+        // Read from stream
+        struct Outgoing msg;
+
+        if (read(sockfd, &msg, sizeof(msg)) == -1) {
+            perror("read");
+            close(sockfd);
+            exit(EXIT_FAILURE);
+        }
+
+        sleep(1);
+
+        printf("Recv: %d\n", msg.threads);
     }
-
-    // Read from stream
-    struct Outgoing recv;
-
-    if (read(sockfd, &recv, sizeof(recv)) == -1) {
-        perror("read");
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Recv: %d\n", recv.threads);
 
     // Close the socket
     close(sockfd);
