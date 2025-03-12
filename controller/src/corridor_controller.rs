@@ -1,7 +1,8 @@
-use crate::direction::Direction;
+use crate::{direction::Direction, Builder, Controller};
 
-#[repr(C)]
-pub struct Controller {
+pub struct CorridorBuilder();
+
+pub struct CorridorController {
     num_threads: i32,
     max_threads: i32,
     step_size: i32,
@@ -10,9 +11,9 @@ pub struct Controller {
     t1: f32,
 }
 
-impl Controller {
-    pub fn new(max_threads: i32) -> Self {
-        Self {
+impl Builder<CorridorController> for CorridorBuilder {
+    fn build(&self, max_threads: i32) -> CorridorController {
+        CorridorController {
             num_threads: max_threads,
             max_threads: max_threads,
             step_size: max_threads,
@@ -21,8 +22,10 @@ impl Controller {
             t1: f32::MAX,
         }
     }
+}
 
-    pub fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
+impl Controller for CorridorController {
+    fn adjust_threads(&mut self, samples: Vec<f32>) {
         let tn = frequency_dist(samples);
 
         if self.t1 / tn < 0.5 * self.num_threads as f32 {
@@ -46,10 +49,9 @@ impl Controller {
         self.t_prev = tn;
         self.num_threads += self.step_direction * self.step_size;
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
-        self.num_threads
     }
 
-    pub fn threads(&self) -> i32 {
+    fn get_threads(&self) -> i32 {
         self.num_threads
     }
 }

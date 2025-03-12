@@ -2,10 +2,15 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::{self, Read, Write};
 use std::{fs, mem};
 
+#[cfg(feature = "corridor")]
+use controller::{CorridorBuilder as Builder, CorridorController as Controller};
+#[cfg(feature = "delta")]
+use controller::{DeltaBuilder as Builder, DeltaController as Controller};
+
 use letterbox::*;
 
 fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
-    let mut letterbox: Letterbox<20> = Letterbox::default();
+    let mut letterbox: Letterbox<Controller, 20> = Letterbox::new(Box::new(Builder{}));
 
     let mut buffer = [0u8; mem::size_of::<Sample>()];
 

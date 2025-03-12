@@ -1,7 +1,8 @@
-use crate::direction::Direction;
+use crate::{direction::Direction, Builder, Controller};
 
-#[repr(C)]
-pub struct Controller {
+pub struct DeltaBuilder();
+
+pub struct DeltaController {
     num_threads: f32,
     max_threads: f32,
     step_size: f32,
@@ -9,9 +10,9 @@ pub struct Controller {
     e_prev: f32,
 }
 
-impl Controller {
-    pub fn new(max_threads: i32) -> Self {
-        Self {
+impl Builder<DeltaController> for DeltaBuilder {
+    fn build(&self, max_threads: i32) -> DeltaController {
+        DeltaController {
             num_threads: max_threads as f32,
             max_threads: max_threads as f32,
             step_size: max_threads as f32,
@@ -19,8 +20,22 @@ impl Controller {
             e_prev: 0.0,
         }
     }
+}
 
-    pub fn adjust_threads(&mut self, samples: Vec<f32>) -> i32 {
+impl DeltaController {
+    /// Reset the step direction with a slight preference for increasing the thread count;
+    /// since typically we don't want to end up in a case where we are single-threaded.
+    fn reset_direction(&mut self) {
+        self.step_direction = if self.num_threads < self.max_threads * 0.65 {
+            Direction::Up
+        } else {
+            Direction::Down
+        };
+    }
+}
+
+impl Controller for DeltaController {
+    fn adjust_threads(&mut self, samples: Vec<f32>) {
         let e_next = median(samples);
 
         if e_next > self.e_prev * 1.50 {
@@ -42,21 +57,9 @@ impl Controller {
         self.e_prev = e_next;
         self.num_threads += self.step_direction * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
-        self.num_threads.round() as i32
     }
 
-    /// Reset the step direction with a slight preference for increasing the thread count;
-    /// since typically we don't want to end up in a case where we are single-threaded.
-    #[inline]
-    fn reset_direction(&mut self) {
-        self.step_direction = if self.num_threads < self.max_threads * 0.65 {
-            Direction::Up
-        } else {
-            Direction::Down
-        };
-    }
-
-    pub fn threads(&self) -> i32 {
+    fn get_threads(&self) -> i32 {
         self.num_threads.round() as i32
     }
 }
