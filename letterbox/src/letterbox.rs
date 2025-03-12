@@ -14,9 +14,9 @@ impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
         Self { builder, letterbox: HashMap::new() }
     }
 
-    pub fn update(&mut self, msg: Sample) -> Demand {
-        let threads = if let Some((controller, samples)) = self.letterbox.get_mut(&msg.uid) {
-            samples.push(msg.val);
+    pub fn update(&mut self, sample: Sample) -> Demand {
+        let threads = if let Some((controller, samples)) = self.letterbox.get_mut(&sample.uid) {
+            samples.push(sample.val);
 
             if samples.len >= N {
                 controller.adjust_threads(samples.take())
@@ -24,10 +24,10 @@ impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
 
             controller.get_threads()
         } else {
-            let controller = self.builder.build(msg.max);
-            let samples = Samples::from(msg.val);
-            self.letterbox.insert(msg.uid, (controller, samples));
-            msg.max
+            let controller = self.builder.build(sample.max);
+            let samples = Samples::from(sample.val);
+            self.letterbox.insert(sample.uid, (controller, samples));
+            sample.max
         };
 
         Demand { threads }

@@ -22,18 +22,6 @@ impl Builder<DeltaController> for DeltaBuilder {
     }
 }
 
-impl DeltaController {
-    /// Reset the step direction with a slight preference for increasing the thread count;
-    /// since typically we don't want to end up in a case where we are single-threaded.
-    fn reset_direction(&mut self) {
-        self.step_direction = if self.num_threads < self.max_threads * 0.65 {
-            Direction::Up
-        } else {
-            Direction::Down
-        };
-    }
-}
-
 impl Controller for DeltaController {
     fn adjust_threads(&mut self, samples: Vec<f32>) {
         let e_next = median(samples);
@@ -61,6 +49,18 @@ impl Controller for DeltaController {
 
     fn get_threads(&self) -> i32 {
         self.num_threads.round() as i32
+    }
+}
+
+impl DeltaController {
+    /// Reset the step direction with a slight preference for increasing the thread count;
+    /// since typically we don't want to end up in a case where we are single-threaded.
+    fn reset_direction(&mut self) {
+        self.step_direction = if self.num_threads < self.max_threads * 0.65 {
+            Direction::Up
+        } else {
+            Direction::Down
+        };
     }
 }
 
