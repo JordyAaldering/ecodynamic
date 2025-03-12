@@ -11,7 +11,7 @@ struct Sample {
     float val;
 };
 
-struct Outgoing {
+struct Demand {
     int32_t threads;
 };
 

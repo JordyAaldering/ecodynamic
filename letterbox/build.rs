@@ -10,7 +10,7 @@ fn main() {
         .with_include_guard("_MTD_LETTERBOX_H_")
         .with_after_include("\n#define MTD_LETTERBOX_PATH \"/tmp/mtd_letterbox\"")
         .include_item("Sample")
-        .include_item("Outgoing")
+        .include_item("Demand")
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file("../letterbox.h");
