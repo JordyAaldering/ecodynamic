@@ -11,8 +11,8 @@ pub struct CorridorController {
 impl Default for CorridorController {
     fn default() -> Self {
         Self {
-            num_threads: Percentage::new(100),
-            step_size: Percentage::new(100),
+            num_threads: Percentage::FULL,
+            step_size: Percentage::FULL,
             step_direction: Direction::Down,
             t_prev: f32::MAX,
             t1: f32::MAX,
@@ -26,7 +26,7 @@ impl Controller for CorridorController {
 
         if self.t1 / tn < 0.5 * *self.num_threads as f32 {
             // We have fallen outside the corridor
-            self.step_size = Percentage::new(50);
+            self.step_size = Percentage::HALF;
             self.step_direction = Direction::Down;
         } else {
             if self.t1 / tn > *self.num_threads as f32 {

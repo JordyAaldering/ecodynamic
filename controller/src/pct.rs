@@ -7,15 +7,18 @@ use crate::dir::Direction;
 pub struct Percentage(u8);
 
 impl Percentage {
-    pub fn new(pct: u8) -> Self {
-        Self(pct)
-    }
+    pub const HALF: Self = Percentage(50);
+    pub const FULL: Self = Percentage(100);
 
     pub fn adjust(&mut self, pct: Percentage, dir: Direction) {
         self.0 = match dir {
             Direction::Up => self.0.saturating_add(pct.0).min(100),
             Direction::Down => self.0.saturating_sub(pct.0),
         }
+    }
+
+    pub fn map(&mut self, f: fn(u8) -> u8) {
+        self.0 = f(self.0);
     }
 }
 

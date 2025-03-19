@@ -10,8 +10,8 @@ pub struct DeltaController {
 impl Default for DeltaController {
     fn default() -> Self {
         Self {
-            num_threads: Percentage::new(100),
-            step_size: Percentage::new(100),
+            num_threads: Percentage::FULL,
+            step_size: Percentage::FULL,
             step_direction: Direction::Down,
             e_prev: 0.0,
         }
@@ -23,7 +23,7 @@ impl Controller for DeltaController {
         let e_next = median(samples);
 
         if e_next > self.e_prev * 1.50 {
-            self.step_size = Percentage::new(50);
+            self.step_size = Percentage::HALF;
             self.reset_direction();
         } else {
             if e_next > self.e_prev {
@@ -31,10 +31,10 @@ impl Controller for DeltaController {
             }
 
             if *self.step_size > 16 {
-                let v = *self.step_size as f32;
-                self.step_size = Percentage::new(f32::max(v * 0.6, v / (0.85 + v)) as u8);
+                // todo, obviously we need to clean this up
+                self.step_size.map(|x| f32::max(x as f32 * 0.6, x as f32 / (0.85 + x as f32)) as u8);
             } else {
-                self.step_size = Percentage::new(50);
+                self.step_size = Percentage::HALF;
                 self.reset_direction();
             }
         }
