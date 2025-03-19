@@ -1,7 +1,7 @@
 mod corridor_controller;
 mod delta_controller;
-mod direction;
-mod percentage;
+mod dir;
+mod pct;
 
 pub use corridor_controller::*;
 pub use delta_controller::*;

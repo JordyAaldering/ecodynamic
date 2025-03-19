@@ -1,4 +1,4 @@
-use crate::{direction::Direction, percentage::Percentage, Controller};
+use crate::{dir::Direction, pct::Percentage, Controller};
 
 pub struct DeltaController {
     num_threads: Percentage,

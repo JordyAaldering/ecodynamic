@@ -1,6 +1,6 @@
 use std::ops;
 
-use crate::direction::Direction;
+use crate::dir::Direction;
 
 #[repr(transparent)]
 #[derive(Clone, Copy)]
