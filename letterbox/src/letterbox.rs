@@ -1,19 +1,15 @@
 use std::collections::HashMap;
 
-use controller::{Builder, Controller};
+use controller::Controller;
 
 use crate::{Demand, Sample};
 
+#[derive(Default)]
 pub struct Letterbox<Ctrl: Controller, const N: usize> {
-    builder: Box<dyn Builder<Ctrl>>,
     letterbox: HashMap<i32, (Ctrl, Samples<N>)>,
 }
 
 impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
-    pub fn new(builder: Box<dyn Builder<Ctrl>>) -> Self {
-        Self { builder, letterbox: HashMap::new() }
-    }
-
     pub fn update(&mut self, sample: Sample) -> Demand {
         let threads = if let Some((controller, samples)) = self.letterbox.get_mut(&sample.uid) {
             samples.push(sample.val);
@@ -22,12 +18,12 @@ impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
                 controller.adjust_threads(samples.take())
             }
 
-            controller.get_threads()
+            controller.num_threads()
         } else {
-            let controller = self.builder.build(sample.max);
+            let controller = Ctrl::default();
             let samples = Samples::from(sample.val);
             self.letterbox.insert(sample.uid, (controller, samples));
-            sample.max
+            100
         };
 
         Demand { threads }

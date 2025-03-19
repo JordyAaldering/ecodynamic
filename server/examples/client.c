@@ -32,22 +32,21 @@ int main() {
 
     while (1) {
         // Write to stream
-        struct Incoming send;
-        send.max = 16;
-        send.uid = (int)((uintptr_t)foo);
-        send.val = 1.234;
-        printf("Send: (%d, %f)\n", send.uid, send.val);
+        struct Sample sample;
+        sample.uid = (int)((uintptr_t)foo);
+        sample.val = 1.234;
+        printf("Send: (%d, %f)\n", sample.uid, sample.val);
 
-        if (write(sockfd, &send, sizeof(send)) == -1) {
+        if (write(sockfd, &sample, sizeof(struct Sample)) == -1) {
             perror("write");
             close(sockfd);
             exit(EXIT_FAILURE);
         }
 
         // Read from stream
-        struct Outgoing msg;
+        struct Demand demand;
 
-        if (read(sockfd, &msg, sizeof(msg)) == -1) {
+        if (read(sockfd, &demand, sizeof(struct Demand)) == -1) {
             perror("read");
             close(sockfd);
             exit(EXIT_FAILURE);
@@ -55,7 +54,7 @@ int main() {
 
         sleep(1);
 
-        printf("Recv: %d\n", msg.threads);
+        printf("Recv: %d\n", demand.threads);
     }
 
     // Close the socket
