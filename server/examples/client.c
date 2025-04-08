@@ -33,9 +33,9 @@ int main() {
     while (1) {
         // Write to stream
         struct Sample sample;
+        sample.region_uid = (int)((uintptr_t)foo);
         sample.max_threads = 16;
         sample.num_threads = 16;
-        sample.region_uid = (int)((uintptr_t)foo);
         sample.runtime = 1.234;
         sample.usertime = 2.345;
         sample.energy = 3.456;
