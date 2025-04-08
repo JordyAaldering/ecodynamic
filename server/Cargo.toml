@@ -15,6 +15,7 @@ path = "src/main.rs"
 default = ["corridor"]
 corridor = []
 delta = []
+genetic = []
 
 [dependencies]
 controller = { path = "../controller" }

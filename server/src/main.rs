@@ -7,6 +7,8 @@ use controller::Sample;
 use controller::{CorridorBuilder as Builder, CorridorController as Controller};
 #[cfg(feature = "delta")]
 use controller::{DeltaBuilder as Builder, DeltaController as Controller};
+#[cfg(feature = "genetic")]
+use controller::{GeneticBuilder as Builder, GeneticController as Controller};
 
 use letterbox::{Letterbox, MTD_LETTERBOX_PATH};
 
