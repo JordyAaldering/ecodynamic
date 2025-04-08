@@ -7,8 +7,8 @@ pub struct GeneticBuilder {
 }
 
 pub struct GeneticController {
+    pub population: Vec<Chromosome>,
     max_threads: i32,
-    population: Vec<Chromosome>,
     // Configuration
     population_size: usize,
     survival_rate: f32,
@@ -19,8 +19,8 @@ impl Builder<GeneticController> for GeneticBuilder {
     fn build(&self, max_threads: i32) -> GeneticController {
         let population = (0..self.population_size).map(|_| Chromosome::rand(max_threads)).collect();
         GeneticController {
-            max_threads,
             population,
+            max_threads,
             population_size: self.population_size,
             survival_rate: self.survival_rate,
             mutation_rate: self.mutation_rate,
@@ -59,8 +59,8 @@ impl Controller for GeneticController {
 }
 
 #[derive(Clone)]
-struct Chromosome {
-    num_threads: i32,
+pub struct Chromosome {
+    pub num_threads: i32,
 }
 
 impl Chromosome {
