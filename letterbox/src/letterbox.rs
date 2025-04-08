@@ -15,45 +15,57 @@ impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
     }
 
     pub fn update(&mut self, sample: Sample) -> Demand {
-        let threads = if let Some((controller, samples)) = self.letterbox.get_mut(&sample.uid) {
-            samples.push(sample.val);
+        let threads = if let Some((controller, samples)) = self.letterbox.get_mut(&sample.region_uid) {
+            samples.push(sample);
 
             if samples.len >= N {
-                controller.adjust_threads(samples.take())
+                let samples = samples.take().into_iter().map(|s| s.energy).collect();
+                controller.adjust_threads(samples)
             }
 
             controller.num_threads()
         } else {
-            let controller = self.builder.build(sample.max);
-            let samples = Samples::from(sample.val);
-            self.letterbox.insert(sample.uid, (controller, samples));
-            sample.max
+            let uid = sample.region_uid;
+            let max_threads = sample.max_threads;
+            let controller = self.builder.build(max_threads);
+            let samples = Samples::from(sample);
+            self.letterbox.insert(uid, (controller, samples));
+            max_threads
         };
 
-        Demand { threads }
+        Demand { num_threads: threads }
     }
 }
 
 struct Samples<const N: usize> {
-    elems: [f32; N],
+    elems: [Sample; N],
     len: usize,
 }
 
 impl<const N: usize> Samples<N> {
-    fn take(&mut self) -> Vec<f32> {
+    fn take(&mut self) -> Vec<Sample> {
         self.len = 0;
         self.elems.to_vec()
     }
 
-    fn push(&mut self, value: f32) {
+    fn push(&mut self, value: Sample) {
         self.elems[self.len] = value;
         self.len += 1;
     }
 }
 
-impl<const N: usize> From<f32> for Samples<N> {
-    fn from(value: f32) -> Self {
-        let mut elems = [0f32; N];
+impl<const N: usize> From<Sample> for Samples<N> {
+    fn from(value: Sample) -> Self {
+        const SAMPLE: Sample = Sample {
+            max_threads: 0,
+            num_threads: 0,
+            region_uid: 0,
+            runtime: 0.0,
+            usertime: 0.0,
+            energy: 0.0,
+        };
+
+        let mut elems = [SAMPLE; N];
         elems[0] = value;
         Self { elems, len: 1 }
     }

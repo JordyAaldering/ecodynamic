@@ -33,10 +33,12 @@ int main() {
     while (1) {
         // Write to stream
         struct Sample sample;
-        sample.max = 16;
-        sample.uid = (int)((uintptr_t)foo);
-        sample.val = 1.234;
-        printf("Send: (%d, %f)\n", sample.uid, sample.val);
+        sample.max_threads = 16;
+        sample.num_threads = 16;
+        sample.region_uid = (int)((uintptr_t)foo);
+        sample.runtime = 1.234;
+        sample.usertime = 2.345;
+        sample.energy = 3.456;
 
         if (write(sockfd, &sample, sizeof(sample)) == -1) {
             perror("write");
@@ -55,7 +57,7 @@ int main() {
 
         sleep(1);
 
-        printf("Recv: %d\n", demand.threads);
+        printf("Recv: %d\n", demand.num_threads);
     }
 
     // Close the socket

@@ -10,8 +10,17 @@ fn main() -> std::io::Result<()> {
     let mut stream = UnixStream::connect(MTD_LETTERBOX_PATH)?;
 
     loop {
+        // Create a sample
+        let incoming = Sample {
+            max_threads: 16,
+            num_threads: 16,
+            region_uid: 0,
+            runtime: 42.37,
+            usertime: 16.0 * 45.11,
+            energy: 98.30
+        };
+
         // Write to stream
-        let incoming = Sample { max: 16, uid: 0, val: 42.37 };
         println!("Send: {:?}", incoming);
         stream.write_all(&incoming.to_bytes())?;
 
