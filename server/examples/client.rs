@@ -4,16 +4,14 @@ use std::io::{Read, Write};
 use std::thread::sleep;
 use std::time::Duration;
 
-use letterbox::{Sample, Demand};
-
-const SOCKET_PATH: &str = "/tmp/mtd_letterbox";
+use letterbox::{Demand, Sample, MTD_LETTERBOX_PATH};
 
 fn main() -> std::io::Result<()> {
-    let mut stream = UnixStream::connect(SOCKET_PATH)?;
+    let mut stream = UnixStream::connect(MTD_LETTERBOX_PATH)?;
 
     loop {
         // Write to stream
-        let incoming = Sample { uid: 0, val: 42.37 };
+        let incoming = Sample { max: 16, uid: 0, val: 42.37 };
         println!("Send: {:?}", incoming);
         stream.write_all(&incoming.to_bytes())?;
 

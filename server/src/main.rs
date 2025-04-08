@@ -3,14 +3,14 @@ use std::io::{self, Read, Write};
 use std::{fs, mem};
 
 #[cfg(feature = "corridor")]
-use controller::CorridorController as Controller;
+use controller::{CorridorBuilder as Builder, CorridorController as Controller};
 #[cfg(feature = "delta")]
-use controller::DeltaController as Controller;
+use controller::{DeltaBuilder as Builder, DeltaController as Controller};
 
 use letterbox::*;
 
 fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
-    let mut letterbox: Letterbox<Controller, 20> = Letterbox::default();
+    let mut letterbox: Letterbox<Controller, 20> = Letterbox::new(Box::new(Builder{}));
 
     let mut buffer = [0u8; mem::size_of::<Sample>()];
 
@@ -26,7 +26,7 @@ fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
 
                 // Write to stream
                 println!("Send: {:?}", outgoing);
-                let buf = outgoing.to_bytes();
+                let buf: [u8; 4] = outgoing.to_bytes();
                 stream.write_all(&buf)?;
             }
             Err(e) => {

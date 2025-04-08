@@ -33,11 +33,12 @@ int main() {
     while (1) {
         // Write to stream
         struct Sample sample;
+        sample.max = 16;
         sample.uid = (int)((uintptr_t)foo);
         sample.val = 1.234;
         printf("Send: (%d, %f)\n", sample.uid, sample.val);
 
-        if (write(sockfd, &sample, sizeof(struct Sample)) == -1) {
+        if (write(sockfd, &sample, sizeof(sample)) == -1) {
             perror("write");
             close(sockfd);
             exit(EXIT_FAILURE);
@@ -46,7 +47,7 @@ int main() {
         // Read from stream
         struct Demand demand;
 
-        if (read(sockfd, &demand, sizeof(struct Demand)) == -1) {
+        if (read(sockfd, &demand, sizeof(demand)) == -1) {
             perror("read");
             close(sockfd);
             exit(EXIT_FAILURE);

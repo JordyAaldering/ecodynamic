@@ -1,18 +1,25 @@
-use crate::{dir::Direction, pct::Percentage, Controller};
+use crate::{Builder, Controller};
+
+const UP: f32 = 1.0;
+const DOWN: f32 = -1.0;
+
+pub struct DeltaBuilder();
 
 pub struct DeltaController {
-    num_threads: Percentage,
-    step_size: Percentage,
-    step_direction: Direction,
+    num_threads: f32,
+    max_threads: f32,
+    step_size: f32,
+    step_direction: f32,
     e_prev: f32,
 }
 
-impl Default for DeltaController {
-    fn default() -> Self {
-        Self {
-            num_threads: Percentage::FULL,
-            step_size: Percentage::FULL,
-            step_direction: Direction::Down,
+impl Builder<DeltaController> for DeltaBuilder {
+    fn build(&self, max_threads: i32) -> DeltaController {
+        DeltaController {
+            num_threads: max_threads as f32,
+            max_threads: max_threads as f32,
+            step_size: max_threads as f32,
+            step_direction: DOWN,
             e_prev: 0.0,
         }
     }
@@ -23,28 +30,28 @@ impl Controller for DeltaController {
         let e_next = median(samples);
 
         if e_next > self.e_prev * 1.50 {
-            self.step_size = Percentage::HALF;
+            self.step_size = self.max_threads * 0.5;
             self.reset_direction();
         } else {
             if e_next > self.e_prev {
                 self.step_direction = -self.step_direction;
             }
 
-            if *self.step_size > 16 {
-                // todo, obviously we need to clean this up
-                self.step_size.map(|x| f32::max(x as f32 * 0.6, x as f32 / (0.85 + x as f32)) as u8);
+            if self.step_size > 0.16 {
+                self.step_size = f32::max(self.step_size * 0.6, self.step_size / (0.85 + self.step_size));
             } else {
-                self.step_size = Percentage::HALF;
+                self.step_size = self.max_threads * 0.5;
                 self.reset_direction();
             }
         }
 
         self.e_prev = e_next;
-        self.num_threads.adjust(self.step_size, self.step_direction);
+        self.num_threads += self.step_direction * self.step_size;
+        self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
     }
 
-    fn num_threads(&self) -> u8 {
-        *self.num_threads
+    fn num_threads(&self) -> i32 {
+        self.num_threads.round() as i32
     }
 }
 
@@ -52,10 +59,10 @@ impl DeltaController {
     /// Reset the step direction with a slight preference for increasing the thread count;
     /// since typically we don't want to end up in a case where we are single-threaded.
     fn reset_direction(&mut self) {
-        self.step_direction = if *self.num_threads < 65 {
-            Direction::Up
+        self.step_direction = if self.num_threads < self.max_threads * 0.65 {
+            UP
         } else {
-            Direction::Down
+            DOWN
         };
     }
 }

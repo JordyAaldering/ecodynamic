@@ -3,7 +3,7 @@ use std::mem;
 #[repr(C)]
 #[derive(Debug)]
 pub struct Demand {
-    pub threads: u8,
+    pub threads: i32,
 }
 
 const SIZE: usize = mem::size_of::<Demand>();
@@ -16,7 +16,7 @@ impl Demand {
 
 impl From<[u8; SIZE]> for Demand {
     fn from(buffer: [u8; SIZE]) -> Self {
-        let threads = u8::from_ne_bytes(buffer);
+        let threads = i32::from_ne_bytes(buffer);
         Self { threads }
     }
 }
