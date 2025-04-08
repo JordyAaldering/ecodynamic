@@ -3,11 +3,17 @@ use std::mem;
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct Sample {
+    /// A unique identifier of the parallel region we are controlling.
     pub region_uid: i32,
+    /// The maximum number of threads allowed for this parallel region.
     pub max_threads: i32,
+    /// The number of threads used by the previous iteration.
     pub num_threads: i32,
+    /// Total runtime of the previous iteration.
     pub runtime: f32,
+    /// Total usertime of the previous iteration.
     pub usertime: f32,
+    /// Total energy consumption of the previous iteration.
     pub energy: f32,
 }
 

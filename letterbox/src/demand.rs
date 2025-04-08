@@ -3,6 +3,7 @@ use std::mem;
 #[repr(C)]
 #[derive(Clone, Debug)]
 pub struct Demand {
+    /// Recommended number of threads to use for the next parallel iteration.
     pub num_threads: i32,
 }
 
