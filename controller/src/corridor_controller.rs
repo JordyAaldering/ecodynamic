@@ -1,9 +1,7 @@
-use crate::{Builder, Controller, Demand, Sample};
+use crate::{Controller, Demand, Sample};
 
 const _UP: i32 = 1;
 const DOWN: i32 = -1;
-
-pub struct CorridorBuilder();
 
 pub struct CorridorController {
     num_threads: i32,
@@ -14,9 +12,9 @@ pub struct CorridorController {
     t1: f32,
 }
 
-impl Builder<CorridorController> for CorridorBuilder {
-    fn build(&self, max_threads: i32) -> CorridorController {
-        CorridorController {
+impl CorridorController {
+    pub fn new(max_threads: i32) -> Self {
+        Self {
             num_threads: max_threads,
             max_threads: max_threads,
             step_size: max_threads,

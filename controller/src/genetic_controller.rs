@@ -1,35 +1,29 @@
-use crate::{Builder, Controller, Demand, Sample};
-
-pub struct GeneticBuilder {
-    pub population_size: usize,
-    pub survival_rate: f32,
-    pub mutation_rate: f32,
-}
+use crate::{Controller, Demand, Sample};
 
 pub struct GeneticController {
     pub population: Vec<Chromosome>,
     max_threads: i32,
-    // Configuration
     population_size: usize,
     survival_rate: f32,
     mutation_rate: f32,
 }
 
-impl Builder<GeneticController> for GeneticBuilder {
-    fn build(&self, max_threads: i32) -> GeneticController {
-        let population = (0..self.population_size).map(|_| Chromosome::rand(max_threads)).collect();
-        GeneticController {
-            population,
+impl GeneticController {
+    pub fn new(max_threads: i32, population_size: usize, survival_rate: f32, mutation_rate: f32) -> Self {
+        Self {
+            population: (0..population_size).map(|_| Chromosome::rand(max_threads)).collect(),
             max_threads,
-            population_size: self.population_size,
-            survival_rate: self.survival_rate,
-            mutation_rate: self.mutation_rate,
+            population_size,
+            survival_rate,
+            mutation_rate,
         }
     }
 }
 
 impl Controller for GeneticController {
     fn adjust_threads(&mut self, samples: Vec<Sample>) {
+        assert_eq!(self.population_size, samples.len());
+
         let samples = samples.into_iter().map(|s| s.runtime);
         let mut fitness: Vec<(f32, &Chromosome)> = samples.zip(self.population.iter()).collect();
         fitness.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());

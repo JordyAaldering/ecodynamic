@@ -2,18 +2,16 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::{self, Read, Write};
 use std::{fs, mem};
 
-use controller::Sample;
-#[cfg(feature = "corridor")]
-use controller::{CorridorBuilder as Builder, CorridorController as Controller};
-#[cfg(feature = "delta")]
-use controller::{DeltaBuilder as Builder, DeltaController as Controller};
-#[cfg(feature = "genetic")]
-use controller::{GeneticBuilder as Builder, GeneticController as Controller};
-
-use letterbox::{Letterbox, MTD_LETTERBOX_PATH};
+use controller::*;
+use letterbox::*;
 
 fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
-    let mut letterbox: Letterbox<Controller, 20> = Letterbox::new(Box::new(Builder{}));
+    #[cfg(feature = "corridor")]
+    let mut letterbox: Letterbox<CorridorController, 20> = Letterbox::new(|s| CorridorController::new(s.max_threads));
+    #[cfg(feature = "delta")]
+    let mut letterbox: Letterbox<DeltaController, 20> = Letterbox::new(|s| DeltaController::new(s.max_threads));
+    #[cfg(feature = "genetic")]
+    let mut letterbox: Letterbox<GeneticController, 20> = Letterbox::new(|s| GeneticController::new(s.max_threads, 20, 0.5, 0.25));
 
     let mut buffer = [0u8; mem::size_of::<Sample>()];
 
@@ -40,7 +38,6 @@ fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
     }
     Ok(())
 }
-
 
 fn main() -> io::Result<()> {
     // Remove any existing socket file

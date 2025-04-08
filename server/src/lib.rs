@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
-use controller::{Builder, Controller, Demand, Sample};
+use controller::{Controller, Demand, Sample};
 
 pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 
 pub struct Letterbox<Ctrl: Controller, const N: usize> {
-    builder: Box<dyn Builder<Ctrl>>,
+    build: fn(&Sample) -> Ctrl,
     letterbox: HashMap<i32, (Ctrl, Samples<N>)>,
 }
 
 impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
-    pub fn new(builder: Box<dyn Builder<Ctrl>>) -> Self {
-        Self { builder, letterbox: HashMap::new() }
+    pub fn new(build: fn(&Sample) -> Ctrl) -> Self {
+        Self { build, letterbox: HashMap::new() }
     }
 
     pub fn update(&mut self, sample: Sample) -> Demand {
@@ -26,7 +26,7 @@ impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
         } else {
             let uid = sample.region_uid;
             let max_threads = sample.max_threads;
-            let controller = self.builder.build(max_threads);
+            let controller = (self.build)(&sample);
             let samples = Samples::from(sample);
             self.letterbox.insert(uid, (controller, samples));
             Demand { num_threads: max_threads }

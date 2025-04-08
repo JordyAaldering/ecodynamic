@@ -1,9 +1,7 @@
-use crate::{Builder, Controller, Demand, Sample};
+use crate::{Controller, Demand, Sample};
 
 const UP: f32 = 1.0;
 const DOWN: f32 = -1.0;
-
-pub struct DeltaBuilder();
 
 pub struct DeltaController {
     num_threads: f32,
@@ -13,9 +11,9 @@ pub struct DeltaController {
     e_prev: f32,
 }
 
-impl Builder<DeltaController> for DeltaBuilder {
-    fn build(&self, max_threads: i32) -> DeltaController {
-        DeltaController {
+impl DeltaController {
+    pub fn new(max_threads: i32) -> Self {
+        Self {
             num_threads: max_threads as f32,
             max_threads: max_threads as f32,
             step_size: max_threads as f32,

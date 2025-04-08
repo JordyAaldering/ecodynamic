@@ -12,7 +12,7 @@ name = "server"
 path = "src/main.rs"
 
 [features]
-default = ["corridor"]
+default = ["genetic"]
 corridor = []
 delta = []
 genetic = []
