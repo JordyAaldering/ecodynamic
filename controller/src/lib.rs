@@ -15,7 +15,7 @@ pub trait Builder<Ctrl: Controller> {
 }
 
 pub trait Controller {
-    fn adjust_threads(&mut self, samples: Vec<f32>);
+    fn adjust_threads(&mut self, samples: Vec<Sample>);
 
-    fn num_threads(&self) -> i32;
+    fn num_threads(&self) -> Demand;
 }

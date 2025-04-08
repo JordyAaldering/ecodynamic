@@ -1,4 +1,4 @@
-use crate::{Builder, Controller};
+use crate::{Builder, Controller, Demand, Sample};
 
 const UP: f32 = 1.0;
 const DOWN: f32 = -1.0;
@@ -26,7 +26,8 @@ impl Builder<DeltaController> for DeltaBuilder {
 }
 
 impl Controller for DeltaController {
-    fn adjust_threads(&mut self, samples: Vec<f32>) {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) {
+        let samples = samples.into_iter().map(|s| s.runtime).collect();
         let e_next = median(samples);
 
         if e_next > self.e_prev * 1.50 {
@@ -50,8 +51,8 @@ impl Controller for DeltaController {
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
     }
 
-    fn num_threads(&self) -> i32 {
-        self.num_threads.round() as i32
+    fn num_threads(&self) -> Demand {
+        Demand { num_threads: self.num_threads.round() as i32 }
     }
 }
 

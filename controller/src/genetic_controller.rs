@@ -1,4 +1,4 @@
-use crate::{Builder, Controller};
+use crate::{Builder, Controller, Demand, Sample};
 
 pub struct GeneticBuilder {
     pub population_size: usize,
@@ -20,11 +20,11 @@ impl Builder<GeneticController> for GeneticBuilder {
 }
 
 impl Controller for GeneticController {
-    fn adjust_threads(&mut self, samples: Vec<f32>) {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) {
         todo!()
     }
 
-    fn num_threads(&self) -> i32 {
+    fn num_threads(&self) -> Demand {
         todo!()
     }
 }

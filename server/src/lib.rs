@@ -15,12 +15,11 @@ impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
     }
 
     pub fn update(&mut self, sample: Sample) -> Demand {
-        let threads = if let Some((controller, samples)) = self.letterbox.get_mut(&sample.region_uid) {
+        if let Some((controller, samples)) = self.letterbox.get_mut(&sample.region_uid) {
             samples.push(sample);
 
             if samples.len >= N {
-                let samples = samples.take().into_iter().map(|s| s.energy).collect();
-                controller.adjust_threads(samples)
+                controller.adjust_threads(samples.take());
             }
 
             controller.num_threads()
@@ -30,10 +29,8 @@ impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
             let controller = self.builder.build(max_threads);
             let samples = Samples::from(sample);
             self.letterbox.insert(uid, (controller, samples));
-            max_threads
-        };
-
-        Demand { num_threads: threads }
+            Demand { num_threads: max_threads }
+        }
     }
 }
 

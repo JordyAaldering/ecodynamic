@@ -1,4 +1,4 @@
-use crate::{Builder, Controller};
+use crate::{Builder, Controller, Demand, Sample};
 
 const _UP: i32 = 1;
 const DOWN: i32 = -1;
@@ -28,7 +28,8 @@ impl Builder<CorridorController> for CorridorBuilder {
 }
 
 impl Controller for CorridorController {
-    fn adjust_threads(&mut self, samples: Vec<f32>) {
+    fn adjust_threads(&mut self, samples: Vec<Sample>) {
+        let samples = samples.into_iter().map(|s| s.runtime).collect();
         let tn = frequency_dist(samples);
 
         if self.t1 / tn < 0.5 * self.num_threads as f32 {
@@ -54,8 +55,8 @@ impl Controller for CorridorController {
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
     }
 
-    fn num_threads(&self) -> i32 {
-        self.num_threads
+    fn num_threads(&self) -> Demand {
+        Demand { num_threads: self.num_threads }
     }
 }
 
