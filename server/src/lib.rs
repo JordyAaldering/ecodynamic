@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use controller::{Builder, Controller};
+use controller::{Builder, Controller, Demand, Sample};
 
-use crate::{Demand, Sample};
+pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 
 pub struct Letterbox<Ctrl: Controller, const N: usize> {
     builder: Box<dyn Builder<Ctrl>>,

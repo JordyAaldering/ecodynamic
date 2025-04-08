@@ -1,10 +1,11 @@
 use std::mem;
-use std::os::unix::net::UnixStream;
 use std::io::{Read, Write};
+use std::os::unix::net::UnixStream;
 use std::thread::sleep;
 use std::time::Duration;
 
-use letterbox::{Demand, Sample, MTD_LETTERBOX_PATH};
+use controller::{Demand, Sample};
+use letterbox::MTD_LETTERBOX_PATH;
 
 fn main() -> std::io::Result<()> {
     let mut stream = UnixStream::connect(MTD_LETTERBOX_PATH)?;

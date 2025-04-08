@@ -3,6 +3,14 @@ name = "server"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "letterbox"
+path = "src/lib.rs"
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
 [features]
 default = ["corridor"]
 corridor = []
@@ -10,4 +18,3 @@ delta = []
 
 [dependencies]
 controller = { path = "../controller" }
-letterbox = { path = "../letterbox" }
