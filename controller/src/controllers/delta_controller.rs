@@ -4,7 +4,7 @@ const UP: f32 = 1.0;
 const DOWN: f32 = -1.0;
 
 pub struct DeltaController {
-    samples: Option<Vec<Sample>>,
+    samples: Vec<Sample>,
     num_threads: f32,
     max_threads: f32,
     step_size: f32,
@@ -15,7 +15,7 @@ pub struct DeltaController {
 impl DeltaController {
     pub fn new(max_threads: i32) -> Self {
         Self {
-            samples: None,
+            samples: Vec::new(),
             num_threads: max_threads as f32,
             max_threads: max_threads as f32,
             step_size: max_threads as f32,
@@ -25,8 +25,9 @@ impl DeltaController {
     }
 
     fn evolve(&mut self) {
-        let samples = self.samples.take().unwrap().into_iter().map(|s| s.runtime).collect();
-        let e_next = median(samples);
+        let mut samples_new = Vec::new();
+        std::mem::swap(&mut self.samples, &mut samples_new);
+        let e_next = median(samples_new);
 
         if e_next > self.e_prev * 1.50 {
             self.step_size = self.max_threads * 0.5;
@@ -48,24 +49,7 @@ impl DeltaController {
         self.num_threads += self.step_dir * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
     }
-}
 
-impl Controller for DeltaController {
-    fn sample_received(&mut self, sample: Sample) {
-        self.samples.get_or_insert_default().push(sample);
-
-        if self.samples.as_ref().unwrap().len() >= 10 {
-            self.evolve();
-        }
-    }
-
-    fn next_demand(&mut self) -> Demand {
-        let num_threads = self.num_threads.round() as i32;
-        Demand { num_threads }
-    }
-}
-
-impl DeltaController {
     /// Reset the step direction with a slight preference for increasing the thread count;
     /// since typically we don't want to end up in a case where we are single-threaded.
     fn reset_direction(&mut self) {
@@ -77,7 +61,22 @@ impl DeltaController {
     }
 }
 
-fn median(mut vec: Vec<f32>) -> f32 {
-    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    vec[vec.len() / 2]
+impl Controller for DeltaController {
+    fn sample_received(&mut self, sample: Sample) {
+        self.samples.push(sample);
+        if self.samples.len() >= 10 {
+            self.evolve();
+        }
+    }
+
+    fn next_demand(&mut self) -> Demand {
+        let num_threads = self.num_threads.round() as i32;
+        Demand { num_threads }
+    }
+}
+
+fn median(samples: Vec<Sample>) -> f32 {
+    let mut scores: Vec<f32> = samples.into_iter().map(|s| s.energy).collect();
+    scores.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    scores[scores.len() / 2]
 }

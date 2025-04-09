@@ -2,7 +2,7 @@ use crate::{Controller, Demand, Sample};
 
 pub struct GeneticController {
     pub population: Vec<Chromosome>,
-    samples: Option<Vec<Sample>>,
+    samples: Vec<Sample>,
     /// Index of the chromosome for which we will return the thread-count
     population_idx: usize,
     // Configuration
@@ -16,7 +16,7 @@ impl GeneticController {
     pub fn new(max_threads: i32, population_size: usize, survival_rate: f32, mutation_rate: f32) -> Self {
         Self {
             population: (0..population_size).map(|_| Chromosome::rand(max_threads)).collect(),
-            samples: None,
+            samples: Vec::new(),
             population_idx: 0,
             max_threads,
             population_size,
@@ -26,8 +26,11 @@ impl GeneticController {
     }
 
     fn evolve(&mut self) {
+        let mut samples_new = Vec::new();
+        std::mem::swap(&mut self.samples, &mut samples_new);
+
         self.population.iter_mut()
-            .zip(self.samples.take().unwrap().into_iter())
+            .zip(samples_new.into_iter())
             .for_each(|(chromosome, sample)| {
                 chromosome.score = sample.energy;
             });
@@ -52,9 +55,8 @@ impl GeneticController {
 
 impl Controller for GeneticController {
     fn sample_received(&mut self, sample: Sample) {
-        self.samples.get_or_insert_default().push(sample);
-
-        if self.samples.as_ref().unwrap().len() >= self.population_size {
+        self.samples.push(sample);
+        if self.samples.len() >= self.population_size {
             self.evolve();
         }
     }
