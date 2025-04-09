@@ -2,6 +2,9 @@ use crate::{Controller, Demand, Sample};
 
 pub struct GeneticController {
     pub population: Vec<Chromosome>,
+    /// Index of the chromosome for which we will return the thread-count
+    population_idx: usize,
+    // Configuration
     max_threads: i32,
     population_size: usize,
     survival_rate: f32,
@@ -12,6 +15,7 @@ impl GeneticController {
     pub fn new(max_threads: i32, population_size: usize, survival_rate: f32, mutation_rate: f32) -> Self {
         Self {
             population: (0..population_size).map(|_| Chromosome::rand(max_threads)).collect(),
+            population_idx: 0,
             max_threads,
             population_size,
             survival_rate,
@@ -21,7 +25,7 @@ impl GeneticController {
 }
 
 impl Controller for GeneticController {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) {
+    fn update(&mut self, samples: Vec<Sample>) {
         assert_eq!(self.population_size, samples.len());
 
         self.population.iter_mut()
@@ -46,9 +50,10 @@ impl Controller for GeneticController {
         }
     }
 
-    fn num_threads(&self) -> Demand {
+    fn next(&mut self) -> Demand {
         // At this points the population is already sorted, the first element is the best-performing one
-        let num_threads = self.population[0].num_threads;
+        self.population_idx = (self.population_idx + 1) % self.population_size;
+        let num_threads = self.population[self.population_idx].num_threads;
         Demand { num_threads }
     }
 }

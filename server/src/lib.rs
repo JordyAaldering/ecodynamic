@@ -19,21 +19,24 @@ impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
             samples.push(sample);
 
             if samples.len >= N {
-                controller.adjust_threads(samples.take());
+                controller.update(samples.take());
             }
 
-            controller.num_threads()
+            controller.next()
         } else {
             let uid = sample.region_uid;
-            let max_threads = sample.max_threads;
-            let controller = (self.build)(&sample);
+            let mut controller = (self.build)(&sample);
+            let num_threads = controller.next();
+
             let samples = Samples::from(sample);
             self.letterbox.insert(uid, (controller, samples));
-            Demand { num_threads: max_threads }
+
+            num_threads
         }
     }
 }
 
+/// Todo: move this logic into the controller instead?
 struct Samples<const N: usize> {
     elems: [Sample; N],
     len: usize,

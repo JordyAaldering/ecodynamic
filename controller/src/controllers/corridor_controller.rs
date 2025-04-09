@@ -26,7 +26,7 @@ impl CorridorController {
 }
 
 impl Controller for CorridorController {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) {
+    fn update(&mut self, samples: Vec<Sample>) {
         let samples = samples.into_iter().map(|s| s.runtime).collect();
         let tn = frequency_dist(samples);
 
@@ -53,7 +53,7 @@ impl Controller for CorridorController {
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
     }
 
-    fn num_threads(&self) -> Demand {
+    fn next(&mut self) -> Demand {
         Demand { num_threads: self.num_threads }
     }
 }

@@ -24,7 +24,7 @@ impl DeltaController {
 }
 
 impl Controller for DeltaController {
-    fn adjust_threads(&mut self, samples: Vec<Sample>) {
+    fn update(&mut self, samples: Vec<Sample>) {
         let samples = samples.into_iter().map(|s| s.runtime).collect();
         let e_next = median(samples);
 
@@ -49,7 +49,7 @@ impl Controller for DeltaController {
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
     }
 
-    fn num_threads(&self) -> Demand {
+    fn next(&mut self) -> Demand {
         Demand { num_threads: self.num_threads.round() as i32 }
     }
 }
