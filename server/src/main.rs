@@ -7,11 +7,11 @@ use letterbox::*;
 
 fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
     #[cfg(feature = "corridor")]
-    let mut letterbox: Letterbox<CorridorController, 20> = Letterbox::new(|s| CorridorController::new(s.max_threads));
+    let mut letterbox: Letterbox<CorridorController> = Letterbox::new(|s| CorridorController::new(s.max_threads));
     #[cfg(feature = "delta")]
-    let mut letterbox: Letterbox<DeltaController, 20> = Letterbox::new(|s| DeltaController::new(s.max_threads));
+    let mut letterbox: Letterbox<DeltaController> = Letterbox::new(|s| DeltaController::new(s.max_threads));
     #[cfg(feature = "genetic")]
-    let mut letterbox: Letterbox<GeneticController, 20> = Letterbox::new(|s| GeneticController::new(s.max_threads, 20, 0.5, 0.25));
+    let mut letterbox: Letterbox<GeneticController> = Letterbox::new(|s| GeneticController::new(s.max_threads, 20, 0.5, 0.25));
 
     let mut buffer = [0u8; mem::size_of::<Sample>()];
 

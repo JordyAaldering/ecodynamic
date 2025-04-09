@@ -4,12 +4,12 @@ use controller::{Controller, Demand, Sample};
 
 pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 
-pub struct Letterbox<Ctrl: Controller, const N: usize> {
+pub struct Letterbox<Ctrl: Controller> {
     build: fn(&Sample) -> Ctrl,
     letterbox: HashMap<i32, Ctrl>,
 }
 
-impl<Ctrl: Controller, const N: usize> Letterbox<Ctrl, N> {
+impl<Ctrl: Controller> Letterbox<Ctrl> {
     pub fn new(build: fn(&Sample) -> Ctrl) -> Self {
         Self { build, letterbox: HashMap::new() }
     }
