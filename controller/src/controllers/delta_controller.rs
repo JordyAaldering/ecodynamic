@@ -4,6 +4,7 @@ const UP: f32 = 1.0;
 const DOWN: f32 = -1.0;
 
 pub struct DeltaController {
+    samples: Option<Vec<Sample>>,
     num_threads: f32,
     max_threads: f32,
     step_size: f32,
@@ -14,6 +15,7 @@ pub struct DeltaController {
 impl DeltaController {
     pub fn new(max_threads: i32) -> Self {
         Self {
+            samples: None,
             num_threads: max_threads as f32,
             max_threads: max_threads as f32,
             step_size: max_threads as f32,
@@ -21,11 +23,9 @@ impl DeltaController {
             e_prev: 0.0,
         }
     }
-}
 
-impl Controller for DeltaController {
-    fn update(&mut self, samples: Vec<Sample>) {
-        let samples = samples.into_iter().map(|s| s.runtime).collect();
+    fn evolve(&mut self) {
+        let samples = self.samples.take().unwrap().into_iter().map(|s| s.runtime).collect();
         let e_next = median(samples);
 
         if e_next > self.e_prev * 1.50 {
@@ -48,9 +48,20 @@ impl Controller for DeltaController {
         self.num_threads += self.step_dir * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
     }
+}
 
-    fn next(&mut self) -> Demand {
-        Demand { num_threads: self.num_threads.round() as i32 }
+impl Controller for DeltaController {
+    fn sample_received(&mut self, sample: Sample) {
+        self.samples.get_or_insert_default().push(sample);
+
+        if self.samples.as_ref().unwrap().len() >= 10 {
+            self.evolve();
+        }
+    }
+
+    fn next_demand(&mut self) -> Demand {
+        let num_threads = self.num_threads.round() as i32;
+        Demand { num_threads }
     }
 }
 

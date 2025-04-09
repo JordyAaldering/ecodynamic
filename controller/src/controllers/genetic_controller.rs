@@ -2,6 +2,7 @@ use crate::{Controller, Demand, Sample};
 
 pub struct GeneticController {
     pub population: Vec<Chromosome>,
+    samples: Option<Vec<Sample>>,
     /// Index of the chromosome for which we will return the thread-count
     population_idx: usize,
     // Configuration
@@ -15,6 +16,7 @@ impl GeneticController {
     pub fn new(max_threads: i32, population_size: usize, survival_rate: f32, mutation_rate: f32) -> Self {
         Self {
             population: (0..population_size).map(|_| Chromosome::rand(max_threads)).collect(),
+            samples: None,
             population_idx: 0,
             max_threads,
             population_size,
@@ -22,17 +24,14 @@ impl GeneticController {
             mutation_rate,
         }
     }
-}
 
-impl Controller for GeneticController {
-    fn update(&mut self, samples: Vec<Sample>) {
-        assert_eq!(self.population_size, samples.len());
-
+    fn evolve(&mut self) {
         self.population.iter_mut()
-            .zip(samples.into_iter())
+            .zip(self.samples.take().unwrap().into_iter())
             .for_each(|(chromosome, sample)| {
-                chromosome.score = sample.runtime;
+                chromosome.score = sample.energy;
             });
+
         self.population.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
 
         // Keep the N% best performing chromosomes
@@ -49,8 +48,18 @@ impl Controller for GeneticController {
             self.population[i] = child;
         }
     }
+}
 
-    fn next(&mut self) -> Demand {
+impl Controller for GeneticController {
+    fn sample_received(&mut self, sample: Sample) {
+        self.samples.get_or_insert_default().push(sample);
+
+        if self.samples.as_ref().unwrap().len() >= self.population_size {
+            self.evolve();
+        }
+    }
+
+    fn next_demand(&mut self) -> Demand {
         // At this points the population is already sorted, the first element is the best-performing one
         self.population_idx = (self.population_idx + 1) % self.population_size;
         let num_threads = self.population[self.population_idx].num_threads;

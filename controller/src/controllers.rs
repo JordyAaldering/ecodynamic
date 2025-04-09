@@ -9,7 +9,7 @@ pub use genetic_controller::*;
 use crate::{Demand, Sample};
 
 pub trait Controller {
-    fn update(&mut self, samples: Vec<Sample>);
+    fn sample_received(&mut self, sample: Sample);
 
-    fn next(&mut self) -> Demand;
+    fn next_demand(&mut self) -> Demand;
 }

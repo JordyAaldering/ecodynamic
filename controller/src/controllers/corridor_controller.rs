@@ -4,6 +4,7 @@ const _UP: i32 = 1;
 const DOWN: i32 = -1;
 
 pub struct CorridorController {
+    samples: Option<Vec<Sample>>,
     num_threads: i32,
     max_threads: i32,
     step_size: i32,
@@ -15,6 +16,7 @@ pub struct CorridorController {
 impl CorridorController {
     pub fn new(max_threads: i32) -> Self {
         Self {
+            samples: None,
             num_threads: max_threads,
             max_threads: max_threads,
             step_size: max_threads,
@@ -23,11 +25,9 @@ impl CorridorController {
             t1: f32::MAX,
         }
     }
-}
 
-impl Controller for CorridorController {
-    fn update(&mut self, samples: Vec<Sample>) {
-        let samples = samples.into_iter().map(|s| s.runtime).collect();
+    fn evolve(&mut self) {
+        let samples = self.samples.take().unwrap().into_iter().map(|s| s.energy).collect();
         let tn = frequency_dist(samples);
 
         if self.t1 / tn < 0.5 * self.num_threads as f32 {
@@ -52,8 +52,18 @@ impl Controller for CorridorController {
         self.num_threads += self.step_dir * self.step_size;
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
     }
+}
 
-    fn next(&mut self) -> Demand {
+impl Controller for CorridorController {
+    fn sample_received(&mut self, sample: Sample) {
+        self.samples.get_or_insert_default().push(sample);
+
+        if self.samples.as_ref().unwrap().len() >= 10 {
+            self.evolve();
+        }
+    }
+
+    fn next_demand(&mut self) -> Demand {
         Demand { num_threads: self.num_threads }
     }
 }
