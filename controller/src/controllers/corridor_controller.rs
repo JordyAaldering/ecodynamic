@@ -7,7 +7,7 @@ pub struct CorridorController {
     num_threads: i32,
     max_threads: i32,
     step_size: i32,
-    step_direction: i32,
+    step_dir: i32,
     t_prev: f32,
     t1: f32,
 }
@@ -18,7 +18,7 @@ impl CorridorController {
             num_threads: max_threads,
             max_threads: max_threads,
             step_size: max_threads,
-            step_direction: DOWN,
+            step_dir: DOWN,
             t_prev: f32::MAX,
             t1: f32::MAX,
         }
@@ -32,7 +32,7 @@ impl Controller for CorridorController {
 
         if self.t1 / tn < 0.5 * self.num_threads as f32 {
             // We have fallen outside the corridor
-            self.step_direction = DOWN;
+            self.step_dir = DOWN;
             self.step_size = i32::max(1, self.num_threads / 2);
         } else {
             if self.t1 / tn > self.num_threads as f32 {
@@ -42,14 +42,14 @@ impl Controller for CorridorController {
             }
 
             if tn > self.t_prev {
-                self.step_direction = -self.step_direction;
+                self.step_dir = -self.step_dir;
             }
 
             self.step_size = i32::max(1, self.step_size / 2);
         }
 
         self.t_prev = tn;
-        self.num_threads += self.step_direction * self.step_size;
+        self.num_threads += self.step_dir * self.step_size;
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
     }
 
