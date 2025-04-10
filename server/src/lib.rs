@@ -14,6 +14,13 @@ impl<Ctrl: Controller> Letterbox<Ctrl> {
         Self { build, letterbox: HashMap::new() }
     }
 
+    pub fn read(&mut self, region_uid: i32) -> Option<Demand> {
+        self.letterbox.get_mut(&region_uid)
+            .map(|controller| {
+                controller.next_demand()
+            })
+    }
+
     pub fn update(&mut self, sample: Sample) -> Demand {
         let controller = self.letterbox.entry(sample.region_uid)
             .or_insert_with(|| (self.build)(&sample));

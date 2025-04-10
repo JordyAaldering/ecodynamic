@@ -1,7 +1,7 @@
 use std::mem;
 
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Sample {
     /// A unique identifier of the parallel region we are controlling.
     pub region_uid: i32,
@@ -17,7 +17,7 @@ pub struct Sample {
     pub energy: f32,
 }
 
-const SIZE: usize = mem::size_of::<Sample>();
+pub const SIZE: usize = mem::size_of::<Sample>();
 
 impl Sample {
     pub fn to_bytes(self) -> [u8; SIZE] {
