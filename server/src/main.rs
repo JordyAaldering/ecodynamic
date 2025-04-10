@@ -7,13 +7,13 @@ use letterbox::*;
 
 fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
     #[cfg(feature = "corridor")]
-    let mut letterbox: Letterbox<CorridorController> = Letterbox::new(|s| CorridorController::new(s.max_threads));
+    let mut letterbox: Letterbox<CorridorController> = Letterbox::new(|req| CorridorController::new(req.max_threads));
     #[cfg(feature = "delta")]
-    let mut letterbox: Letterbox<DeltaController> = Letterbox::new(|s| DeltaController::new(s.max_threads));
+    let mut letterbox: Letterbox<DeltaController> = Letterbox::new(|req| DeltaController::new(req.max_threads));
     #[cfg(feature = "genetic")]
-    let mut letterbox: Letterbox<GeneticController> = Letterbox::new(|s| GeneticController::new(s.max_threads, 20, 0.5, 0.25));
+    let mut letterbox: Letterbox<GeneticController> = Letterbox::new(|req| GeneticController::new(req.max_threads, 20, 0.5, 0.25));
 
-    const REGION_SIZE: usize = mem::size_of::<i32>();
+    const READREQ_SIZE: usize = mem::size_of::<Request>();
     const SAMPLE_SIZE: usize = mem::size_of::<Sample>();
     const DEMAND_SIZE: usize = mem::size_of::<Demand>();
     let mut buffer = [0u8; SAMPLE_SIZE];
@@ -21,33 +21,27 @@ fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
     loop {
         // Try to read from the stream
         match stream.read(&mut buffer) {
-            Ok(REGION_SIZE) => {
-                let [i0, i1, i2, i3, ..] = buffer;
-                let region_uid = i32::from_ne_bytes([i0, i1, i2, i3]);
-                println!("Read: {:?}", region_uid);
+            Ok(READREQ_SIZE) => {
+                let buf: [u8; READREQ_SIZE] = buffer[0..READREQ_SIZE].try_into().unwrap();
+                let req = Request::from(buf);
+                println!("Read: {:?}", req);
 
                 // Update letterbox
-                let demand = letterbox.read(region_uid);
-
-                // Write to stream
-                println!("Send: {:?}", demand);
-                let buf: [u8; DEMAND_SIZE] = demand.unwrap_or_default().to_bytes();
-                stream.write_all(&buf)?;
-            }
-            Ok(SAMPLE_SIZE) => {
-                let sample = Sample::from(buffer);
-                println!("Recv: {:?}", sample);
-
-                // Update letterbox
-                let demand = letterbox.update(sample);
+                let demand = letterbox.read(req);
 
                 // Write to stream
                 println!("Send: {:?}", demand);
                 let buf: [u8; DEMAND_SIZE] = demand.to_bytes();
                 stream.write_all(&buf)?;
             }
+            Ok(SAMPLE_SIZE) => {
+                let sample = Sample::from(buffer);
+                println!("Recv: {:?}", sample);
+                letterbox.update(sample);
+            }
             Ok(n) => {
                 eprintln!("Invalid message size: {}", n);
+                break;
             }
             Err(e) => {
                 eprintln!("Client disconnected: {}", e);
@@ -55,6 +49,7 @@ fn handle_client(mut stream: UnixStream) -> std::io::Result<()> {
             }
         }
     }
+
     Ok(())
 }
 

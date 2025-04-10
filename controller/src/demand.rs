@@ -1,13 +1,13 @@
 use std::mem;
 
 #[repr(C)]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Demand {
     /// Recommended number of threads to use for the next parallel iteration.
     pub num_threads: i32,
 }
 
-pub const SIZE: usize = mem::size_of::<Demand>();
+const SIZE: usize = mem::size_of::<Demand>();
 
 impl Demand {
     pub fn to_bytes(self) -> [u8; SIZE] {
