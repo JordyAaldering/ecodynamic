@@ -18,9 +18,14 @@ pub struct GeneticControllerSettings {
 
 impl GeneticController {
     pub fn new(settings: GeneticControllerSettings) -> Self {
-        let population = (0..settings.population_size)
+        let mut population: Vec<Chromosome> = (0..settings.population_size)
             .map(|_| Chromosome::rand(settings.max_threads))
             .collect();
+        // We want to sort the population by recommended thread-count
+        // here, to minimise changes in the running program.
+        population.sort_by(|a, b| {
+            a.num_threads.partial_cmp(&b.num_threads).unwrap()
+        });
 
         Self {
             population,
