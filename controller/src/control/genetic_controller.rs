@@ -80,8 +80,8 @@ impl Controller for GeneticController {
     }
 
     fn next_demand(&mut self) -> Demand {
-        self.population_idx = (self.population_idx + 1) % self.settings.population_size;
         let num_threads = self.population[self.population_idx].num_threads;
+        self.population_idx = (self.population_idx + 1) % self.settings.population_size;
         Demand { num_threads }
     }
 }
