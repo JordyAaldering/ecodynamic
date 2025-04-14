@@ -70,4 +70,8 @@ impl SampleVec {
     pub(crate) fn is_full(&self) -> bool {
         self.samples.len() == self.size
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.samples.len()
+    }
 }

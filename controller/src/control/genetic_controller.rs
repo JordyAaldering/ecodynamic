@@ -4,10 +4,6 @@ use super::Controller;
 
 pub struct GeneticController {
     pub population: Vec<Chromosome>,
-    /// Keeps track of the current index. The population is reset every
-    /// `population_size` iterations. In between, we want every chromosome
-    /// to be executed once.
-    population_idx: usize,
     samples: SampleVec,
     settings: GeneticControllerSettings,
 }
@@ -28,7 +24,6 @@ impl GeneticController {
 
         Self {
             population,
-            population_idx: 0,
             samples: SampleVec::new(settings.population_size),
             settings,
         }
@@ -78,8 +73,11 @@ impl Controller for GeneticController {
     }
 
     fn next_demand(&mut self) -> Demand {
-        let num_threads = self.population[self.population_idx].num_threads;
-        self.population_idx = (self.population_idx + 1) % self.settings.population_size;
+        // Use the number of samples to determine the current index into the population.
+        // The population is reset every `population_size` iterations.
+        // In between, we want every chromosome to be applied once.
+        let idx = self.samples.len();
+        let num_threads = self.population[idx].num_threads;
         Demand { num_threads }
     }
 }
