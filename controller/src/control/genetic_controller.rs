@@ -18,14 +18,12 @@ pub struct GeneticControllerSettings {
 
 impl GeneticController {
     pub fn new(settings: GeneticControllerSettings) -> Self {
-        let mut population: Vec<Chromosome> = (0..settings.population_size)
-            .map(|_| Chromosome::rand(settings.max_threads))
-            .collect();
-        // We want to sort the population by recommended thread-count
-        // here, to minimise changes in the running program.
-        population.sort_by(|a, b| {
-            a.num_threads.partial_cmp(&b.num_threads).unwrap()
-        });
+        // Instead of randomly initialized values, use an even spread over valid thread-counts to
+        // reduce duplicated and increase the chances of finding an optimum immediately.
+        let population = (0..settings.population_size).map(|i| {
+                let num_threads = (i as f64 * settings.max_threads as f64 / (settings.population_size - 1) as f64).round() as i32;
+                Chromosome::new(num_threads)
+            }).collect();
 
         Self {
             population,
@@ -94,12 +92,15 @@ pub struct Chromosome {
 }
 
 impl Chromosome {
-    fn rand(max_threads: i32) -> Self {
-        Self {
-            num_threads: rand::random_range(1..=max_threads),
-            score: 0.0,
-        }
+    fn new(num_threads: i32) -> Self {
+        Self { num_threads, score: 0.0 }
     }
+
+    // We will need this if we want to implement immigration
+    //fn rand(max_threads: i32) -> Self {
+    //    let num_threads = rand::random_range(1..=max_threads);
+    //    Self::new(num_threads)
+    //}
 
     fn crossover(&self, other: &Self) -> Self {
         Self {
