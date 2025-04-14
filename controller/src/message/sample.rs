@@ -41,3 +41,33 @@ impl From<[u8; Self::SIZE]> for Sample {
         Self { region_uid, runtime, usertime, energy }
     }
 }
+
+pub(crate) struct SampleVec {
+    samples: Vec<Sample>,
+    size: usize,
+}
+
+impl SampleVec {
+    pub(crate) fn new(size: usize) -> Self {
+        Self {
+            samples: Vec::with_capacity(size),
+            size,
+        }
+    }
+
+    pub(crate) fn push(&mut self, sample: Sample) {
+        debug_assert!(!self.is_full());
+        self.samples.push(sample);
+    }
+
+    pub(crate) fn take(&mut self) -> Vec<Sample> {
+        debug_assert!(self.is_full());
+        let mut out = Vec::with_capacity(self.size);
+        mem::swap(&mut self.samples, &mut out);
+        out
+    }
+
+    pub(crate) fn is_full(&self) -> bool {
+        self.samples.len() == self.size
+    }
+}

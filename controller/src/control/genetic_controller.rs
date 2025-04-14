@@ -1,4 +1,4 @@
-use crate::message::{Demand, Sample};
+use crate::message::{Demand, Sample, SampleVec};
 
 use super::Controller;
 
@@ -8,7 +8,7 @@ pub struct GeneticController {
     /// `population_size` iterations. In between, we want every chromosome
     /// to be executed once.
     population_idx: usize,
-    samples: Vec<Sample>,
+    samples: SampleVec,
     settings: GeneticControllerSettings,
 }
 
@@ -29,17 +29,14 @@ impl GeneticController {
         Self {
             population,
             population_idx: 0,
-            samples: Vec::new(),
+            samples: SampleVec::new(settings.population_size),
             settings,
         }
     }
 
-    fn evolve(&mut self) {
-        let mut samples_new = Vec::new();
-        std::mem::swap(&mut self.samples, &mut samples_new);
-
+    fn evolve(&mut self, samples: Vec<Sample>) {
         self.population.iter_mut()
-            .zip(samples_new.into_iter())
+            .zip(samples.into_iter())
             .for_each(|(chromosome, sample)| {
                 chromosome.score = (self.settings.score_fn)(sample);
             });
@@ -74,8 +71,9 @@ impl GeneticController {
 impl Controller for GeneticController {
     fn sample_received(&mut self, sample: Sample) {
         self.samples.push(sample);
-        if self.samples.len() >= self.settings.population_size {
-            self.evolve();
+        if self.samples.is_full() {
+            let samples = self.samples.take();
+            self.evolve(samples);
         }
     }
 

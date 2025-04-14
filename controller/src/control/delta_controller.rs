@@ -1,4 +1,4 @@
-use crate::message::{Demand, Sample};
+use crate::message::{Demand, Sample, SampleVec};
 
 use super::Controller;
 
@@ -6,7 +6,7 @@ const UP: f32 = 1.0;
 const DOWN: f32 = -1.0;
 
 pub struct DeltaController {
-    samples: Vec<Sample>,
+    samples: SampleVec,
     num_threads: f32,
     step_size: f32,
     step_dir: f32,
@@ -23,7 +23,7 @@ pub struct DeltaControllerSettings {
 impl DeltaController {
     pub fn new(settings: DeltaControllerSettings) -> Self {
         Self {
-            samples: Vec::new(),
+            samples: SampleVec::new(settings.population_size),
             num_threads: settings.max_threads as f32,
             step_size: settings.max_threads as f32,
             step_dir: DOWN,
@@ -32,10 +32,8 @@ impl DeltaController {
         }
     }
 
-    fn evolve(&mut self) {
-        let mut samples_new = Vec::new();
-        std::mem::swap(&mut self.samples, &mut samples_new);
-        let scores = samples_new.into_iter().map(self.settings.score_fn).collect();
+    fn evolve(&mut self, samples: Vec<Sample>) {
+        let scores = samples.into_iter().map(self.settings.score_fn).collect();
         let e_next = median(scores);
 
         if e_next > self.e_prev * 1.50 {
@@ -73,8 +71,9 @@ impl DeltaController {
 impl Controller for DeltaController {
     fn sample_received(&mut self, sample: Sample) {
         self.samples.push(sample);
-        if self.samples.len() >= self.settings.population_size {
-            self.evolve();
+        if self.samples.is_full() {
+            let samples = self.samples.take();
+            self.evolve(samples);
         }
     }
 

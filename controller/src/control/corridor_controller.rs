@@ -1,4 +1,4 @@
-use crate::message::{Demand, Sample};
+use crate::message::{Demand, Sample, SampleVec};
 
 use super::Controller;
 
@@ -6,7 +6,7 @@ const _UP: i32 = 1;
 const DOWN: i32 = -1;
 
 pub struct CorridorController {
-    samples: Vec<Sample>,
+    samples: SampleVec,
     num_threads: i32,
     step_size: i32,
     step_dir: i32,
@@ -24,7 +24,7 @@ pub struct CorridorControllerSettings {
 impl CorridorController {
     pub fn new(settings: CorridorControllerSettings) -> Self {
         Self {
-            samples: Vec::new(),
+            samples: SampleVec::new(settings.population_size),
             num_threads: settings.max_threads,
             step_size: settings.max_threads,
             step_dir: DOWN,
@@ -34,10 +34,8 @@ impl CorridorController {
         }
     }
 
-    fn evolve(&mut self) {
-        let mut samples_new = Vec::new();
-        std::mem::swap(&mut self.samples, &mut samples_new);
-        let scores = samples_new.into_iter().map(self.settings.score_fn).collect();
+    fn evolve(&mut self, samples: Vec<Sample>) {
+        let scores = samples.into_iter().map(self.settings.score_fn).collect();
         let tn = frequency_dist(scores);
 
         if self.t1 / tn < 0.5 * self.num_threads as f32 {
@@ -64,8 +62,9 @@ impl CorridorController {
 impl Controller for CorridorController {
     fn sample_received(&mut self, sample: Sample) {
         self.samples.push(sample);
-        if self.samples.len() >= self.settings.population_size {
-            self.evolve();
+        if self.samples.is_full() {
+            let samples = self.samples.take();
+            self.evolve(samples);
         }
     }
 
