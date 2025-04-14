@@ -11,11 +11,6 @@ path = "src/lib.rs"
 name = "server"
 path = "src/main.rs"
 
-[features]
-default = ["genetic"]
-corridor = []
-delta = []
-genetic = []
-
 [dependencies]
+clap = { version = "4.5.36", features = ["derive"] }
 controller = { path = "../controller" }
