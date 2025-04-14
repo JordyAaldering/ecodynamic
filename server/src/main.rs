@@ -1,12 +1,12 @@
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::{self, Read, Write};
 use std::sync::Arc;
-use std::{fs, mem};
+use std::fs;
+
+use clap::{Parser, ValueEnum};
 
 use controller::*;
 use letterbox::*;
-
-use clap::{Parser, ValueEnum};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -55,19 +55,16 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
     }
 }
 
-fn handle_client(mut stream: UnixStream, cli: Arc<Cli>) -> std::io::Result<()> {
+fn handle_client(mut stream: UnixStream, cli: Arc<Cli>) -> io::Result<()> {
     let mut letterbox = Letterbox::new(|req| build_controller(cli.clone(), req));
 
-    const READREQ_SIZE: usize = mem::size_of::<Request>();
-    const SAMPLE_SIZE: usize = mem::size_of::<Sample>();
-    const DEMAND_SIZE: usize = mem::size_of::<Demand>();
-    let mut buffer = [0u8; SAMPLE_SIZE];
+    let mut buffer = [0u8; Sample::SIZE];
 
     loop {
         // Try to read from the stream
         match stream.read(&mut buffer) {
-            Ok(READREQ_SIZE) => {
-                let buf: [u8; READREQ_SIZE] = buffer[0..READREQ_SIZE].try_into().unwrap();
+            Ok(Request::SIZE) => {
+                let buf: [u8; Request::SIZE] = buffer[0..Request::SIZE].try_into().unwrap();
                 let req = Request::from(buf);
                 println!("Read: {:?}", req);
 
@@ -76,10 +73,10 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>) -> std::io::Result<()> {
 
                 // Write to stream
                 println!("Send: {:?}", demand);
-                let buf: [u8; DEMAND_SIZE] = demand.to_bytes();
+                let buf: [u8; Demand::SIZE] = demand.to_bytes();
                 stream.write_all(&buf)?;
             }
-            Ok(SAMPLE_SIZE) => {
+            Ok(Sample::SIZE) => {
                 let sample = Sample::from(buffer);
                 println!("Recv: {:?}", sample);
                 letterbox.update(sample);

@@ -9,10 +9,10 @@ pub struct Request {
     pub max_threads: i32,
 }
 
-const SIZE: usize = mem::size_of::<Request>();
-
 impl Request {
-    pub fn to_bytes(self) -> [u8; SIZE] {
+    pub const SIZE: usize = mem::size_of::<Request>();
+
+    pub fn to_bytes(self) -> [u8; Self::SIZE] {
         let [i0, i1, i2, i3] = self.region_uid.to_ne_bytes();
         let [m0, m1, m2, m3] = self.max_threads.to_ne_bytes();
         [i0, i1, i2, i3,
@@ -20,8 +20,8 @@ impl Request {
     }
 }
 
-impl From<[u8; SIZE]> for Request {
-    fn from(buffer: [u8; SIZE]) -> Self {
+impl From<[u8; Self::SIZE]> for Request {
+    fn from(buffer: [u8; Self::SIZE]) -> Self {
         let [i0, i1, i2, i3,
              m0, m1, m2, m3 ] = buffer;
         let region_uid = i32::from_ne_bytes([i0, i1, i2, i3]);

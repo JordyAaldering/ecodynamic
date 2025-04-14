@@ -13,10 +13,10 @@ pub struct Sample {
     pub energy: f32,
 }
 
-const SIZE: usize = mem::size_of::<Sample>();
-
 impl Sample {
-    pub fn to_bytes(self) -> [u8; SIZE] {
+    pub const SIZE: usize = mem::size_of::<Sample>();
+
+    pub fn to_bytes(self) -> [u8; Self::SIZE] {
         let [i0, i1, i2, i3] = self.region_uid.to_ne_bytes();
         let [r0, r1, r2, r3] = self.runtime.to_ne_bytes();
         let [u0, u1, u2, u3] = self.usertime.to_ne_bytes();
@@ -28,8 +28,8 @@ impl Sample {
     }
 }
 
-impl From<[u8; SIZE]> for Sample {
-    fn from(buffer: [u8; SIZE]) -> Self {
+impl From<[u8; Self::SIZE]> for Sample {
+    fn from(buffer: [u8; Self::SIZE]) -> Self {
         let [i0, i1, i2, i3,
              r0, r1, r2, r3,
              u0, u1, u2, u3,
