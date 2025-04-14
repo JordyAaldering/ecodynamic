@@ -5,8 +5,9 @@ use std::fs;
 
 use clap::{Parser, ValueEnum};
 
-use controller::*;
-use letterbox::*;
+use controller::control::*;
+use controller::message::*;
+use letterbox::{Letterbox, MTD_LETTERBOX_PATH};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -58,30 +59,30 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
 
     match cli.controller_type {
         ControllerType::GeneticAlgorithm => {
-            let settings = GeneticControllerSettings {
+            let settings = genetic_controller::GeneticControllerSettings {
                 score_fn,
                 max_threads: req.max_threads,
                 population_size: cli.letterbox_size,
                 survival_rate: cli.survival_rate,
                 mutation_rate: cli.mutation_rate,
             };
-            Box::new(GeneticController::new(settings))
+            Box::new(genetic_controller::GeneticController::new(settings))
         },
         ControllerType::CorridorBased => {
-            let settings = DeltaControllerSettings {
+            let settings = delta_controller::DeltaControllerSettings {
                 score_fn,
                 max_threads: req.max_threads,
                 population_size: cli.letterbox_size,
             };
-            Box::new(DeltaController::new(settings))
+            Box::new(delta_controller::DeltaController::new(settings))
         },
         ControllerType::DeltaBased => {
-            let settings = CorridorControllerSettings {
+            let settings = corridor_controller::CorridorControllerSettings {
                 score_fn,
                 max_threads: req.max_threads,
                 population_size: cli.letterbox_size,
             };
-            Box::new(CorridorController::new(settings))
+            Box::new(corridor_controller::CorridorController::new(settings))
         },
     }
 }

@@ -1,4 +1,6 @@
-use crate::{Controller, Demand, Sample};
+use crate::message::{Demand, Sample};
+
+use super::Controller;
 
 pub struct GeneticController {
     pub population: Vec<Chromosome>,

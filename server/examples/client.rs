@@ -4,7 +4,7 @@ use std::os::unix::net::UnixStream;
 use std::thread::sleep;
 use std::time::Duration;
 
-use controller::{Demand, Request, Sample};
+use controller::message::*;
 use letterbox::MTD_LETTERBOX_PATH;
 
 fn main() -> std::io::Result<()> {

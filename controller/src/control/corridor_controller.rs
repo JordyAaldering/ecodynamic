@@ -1,4 +1,6 @@
-use crate::{Controller, Demand, Sample};
+use crate::message::{Demand, Sample};
+
+use super::Controller;
 
 const _UP: i32 = 1;
 const DOWN: i32 = -1;

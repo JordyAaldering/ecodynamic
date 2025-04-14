@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use controller::{Controller, Demand, Request, Sample};
+use controller::{control::Controller, message::*};
 
 pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 
