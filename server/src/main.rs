@@ -12,8 +12,12 @@ use letterbox::*;
 #[command(version, about, long_about = None)]
 struct Cli {
     /// Controller type
-    #[arg(short, long)]
+    #[arg(short('c'), long)]
     controller_type: ControllerType,
+
+    /// Controller type
+    #[arg(short('f'), long)]
+    score_function: ScoreFunction,
 
     /// Size of the letterbox
     #[arg(short('s'), long)]
@@ -39,10 +43,23 @@ enum ControllerType {
     DeltaBased,
 }
 
+#[derive(ValueEnum)]
+#[derive(Copy, Clone, Debug)]
+enum ScoreFunction {
+    Runtime,
+    Energy,
+}
+
 fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
+    let score_fn: fn(Sample) -> f32 = match cli.score_function {
+        ScoreFunction::Runtime => |s| s.runtime,
+        ScoreFunction::Energy => |s| s.energy,
+    };
+
     match cli.controller_type {
         ControllerType::GeneticAlgorithm => {
             let settings = GeneticControllerSettings {
+                score_fn,
                 max_threads: req.max_threads,
                 population_size: cli.letterbox_size,
                 survival_rate: cli.survival_rate,
@@ -50,8 +67,22 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
             };
             Box::new(GeneticController::new(settings))
         },
-        ControllerType::CorridorBased => Box::new(DeltaController::new(req.max_threads)),
-        ControllerType::DeltaBased => Box::new(CorridorController::new(req.max_threads)),
+        ControllerType::CorridorBased => {
+            let settings = DeltaControllerSettings {
+                score_fn,
+                max_threads: req.max_threads,
+                population_size: cli.letterbox_size,
+            };
+            Box::new(DeltaController::new(settings))
+        },
+        ControllerType::DeltaBased => {
+            let settings = CorridorControllerSettings {
+                score_fn,
+                max_threads: req.max_threads,
+                population_size: cli.letterbox_size,
+            };
+            Box::new(CorridorController::new(settings))
+        },
     }
 }
 

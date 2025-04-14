@@ -6,30 +6,37 @@ const DOWN: i32 = -1;
 pub struct CorridorController {
     samples: Vec<Sample>,
     num_threads: i32,
-    max_threads: i32,
     step_size: i32,
     step_dir: i32,
     t_prev: f32,
     t1: f32,
+    settings: CorridorControllerSettings,
+}
+
+pub struct CorridorControllerSettings {
+    pub max_threads: i32,
+    pub score_fn: fn(Sample) -> f32,
+    pub population_size: usize,
 }
 
 impl CorridorController {
-    pub fn new(max_threads: i32) -> Self {
+    pub fn new(settings: CorridorControllerSettings) -> Self {
         Self {
             samples: Vec::new(),
-            num_threads: max_threads,
-            max_threads: max_threads,
-            step_size: max_threads,
+            num_threads: settings.max_threads,
+            step_size: settings.max_threads,
             step_dir: DOWN,
             t_prev: f32::MAX,
             t1: f32::MAX,
+            settings,
         }
     }
 
     fn evolve(&mut self) {
         let mut samples_new = Vec::new();
         std::mem::swap(&mut self.samples, &mut samples_new);
-        let tn = frequency_dist(samples_new);
+        let scores = samples_new.into_iter().map(self.settings.score_fn).collect();
+        let tn = frequency_dist(scores);
 
         if self.t1 / tn < 0.5 * self.num_threads as f32 {
             self.step_dir = DOWN;
@@ -48,14 +55,14 @@ impl CorridorController {
 
         self.t_prev = tn;
         self.num_threads += self.step_dir * self.step_size;
-        self.num_threads = self.num_threads.max(1).min(self.max_threads);
+        self.num_threads = self.num_threads.max(1).min(self.settings.max_threads);
     }
 }
 
 impl Controller for CorridorController {
     fn sample_received(&mut self, sample: Sample) {
         self.samples.push(sample);
-        if self.samples.len() >= 10 {
+        if self.samples.len() >= self.settings.population_size {
             self.evolve();
         }
     }
@@ -67,8 +74,7 @@ impl Controller for CorridorController {
 
 const FREQDIST_RANGES: usize = 5;
 
-fn frequency_dist(samples: Vec<Sample>) -> f32 {
-    let mut scores: Vec<f32> = samples.into_iter().map(|s| s.energy).collect();
+fn frequency_dist(mut scores: Vec<f32>) -> f32 {
     scores.sort_by(|a, b| a.partial_cmp(&b).unwrap());
 
     let min = scores[0];

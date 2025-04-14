@@ -10,6 +10,7 @@ pub struct GeneticController {
 
 pub struct GeneticControllerSettings {
     pub max_threads: i32,
+    pub score_fn: fn(Sample) -> f32,
     pub population_size: usize,
     pub survival_rate: f32,
     pub mutation_rate: f32,
@@ -36,7 +37,7 @@ impl GeneticController {
         self.population.iter_mut()
             .zip(samples_new.into_iter())
             .for_each(|(chromosome, sample)| {
-                chromosome.score = sample.energy;
+                chromosome.score = (self.settings.score_fn)(sample);
             });
 
         self.population.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
