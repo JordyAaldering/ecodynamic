@@ -2,26 +2,30 @@ use crate::{Controller, Demand, Sample};
 
 pub struct GeneticController {
     pub population: Vec<Chromosome>,
-    samples: Vec<Sample>,
     /// Index of the chromosome for which we will return the thread-count
     population_idx: usize,
-    // Configuration
-    max_threads: i32,
-    population_size: usize,
-    survival_rate: f32,
-    mutation_rate: f32,
+    samples: Vec<Sample>,
+    settings: GeneticControllerSettings,
+}
+
+pub struct GeneticControllerSettings {
+    pub max_threads: i32,
+    pub population_size: usize,
+    pub survival_rate: f32,
+    pub mutation_rate: f32,
 }
 
 impl GeneticController {
-    pub fn new(max_threads: i32, population_size: usize, survival_rate: f32, mutation_rate: f32) -> Self {
+    pub fn new(settings: GeneticControllerSettings) -> Self {
+        let population = (0..settings.population_size)
+            .map(|_| Chromosome::rand(settings.max_threads))
+            .collect();
+
         Self {
-            population: (0..population_size).map(|_| Chromosome::rand(max_threads)).collect(),
-            samples: Vec::new(),
+            population,
             population_idx: 0,
-            max_threads,
-            population_size,
-            survival_rate,
-            mutation_rate,
+            samples: Vec::new(),
+            settings,
         }
     }
 
@@ -38,14 +42,14 @@ impl GeneticController {
         self.population.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
 
         // Keep the N% best performing chromosomes
-        let n = (self.population_size as f32 * self.survival_rate).floor() as usize;
+        let n = (self.settings.population_size as f32 * self.settings.survival_rate).floor() as usize;
         // Replace the remaining chromosomes by children of the best performing chromosomes
-        for i in n..self.population_size {
+        for i in n..self.settings.population_size {
             let parent1 = &self.population[rand::random_range(0..n)];
             let parent2 = &self.population[rand::random_range(0..n)];
             let mut child = parent1.crossover(&parent2);
-            if rand::random_range(0.0..1.0) < self.mutation_rate {
-                child.mutate(self.max_threads);
+            if rand::random_range(0.0..1.0) < self.settings.mutation_rate {
+                child.mutate(self.settings.max_threads);
             }
 
             self.population[i] = child;
@@ -56,14 +60,14 @@ impl GeneticController {
 impl Controller for GeneticController {
     fn sample_received(&mut self, sample: Sample) {
         self.samples.push(sample);
-        if self.samples.len() >= self.population_size {
+        if self.samples.len() >= self.settings.population_size {
             self.evolve();
         }
     }
 
     fn next_demand(&mut self) -> Demand {
         // At this points the population is already sorted, the first element is the best-performing one
-        self.population_idx = (self.population_idx + 1) % self.population_size;
+        self.population_idx = (self.population_idx + 1) % self.settings.population_size;
         let num_threads = self.population[self.population_idx].num_threads;
         Demand { num_threads }
     }

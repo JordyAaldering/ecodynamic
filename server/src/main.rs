@@ -41,7 +41,15 @@ enum ControllerType {
 
 fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
     match cli.controller_type {
-        ControllerType::GeneticAlgorithm => Box::new(GeneticController::new(req.max_threads, cli.letterbox_size, cli.survival_rate, cli.mutation_rate)),
+        ControllerType::GeneticAlgorithm => {
+            let settings = GeneticControllerSettings {
+                max_threads: req.max_threads,
+                population_size: cli.letterbox_size,
+                survival_rate: cli.survival_rate,
+                mutation_rate: cli.mutation_rate,
+            };
+            Box::new(GeneticController::new(settings))
+        },
         ControllerType::CorridorBased => Box::new(DeltaController::new(req.max_threads)),
         ControllerType::DeltaBased => Box::new(CorridorController::new(req.max_threads)),
     }
