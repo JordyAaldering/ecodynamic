@@ -4,7 +4,9 @@ use super::Controller;
 
 pub struct GeneticController {
     pub population: Vec<Chromosome>,
-    /// Index of the chromosome for which we will return the thread-count
+    /// Keeps track of the current index. The population is reset every
+    /// `population_size` iterations. In between, we want every chromosome
+    /// to be executed once.
     population_idx: usize,
     samples: Vec<Sample>,
     settings: GeneticControllerSettings,
@@ -42,10 +44,13 @@ impl GeneticController {
                 chromosome.score = (self.settings.score_fn)(sample);
             });
 
-        self.population.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
+        self.population.sort_by(|a, b| {
+            a.score.partial_cmp(&b.score).unwrap()
+        });
 
         // Keep the N% best performing chromosomes
         let n = (self.settings.population_size as f32 * self.settings.survival_rate).floor() as usize;
+
         // Replace the remaining chromosomes by children of the best performing chromosomes
         for i in n..self.settings.population_size {
             let parent1 = &self.population[rand::random_range(0..n)];
@@ -57,6 +62,12 @@ impl GeneticController {
 
             self.population[i] = child;
         }
+
+        // We want to sort the population by recommended thread-count
+        // here, to minimise changes in the running program.
+        self.population.sort_by(|a, b| {
+            a.num_threads.partial_cmp(&b.num_threads).unwrap()
+        });
     }
 }
 
@@ -69,7 +80,6 @@ impl Controller for GeneticController {
     }
 
     fn next_demand(&mut self) -> Demand {
-        // At this points the population is already sorted, the first element is the best-performing one
         self.population_idx = (self.population_idx + 1) % self.settings.population_size;
         let num_threads = self.population[self.population_idx].num_threads;
         Demand { num_threads }
