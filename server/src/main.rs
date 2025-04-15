@@ -12,23 +12,23 @@ use letterbox::{Letterbox, MTD_LETTERBOX_PATH};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    /// Controller type
+    /// Controller type.
     #[arg(short('c'), long)]
     controller_type: ControllerType,
 
-    /// Controller type
+    /// Controller type.
     #[arg(short('f'), long)]
     score_function: ScoreFunction,
 
-    /// Size of the letterbox
+    /// Size of the letterbox.
     #[arg(short('s'), long)]
     letterbox_size: usize,
 
-    /// Genetic algorithm survival rate
+    /// Genetic algorithm survival rate.
     #[arg(long, default_value_t = 0.50)]
     survival_rate: f32,
 
-    /// Genetic algorithm mutation rate
+    /// Genetic algorithm mutation rate.
     #[arg(long, default_value_t = 0.25)]
     mutation_rate: f32,
 }
@@ -36,12 +36,12 @@ struct Cli {
 #[derive(ValueEnum)]
 #[derive(Copy, Clone, Debug)]
 enum ControllerType {
-    /// Genetic algorithm approach
-    GeneticAlgorithm,
-    /// Algorithm based on a performance corridor
-    CorridorBased,
-    /// Algorithm based on deltas between runs
-    DeltaBased,
+    /// Genetic algorithm approach.
+    Genetic,
+    /// Algorithm based on a performance corridor.
+    Corridor,
+    /// Algorithm based on deltas between runs.
+    Delta,
 }
 
 #[derive(ValueEnum)]
@@ -58,7 +58,7 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
     };
 
     match cli.controller_type {
-        ControllerType::GeneticAlgorithm => {
+        ControllerType::Genetic => {
             let settings = genetic_controller::GeneticControllerSettings {
                 score_fn,
                 max_threads: req.max_threads,
@@ -68,7 +68,7 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
             };
             Box::new(genetic_controller::GeneticController::new(settings))
         },
-        ControllerType::CorridorBased => {
+        ControllerType::Corridor => {
             let settings = delta_controller::DeltaControllerSettings {
                 score_fn,
                 max_threads: req.max_threads,
@@ -76,7 +76,7 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
             };
             Box::new(delta_controller::DeltaController::new(settings))
         },
-        ControllerType::DeltaBased => {
+        ControllerType::Delta => {
             let settings = corridor_controller::CorridorControllerSettings {
                 score_fn,
                 max_threads: req.max_threads,

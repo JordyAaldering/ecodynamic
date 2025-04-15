@@ -73,18 +73,18 @@ impl Controller for CorridorController {
     }
 }
 
-const FREQDIST_RANGES: usize = 5;
-
 fn frequency_dist(mut scores: Vec<f32>) -> f32 {
+    const NUM_RANGES: usize = 5;
+
     scores.sort_by(|a, b| a.partial_cmp(&b).unwrap());
 
     let min = scores[0];
     let max = scores[scores.len() - 1];
-    let dist_size = (max - min) / FREQDIST_RANGES as f32;
-    let mut dist_max = (1..=FREQDIST_RANGES).map(|i| min + dist_size * i as f32).collect::<Vec<f32>>();
-    dist_max[FREQDIST_RANGES - 1] = max;
+    let dist_size = (max - min) / NUM_RANGES as f32;
+    let mut dist_max = (1..=NUM_RANGES).map(|i| min + dist_size * i as f32).collect::<Vec<f32>>();
+    dist_max[NUM_RANGES - 1] = max;
 
-    let mut dist = vec![Vec::new(); FREQDIST_RANGES];
+    let mut dist = vec![Vec::new(); NUM_RANGES];
     let mut dist_index = 0;
     for x in scores {
         while x > dist_max[dist_index] {
