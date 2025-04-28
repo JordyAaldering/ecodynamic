@@ -12,5 +12,5 @@ name = "server"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.5.36", features = ["derive"] }
+clap = { version = "4.5.37", features = ["derive"] }
 controller = { path = "../controller" }

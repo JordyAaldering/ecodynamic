@@ -1,13 +1,12 @@
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::fs::{self, File};
 
 use clap::{Parser, ValueEnum};
 
-use controller::control::*;
-use controller::message::*;
+use controller::{control::*, message::*};
 use letterbox::{Letterbox, MTD_LETTERBOX_PATH};
 
 macro_rules! debug_println {
@@ -79,49 +78,52 @@ impl ScoreFunction {
     }
 }
 
-fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
-    match cli.controller_type {
-        ControllerType::Genetic => {
-            let settings = genetic_controller::GeneticControllerSettings {
-                max_threads: req.max_threads,
-                population_size: cli.letterbox_size,
-                survival_rate: cli.survival_rate,
-                mutation_rate: cli.mutation_rate,
-            };
-            Box::new(genetic_controller::GeneticController::new(settings))
-        },
-        ControllerType::Corridor => {
-            let settings = delta_controller::DeltaControllerSettings {
-                max_threads: req.max_threads,
-                population_size: cli.letterbox_size,
-            };
-            Box::new(delta_controller::DeltaController::new(settings))
-        },
-        ControllerType::Delta => {
-            let settings = corridor_controller::CorridorControllerSettings {
-                max_threads: req.max_threads,
-                population_size: cli.letterbox_size,
-            };
-            Box::new(corridor_controller::CorridorController::new(settings))
-        },
-        ControllerType::Oscilating => {
-            let settings = oscilating::OscilatingControllerSettings {
-                max_threads: req.max_threads,
-                interval: cli.letterbox_size,
-            };
-            Box::new(oscilating::OscilatingController::new(settings))
-        },
-        ControllerType::Fixed => {
-            let settings = fixed::FixedControllerSettings {
-                max_threads: req.max_threads,
-            };
-            Box::new(fixed::FixedController::new(settings))
-        },
+impl ControllerType {
+    fn build(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
+        use ControllerType::*;
+        match cli.controller_type {
+            Genetic => {
+                let settings = GeneticControllerSettings {
+                    max_threads: req.max_threads,
+                    population_size: cli.letterbox_size,
+                    survival_rate: cli.survival_rate,
+                    mutation_rate: cli.mutation_rate,
+                };
+                Box::new(GeneticController::new(settings))
+            },
+            Corridor => {
+                let settings = DeltaControllerSettings {
+                    max_threads: req.max_threads,
+                    population_size: cli.letterbox_size,
+                };
+                Box::new(DeltaController::new(settings))
+            },
+            Delta => {
+                let settings = CorridorControllerSettings {
+                    max_threads: req.max_threads,
+                    population_size: cli.letterbox_size,
+                };
+                Box::new(CorridorController::new(settings))
+            },
+            Oscilating => {
+                let settings = OscilatingControllerSettings {
+                    max_threads: req.max_threads,
+                    interval: cli.letterbox_size,
+                };
+                Box::new(OscilatingController::new(settings))
+            },
+            Fixed => {
+                let settings = FixedControllerSettings {
+                    max_threads: req.max_threads,
+                };
+                Box::new(FixedController::new(settings))
+            },
+        }
     }
 }
 
 fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io::Result<()> {
-    let mut letterbox = Letterbox::new(|req| build_controller(cli.clone(), req));
+    let mut letterbox = Letterbox::new(|req| ControllerType::build(cli.clone(), req));
 
     let mut buffer = [0u8; Sample::SIZE];
 

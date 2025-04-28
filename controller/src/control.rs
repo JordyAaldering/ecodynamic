@@ -1,8 +1,14 @@
-pub mod corridor_controller;
-pub mod delta_controller;
-pub mod fixed;
-pub mod genetic_controller;
-pub mod oscilating;
+mod corridor;
+mod delta;
+mod fixed;
+mod genetic;
+mod oscilating;
+
+pub use corridor::*;
+pub use delta::*;
+pub use fixed::*;
+pub use genetic::*;
+pub use oscilating::*;
 
 use crate::message::Demand;
 
