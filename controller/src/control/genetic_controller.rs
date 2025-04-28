@@ -20,7 +20,7 @@ pub struct GeneticControllerSettings {
 impl GeneticController {
     pub fn new(settings: GeneticControllerSettings) -> Self {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
-        // reduce duplicated and increase the chances of finding an optimum immediately.
+        // reduce duplication and increase the chances of finding an optimum immediately.
         let population = (1..=settings.population_size).map(|i| {
                 let num_threads = (i as f64 * settings.max_threads as f64 / (settings.population_size - 1) as f64).round() as i32;
                 Chromosome::new(num_threads)
@@ -36,13 +36,10 @@ impl GeneticController {
     fn evolve(&mut self, scores: Vec<f32>) {
         self.population.iter_mut()
             .zip(scores.into_iter())
-            .for_each(|(chromosome, score)| {
-                chromosome.score = score;
-            });
-
-        self.population.sort_by(|a, b| {
-            a.score.partial_cmp(&b.score).unwrap()
-        });
+            .collect::<Vec<_>>()
+            .sort_by(|(_, a), (_, b)|
+                a.partial_cmp(&b).unwrap()
+            );
 
         // Keep the N% best performing chromosomes
         let n = (self.settings.population_size as f32 * self.settings.survival_rate).floor() as usize;
@@ -90,12 +87,12 @@ impl Controller for GeneticController {
 #[derive(Clone)]
 pub struct Chromosome {
     pub num_threads: i32,
-    pub score: f32,
+    //pub score: f32,
 }
 
 impl Chromosome {
     fn new(num_threads: i32) -> Self {
-        Self { num_threads, score: 0.0 }
+        Self { num_threads }
     }
 
     // We will need this if we want to implement immigration
@@ -107,7 +104,7 @@ impl Chromosome {
     fn crossover(&self, other: &Self) -> Self {
         Self {
             num_threads: (self.num_threads + other.num_threads) / 2,
-            score: 0.0,
+
         }
     }
 
