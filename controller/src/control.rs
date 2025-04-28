@@ -1,6 +1,8 @@
 pub mod corridor_controller;
 pub mod delta_controller;
+pub mod fixed;
 pub mod genetic_controller;
+pub mod oscilating;
 
 use crate::message::{Demand, Sample};
 

@@ -1,13 +1,18 @@
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::io::{self, Read, Write};
+use std::io::{self, BufWriter, Read, Write};
+use std::path::PathBuf;
 use std::sync::Arc;
-use std::fs;
+use std::fs::{self, File};
 
 use clap::{Parser, ValueEnum};
 
 use controller::control::*;
 use controller::message::*;
 use letterbox::{Letterbox, MTD_LETTERBOX_PATH};
+
+macro_rules! debug_println {
+    ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
+}
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -31,6 +36,11 @@ struct Cli {
     /// Genetic algorithm mutation rate.
     #[arg(long, default_value_t = 0.25)]
     mutation_rate: f32,
+
+    /// Log received samples to this path.
+    /// Creates a file for each client.
+    #[arg(long)]
+    log_path: Option<PathBuf>,
 }
 
 #[derive(ValueEnum)]
@@ -42,6 +52,10 @@ enum ControllerType {
     Corridor,
     /// Algorithm based on deltas between runs.
     Delta,
+    /// Continuously oscilates between 1 and <max-threads>.
+    Oscilating,
+    /// Always returns <max-threads>.
+    Fixed,
 }
 
 #[derive(ValueEnum)]
@@ -84,13 +98,37 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
             };
             Box::new(corridor_controller::CorridorController::new(settings))
         },
+        ControllerType::Oscilating => {
+            let settings = oscilating::OscilatingControllerSettings {
+                max_threads: req.max_threads,
+                interval: cli.letterbox_size,
+            };
+            Box::new(oscilating::OscilatingController::new(settings))
+        },
+        ControllerType::Fixed => {
+            let settings = fixed::FixedControllerSettings {
+                max_threads: req.max_threads,
+            };
+            Box::new(fixed::FixedController::new(settings))
+        },
     }
 }
 
-fn handle_client(mut stream: UnixStream, cli: Arc<Cli>) -> io::Result<()> {
+fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io::Result<()> {
     let mut letterbox = Letterbox::new(|req| build_controller(cli.clone(), req));
 
     let mut buffer = [0u8; Sample::SIZE];
+
+    let mut log = if let Some(path) = &cli.log_path {
+        let path = path.join(format!("client{:02}.csv", client_id));
+        println!("Creating log file at {:?}", path);
+        let file = File::create_new(path)?;
+        let mut w = BufWriter::new(file);
+        w.write("uid,runtime,usertime,energy\n".as_bytes())?;
+        Some(w)
+    } else {
+        None
+    };
 
     loop {
         // Try to read from the stream
@@ -98,20 +136,31 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>) -> io::Result<()> {
             Ok(Request::SIZE) => {
                 let buf: [u8; Request::SIZE] = buffer[0..Request::SIZE].try_into().unwrap();
                 let req = Request::from(buf);
-                println!("Read: {:?}", req);
+                debug_println!("Read: {:?}", req);
 
                 // Update letterbox
                 let demand = letterbox.read(req);
 
                 // Write to stream
-                println!("Send: {:?}", demand);
+                debug_println!("Send: {:?}", demand);
                 let buf: [u8; Demand::SIZE] = demand.to_bytes();
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {
+                // Sample received
                 let sample = Sample::from(buffer);
-                println!("Recv: {:?}", sample);
+
+                debug_println!("Recv: {:?}", sample);
+                if let Some(w) = &mut log {
+                    w.write_fmt(format_args!("{},{},{},{}\n", sample.region_uid, sample.runtime, sample.usertime, sample.energy))?;
+                }
+
                 letterbox.update(sample);
+
+            }
+            Ok(0) => {
+                println!("Client disconnected");
+                break;
             }
             Ok(n) => {
                 eprintln!("Invalid message size: {}", n);
@@ -131,6 +180,12 @@ fn main() -> io::Result<()> {
     let args = Cli::parse();
     let args = Arc::new(args);
 
+    // Check if log directory exists
+    if let Some(path) = &args.log_path {
+        let path = fs::canonicalize(path)?;
+        println!("Writing logs to {:?}", path);
+    }
+
     // Remove any existing socket file
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
         fs::remove_file(MTD_LETTERBOX_PATH)?;
@@ -139,13 +194,15 @@ fn main() -> io::Result<()> {
     // Create a listener
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     println!("Server listening on {}", MTD_LETTERBOX_PATH);
+    let mut client_count: usize = 0;
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                client_count += 1;
                 let cli = args.clone();
                 std::thread::spawn(move || {
-                    handle_client(stream, cli)
+                    handle_client(stream, cli, client_count)
                 });
             }
             Err(e) => {
