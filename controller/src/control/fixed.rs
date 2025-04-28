@@ -1,4 +1,4 @@
-use crate::message::{Demand, Sample};
+use crate::message::Demand;
 
 use super::Controller;
 
@@ -17,7 +17,7 @@ impl FixedController {
 }
 
 impl Controller for FixedController {
-    fn sample_received(&mut self, _: Sample) { }
+    fn sample_received(&mut self, _score: f32) { }
 
     fn next_demand(&mut self) -> Demand {
         Demand { num_threads: self.settings.max_threads }

@@ -29,6 +29,10 @@ struct Cli {
     #[arg(short('s'), long)]
     letterbox_size: usize,
 
+    /// Ignore samples with a score lower than <sample-cutoff>.
+    #[arg(long, default_value_t = 0.0)]
+    score_cutoff: f32,
+
     /// Genetic algorithm survival rate.
     #[arg(long, default_value_t = 0.50)]
     survival_rate: f32,
@@ -65,16 +69,20 @@ enum ScoreFunction {
     Energy,
 }
 
-fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
-    let score_fn: fn(Sample) -> f32 = match cli.score_function {
-        ScoreFunction::Runtime => |s| s.runtime,
-        ScoreFunction::Energy => |s| s.energy,
-    };
+impl ScoreFunction {
+    fn score(self, sample: &Sample) -> f32 {
+        use ScoreFunction::*;
+        match self {
+            Runtime => sample.runtime,
+            Energy => sample.energy,
+        }
+    }
+}
 
+fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
     match cli.controller_type {
         ControllerType::Genetic => {
             let settings = genetic_controller::GeneticControllerSettings {
-                score_fn,
                 max_threads: req.max_threads,
                 population_size: cli.letterbox_size,
                 survival_rate: cli.survival_rate,
@@ -84,7 +92,6 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
         },
         ControllerType::Corridor => {
             let settings = delta_controller::DeltaControllerSettings {
-                score_fn,
                 max_threads: req.max_threads,
                 population_size: cli.letterbox_size,
             };
@@ -92,7 +99,6 @@ fn build_controller(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
         },
         ControllerType::Delta => {
             let settings = corridor_controller::CorridorControllerSettings {
-                score_fn,
                 max_threads: req.max_threads,
                 population_size: cli.letterbox_size,
             };
@@ -155,8 +161,10 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io:
                     w.write_fmt(format_args!("{},{},{},{}\n", sample.region_uid, sample.runtime, sample.usertime, sample.energy))?;
                 }
 
-                letterbox.update(sample);
-
+                let score = cli.score_function.score(&sample);
+                if score >= cli.score_cutoff {
+                    letterbox.update(sample.region_uid, score);
+                }
             }
             Ok(0) => {
                 println!("Client disconnected");

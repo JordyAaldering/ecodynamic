@@ -24,10 +24,10 @@ impl<F> Letterbox<F>
             .next_demand()
     }
 
-    pub fn update(&mut self, sample: Sample) {
+    pub fn update(&mut self, region_uid: i32, score: f32) {
         self.letterbox
-            .get_mut(&sample.region_uid)
+            .get_mut(&region_uid)
             .expect("Letterbox not initialized")
-            .sample_received(sample);
+            .sample_received(score);
     }
 }

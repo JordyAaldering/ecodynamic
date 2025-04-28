@@ -1,16 +1,17 @@
-use crate::message::{Demand, Sample, SampleVec};
+use std::mem;
+
+use crate::message::Demand;
 
 use super::Controller;
 
 pub struct GeneticController {
+    samples: Vec<f32>,
     pub population: Vec<Chromosome>,
-    samples: SampleVec,
     settings: GeneticControllerSettings,
 }
 
 pub struct GeneticControllerSettings {
     pub max_threads: i32,
-    pub score_fn: fn(Sample) -> f32,
     pub population_size: usize,
     pub survival_rate: f32,
     pub mutation_rate: f32,
@@ -26,17 +27,17 @@ impl GeneticController {
             }).collect();
 
         Self {
+            samples: Vec::with_capacity(settings.population_size),
             population,
-            samples: SampleVec::new(settings.population_size),
             settings,
         }
     }
 
-    fn evolve(&mut self, samples: Vec<Sample>) {
+    fn evolve(&mut self, scores: Vec<f32>) {
         self.population.iter_mut()
-            .zip(samples.into_iter())
-            .for_each(|(chromosome, sample)| {
-                chromosome.score = (self.settings.score_fn)(sample);
+            .zip(scores.into_iter())
+            .for_each(|(chromosome, score)| {
+                chromosome.score = score;
             });
 
         self.population.sort_by(|a, b| {
@@ -67,11 +68,12 @@ impl GeneticController {
 }
 
 impl Controller for GeneticController {
-    fn sample_received(&mut self, sample: Sample) {
-        self.samples.push(sample);
-        if self.samples.is_full() {
-            let samples = self.samples.take();
-            self.evolve(samples);
+    fn sample_received(&mut self, score: f32) {
+        self.samples.push(score);
+        if self.samples.len() >= self.settings.population_size {
+            let mut samples_new = Vec::with_capacity(self.settings.population_size);
+            mem::swap(&mut self.samples, &mut samples_new);
+            self.evolve(samples_new);
         }
     }
 

@@ -4,10 +4,10 @@ pub mod fixed;
 pub mod genetic_controller;
 pub mod oscilating;
 
-use crate::message::{Demand, Sample};
+use crate::message::Demand;
 
 pub trait Controller {
-    fn sample_received(&mut self, sample: Sample);
+    fn sample_received(&mut self, score: f32);
 
     fn next_demand(&mut self) -> Demand;
 }

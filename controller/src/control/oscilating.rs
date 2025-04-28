@@ -1,4 +1,4 @@
-use crate::message::{Demand, Sample};
+use crate::message::Demand;
 
 use super::Controller;
 
@@ -27,7 +27,7 @@ impl OscilatingController {
 }
 
 impl Controller for OscilatingController {
-    fn sample_received(&mut self, _: Sample) { }
+    fn sample_received(&mut self, _score: f32) { }
 
     fn next_demand(&mut self) -> Demand {
         self.iteration += 1;
