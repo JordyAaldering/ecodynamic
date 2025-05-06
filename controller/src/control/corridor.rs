@@ -69,7 +69,7 @@ impl Controller for CorridorController {
         }
     }
 
-    fn next_demand(&mut self) -> Demand {
+    fn get_demand(&self) -> Demand {
         Demand { num_threads: self.num_threads }
     }
 }

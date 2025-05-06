@@ -19,7 +19,7 @@ impl FixedController {
 impl Controller for FixedController {
     fn sample_received(&mut self, _score: f32) { }
 
-    fn next_demand(&mut self) -> Demand {
+    fn get_demand(&self) -> Demand {
         Demand { num_threads: self.settings.max_threads }
     }
 }

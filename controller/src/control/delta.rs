@@ -78,9 +78,8 @@ impl Controller for DeltaController {
         }
     }
 
-    fn next_demand(&mut self) -> Demand {
-        let num_threads = self.num_threads.round() as i32;
-        Demand { num_threads }
+    fn get_demand(&self) -> Demand {
+        Demand { num_threads: self.num_threads.round() as i32 }
     }
 }
 

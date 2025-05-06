@@ -27,9 +27,7 @@ impl OscilatingController {
 }
 
 impl Controller for OscilatingController {
-    fn sample_received(&mut self, _score: f32) { }
-
-    fn next_demand(&mut self) -> Demand {
+    fn sample_received(&mut self, _score: f32) {
         self.iteration += 1;
 
         // Update demand every N iterations
@@ -42,7 +40,9 @@ impl Controller for OscilatingController {
 
             self.iteration = 0;
         }
+    }
 
+    fn get_demand(&self) -> Demand {
         Demand { num_threads: self.num_threads }
     }
 }

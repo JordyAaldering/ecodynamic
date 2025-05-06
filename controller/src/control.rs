@@ -15,5 +15,5 @@ use crate::message::Demand;
 pub trait Controller {
     fn sample_received(&mut self, score: f32);
 
-    fn next_demand(&mut self) -> Demand;
+    fn get_demand(&self) -> Demand;
 }

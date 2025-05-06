@@ -18,10 +18,15 @@ impl<F> Letterbox<F>
         Self { build, letterbox: HashMap::new() }
     }
 
-    pub fn read(&mut self, req: Request) -> Demand {
+    pub fn try_get_demand(&mut self, req: Request) -> Demand {
         self.letterbox.entry(req.region_uid)
             .or_insert_with(|| (self.build)(req))
-            .next_demand()
+            .get_demand()
+    }
+
+    pub fn get_demand(&mut self, region_uid: i32) -> Demand {
+        self.letterbox.get(&region_uid).unwrap()
+            .get_demand()
     }
 
     pub fn update(&mut self, region_uid: i32, score: f32) {

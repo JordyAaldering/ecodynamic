@@ -132,7 +132,7 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io:
         println!("Creating log file at {:?}", path);
         let file = File::create_new(path)?;
         let mut w = BufWriter::new(file);
-        w.write("uid,runtime,usertime,energy\n".as_bytes())?;
+        w.write("uid,threads,runtime,usertime,energy\n".as_bytes())?;
         Some(w)
     } else {
         None
@@ -147,7 +147,7 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io:
                 debug_println!("Read: {:?}", req);
 
                 // Update letterbox
-                let demand = letterbox.read(req);
+                let demand = letterbox.try_get_demand(req);
 
                 // Write to stream
                 debug_println!("Send: {:?}", demand);
@@ -155,12 +155,18 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io:
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {
-                // Sample received
                 let sample = Sample::from(buffer);
 
                 debug_println!("Recv: {:?}", sample);
+
                 if let Some(w) = &mut log {
-                    w.write_fmt(format_args!("{},{},{},{}\n", sample.region_uid, sample.runtime, sample.usertime, sample.energy))?;
+                    w.write_fmt(format_args!("{},{},{},{},{}\n",
+                        sample.region_uid,
+                        letterbox.get_demand(sample.region_uid).num_threads,
+                        sample.runtime,
+                        sample.usertime,
+                        sample.energy)
+                    )?;
                 }
 
                 let score = cli.score_function.score(&sample);

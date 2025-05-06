@@ -74,7 +74,7 @@ impl Controller for GeneticController {
         }
     }
 
-    fn next_demand(&mut self) -> Demand {
+    fn get_demand(&self) -> Demand {
         // Use the number of samples to determine the current index into the population.
         // The population is reset every `population_size` iterations.
         // In between, we want every chromosome to be applied once.
@@ -104,7 +104,6 @@ impl Chromosome {
     fn crossover(&self, other: &Self) -> Self {
         Self {
             num_threads: (self.num_threads + other.num_threads) / 2,
-
         }
     }
 
