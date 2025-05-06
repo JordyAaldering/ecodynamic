@@ -191,10 +191,7 @@ fn handle_client(mut stream: UnixStream, cli: Cli) -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     let args = Cli::parse();
-
-    // Check if log directory exists
     if let Some(path) = &args.log_file {
-        let path = fs::canonicalize(path)?;
         println!("Writing logs to {:?}", path);
     }
 
