@@ -1,4 +1,3 @@
-
 all: debug release
 
 debug:
