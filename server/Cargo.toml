@@ -9,7 +9,11 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "server"
-path = "src/main.rs"
+path = "src/server.rs"
+
+[[bin]]
+name = "single"
+path = "src/single.rs"
 
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }

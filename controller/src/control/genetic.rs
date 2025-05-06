@@ -21,8 +21,8 @@ impl GeneticController {
     pub fn new(settings: GeneticControllerSettings) -> Self {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
-        let population = (1..=settings.population_size).map(|i| {
-                let num_threads = (i as f64 * settings.max_threads as f64 / (settings.population_size - 1) as f64).round() as i32;
+        let population = (0..settings.population_size).map(|i| {
+                let num_threads = 1 + (i as f64 * (settings.max_threads - 1) as f64 / (settings.population_size - 1) as f64).round() as i32;
                 Chromosome::new(num_threads)
             }).collect();
 
