@@ -15,6 +15,17 @@ pub struct GeneticControllerSettings {
     pub population_size: usize,
     pub survival_rate: f32,
     pub mutation_rate: f32,
+    pub immigration_rate: f32,
+}
+
+impl GeneticControllerSettings {
+    fn survival_count(&self) -> usize {
+        (self.population_size as f32 * self.survival_rate).round() as usize
+    }
+
+    fn immigration_count(&self) -> usize {
+        (self.population_size as f32 * self.immigration_rate).round() as usize
+    }
 }
 
 impl GeneticController {
@@ -34,20 +45,16 @@ impl GeneticController {
     }
 
     fn evolve(&mut self, scores: Vec<f32>) {
-        self.population.iter_mut()
-            .zip(scores.into_iter())
-            .collect::<Vec<_>>()
-            .sort_by(|(_, a), (_, b)|
-                a.partial_cmp(&b).unwrap()
-            );
+        self.sort(scores);
 
-        // Keep the N% best performing chromosomes
-        let n = (self.settings.population_size as f32 * self.settings.survival_rate).floor() as usize;
+        let survival_count = self.settings.survival_count();
+        let immigration_count = self.settings.immigration_count();
+        let immigration_start = self.settings.population_size - immigration_count;
 
-        // Replace the remaining chromosomes by children of the best performing chromosomes
-        for i in n..self.settings.population_size {
-            let parent1 = &self.population[rand::random_range(0..n)];
-            let parent2 = &self.population[rand::random_range(0..n)];
+        // Replace chromosomes by children of the best performing chromosomes
+        for i in survival_count..immigration_start {
+            let parent1 = &self.population[rand::random_range(0..survival_count)];
+            let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(&parent2);
             if rand::random_range(0.0..1.0) < self.settings.mutation_rate {
                 child.mutate(self.settings.max_threads);
@@ -56,11 +63,19 @@ impl GeneticController {
             self.population[i] = child;
         }
 
+        // Fill remaining chromosomes by immigration
+        for i in immigration_start..self.settings.population_size {
+            self.population[i] = Chromosome::rand(self.settings.max_threads);
+        }
+
         // We want to sort the population by recommended thread-count
         // here, to minimise changes in the running program.
-        self.population.sort_by(|a, b| {
-            a.num_threads.partial_cmp(&b.num_threads).unwrap()
-        });
+        self.population.sort();
+    }
+
+    fn sort(&mut self, scores: Vec<f32>) {
+        let mut permutation = permutation::sort_by(&scores, |a, b| a.partial_cmp(b).unwrap());
+        permutation.apply_slice_in_place(&mut self.population);
     }
 }
 
@@ -84,10 +99,9 @@ impl Controller for GeneticController {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Chromosome {
     pub num_threads: i32,
-    //pub score: f32,
 }
 
 impl Chromosome {
@@ -95,11 +109,11 @@ impl Chromosome {
         Self { num_threads }
     }
 
-    // We will need this if we want to implement immigration
-    //fn rand(max_threads: i32) -> Self {
-    //    let num_threads = rand::random_range(1..=max_threads);
-    //    Self::new(num_threads)
-    //}
+    /// Generate a random chromosome for immigration
+    fn rand(max_threads: i32) -> Self {
+        let num_threads = rand::random_range(1..=max_threads);
+        Self::new(num_threads)
+    }
 
     fn crossover(&self, other: &Self) -> Self {
         Self {

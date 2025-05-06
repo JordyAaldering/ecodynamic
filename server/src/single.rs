@@ -39,6 +39,10 @@ struct Cli {
     #[arg(long, default_value_t = 0.25)]
     mutation_rate: f32,
 
+    /// Genetic algorithm immigration rate.
+    #[arg(long, default_value_t = 0.0)]
+    immigration_rate: f32,
+
     /// Log received samples to this path.
     #[arg(long)]
     log_file: Option<PathBuf>,
@@ -86,6 +90,7 @@ impl ControllerType {
                     population_size: cli.letterbox_size,
                     survival_rate: cli.survival_rate,
                     mutation_rate: cli.mutation_rate,
+                    immigration_rate: cli.immigration_rate,
                 };
                 Box::new(GeneticController::new(settings))
             },
@@ -191,9 +196,6 @@ fn handle_client(mut stream: UnixStream, cli: Cli) -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     let args = Cli::parse();
-    if let Some(path) = &args.log_file {
-        println!("Writing logs to {:?}", path);
-    }
 
     // Remove any existing socket file
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
@@ -210,6 +212,7 @@ fn main() -> io::Result<()> {
         Err(e) => eprintln!("Connection failed: {}", e),
     }
 
+    println!("Server shutting down");
     fs::remove_file(MTD_LETTERBOX_PATH)?;
     Ok(())
 }

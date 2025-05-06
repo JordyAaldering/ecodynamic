@@ -40,6 +40,10 @@ struct Cli {
     #[arg(long, default_value_t = 0.25)]
     mutation_rate: f32,
 
+    /// Genetic algorithm immigration rate.
+    #[arg(long, default_value_t = 0.0)]
+    immigration_rate: f32,
+
     /// Log received samples to this path.
     /// Creates a file for each client.
     #[arg(long)]
@@ -88,6 +92,7 @@ impl ControllerType {
                     population_size: cli.letterbox_size,
                     survival_rate: cli.survival_rate,
                     mutation_rate: cli.mutation_rate,
+                    immigration_rate: cli.immigration_rate,
                 };
                 Box::new(GeneticController::new(settings))
             },
