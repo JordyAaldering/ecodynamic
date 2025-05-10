@@ -1,133 +1,27 @@
+mod config;
+
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use clap::{Parser, ValueEnum};
-
-use controller::*;
+use clap::Parser;
+use config::*;
 use letterbox::*;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
 }
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Cli {
-    /// Controller type.
-    #[arg(short('c'), long)]
-    controller_type: ControllerType,
+#[static_init::dynamic]
+static CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config::parse()));
 
-    /// Controller type.
-    #[arg(short('f'), long)]
-    score_function: ScoreFunction,
-
-    /// Size of the letterbox.
-    #[arg(short('s'), long)]
-    letterbox_size: usize,
-
-    /// Ignore samples with a score lower than <sample-cutoff>.
-    #[arg(long, default_value_t = 0.0)]
-    score_cutoff: f32,
-
-    /// Genetic algorithm survival rate.
-    #[arg(long, default_value_t = 0.50)]
-    survival_rate: f32,
-
-    /// Genetic algorithm mutation rate.
-    #[arg(long, default_value_t = 0.25)]
-    mutation_rate: f32,
-
-    /// Genetic algorithm immigration rate.
-    #[arg(long, default_value_t = 0.0)]
-    immigration_rate: f32,
-
-    /// Log received samples to this path.
-    #[arg(long)]
-    log_file: Option<PathBuf>,
-}
-
-impl GeneticControllerConfig for Cli {
-    fn population_size(&self) -> usize {
-        self.letterbox_size
-    }
-
-    fn survival_rate(&self) -> f32 {
-        self.survival_rate
-    }
-
-    fn mutation_rate(&self) -> f32 {
-        self.mutation_rate
-    }
-
-    fn immigration_rate(&self) -> f32 {
-        self.immigration_rate
-    }
-}
-
-#[derive(ValueEnum)]
-#[derive(Copy, Clone, Debug)]
-enum ControllerType {
-    /// Genetic algorithm approach.
-    Genetic,
-    /// Algorithm based on a performance corridor.
-    Corridor,
-    /// Algorithm based on deltas between runs.
-    Delta,
-    /// Continuously oscilates between 1 and <max-threads>.
-    Oscilating,
-    /// Always returns <max-threads>.
-    Fixed,
-}
-
-#[derive(ValueEnum)]
-#[derive(Copy, Clone, Debug)]
-enum ScoreFunction {
-    Runtime,
-    Energy,
-}
-
-impl ScoreFunction {
-    fn score(self, sample: &Sample) -> f32 {
-        use ScoreFunction::*;
-        match self {
-            Runtime => sample.runtime,
-            Energy => sample.energy,
-        }
-    }
-}
-
-impl ControllerType {
-    fn build(config: Arc<Mutex<Cli>>, req: Request) -> Box<dyn Controller> {
-        use ControllerType::*;
-        match config.lock().unwrap().controller_type {
-            Genetic => {
-                Box::new(GeneticController::new(req.max_threads, config.clone()))
-            },
-            Corridor => {
-                Box::new(DeltaController::new(req.max_threads as f32))
-            },
-            Delta => {
-                Box::new(CorridorController::new(req.max_threads))
-            },
-            Oscilating => {
-                Box::new(OscilatingController::new(req.max_threads))
-            },
-            Fixed => {
-                Box::new(FixedController::new(req.max_threads))
-            },
-        }
-    }
-}
-
-fn handle_client(mut stream: UnixStream, config: Arc<Mutex<Cli>>) -> io::Result<()> {
-    let mut letterbox = Letterbox::new(|req| ControllerType::build(config.clone(), req));
+fn handle_client(mut stream: UnixStream) -> io::Result<()> {
+    let mut letterbox = Letterbox::new(|req| ControllerType::build(CONFIG.clone(), req));
 
     let mut buffer = [0u8; Sample::SIZE];
 
-    let mut log = if let Some(path) = &config.lock().unwrap().log_file {
+    let mut log = if let Some(path) = &CONFIG.lock().unwrap().log_path {
         println!("Creating log file at {:?}", path);
         let file = File::create_new(path)?;
         let mut w = BufWriter::new(file);
@@ -169,8 +63,8 @@ fn handle_client(mut stream: UnixStream, config: Arc<Mutex<Cli>>) -> io::Result<
                     )?;
                 }
 
-                let score = config.lock().unwrap().score_function.score(&sample);
-                if score >= config.lock().unwrap().score_cutoff {
+                let score = CONFIG.lock().unwrap().score_function.score(&sample);
+                if score >= CONFIG.lock().unwrap().score_cutoff {
                     letterbox.update(sample.region_uid, score);
                 }
             }
@@ -193,9 +87,6 @@ fn handle_client(mut stream: UnixStream, config: Arc<Mutex<Cli>>) -> io::Result<
 }
 
 fn main() -> io::Result<()> {
-    let args = Cli::parse();
-    let args = Arc::new(Mutex::new(args));
-
     // Remove any existing socket file
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
         fs::remove_file(MTD_LETTERBOX_PATH)?;
@@ -207,7 +98,7 @@ fn main() -> io::Result<()> {
 
     let stream = listener.incoming().next().unwrap();
     match stream {
-        Ok(stream) => handle_client(stream, args)?,
+        Ok(stream) => handle_client(stream)?,
         Err(e) => eprintln!("Connection failed: {}", e),
     }
 
