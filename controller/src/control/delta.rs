@@ -1,5 +1,3 @@
-use std::mem;
-
 use crate::message::Demand;
 
 use super::Controller;
@@ -8,7 +6,6 @@ const UP: f32 = 1.0;
 const DOWN: f32 = -1.0;
 
 pub struct DeltaController {
-    samples: Vec<f32>,
     num_threads: f32,
     step_size: f32,
     step_dir: f32,
@@ -18,13 +15,11 @@ pub struct DeltaController {
 
 pub struct DeltaControllerSettings {
     pub max_threads: i32,
-    pub population_size: usize,
 }
 
 impl DeltaController {
     pub fn new(settings: DeltaControllerSettings) -> Self {
         Self {
-            samples: Vec::with_capacity(settings.population_size),
             num_threads: settings.max_threads as f32,
             step_size: settings.max_threads as f32,
             step_dir: DOWN,
@@ -45,15 +40,6 @@ impl DeltaController {
 }
 
 impl Controller for DeltaController {
-    fn sample_received(&mut self, score: f32) {
-        self.samples.push(score);
-        if self.samples.len() >= self.settings.population_size {
-            let mut samples_new = Vec::with_capacity(self.settings.population_size);
-            mem::swap(&mut self.samples, &mut samples_new);
-            self.evolve(samples_new);
-        }
-    }
-
     fn evolve(&mut self, scores: Vec<f32>) {
         let e_next = median(scores);
 

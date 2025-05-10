@@ -1,5 +1,3 @@
-use std::mem;
-
 use crate::message::Demand;
 
 use super::Controller;
@@ -8,7 +6,6 @@ const _UP: i32 = 1;
 const DOWN: i32 = -1;
 
 pub struct CorridorController {
-    samples: Vec<f32>,
     num_threads: i32,
     step_size: i32,
     step_dir: i32,
@@ -19,13 +16,11 @@ pub struct CorridorController {
 
 pub struct CorridorControllerSettings {
     pub max_threads: i32,
-    pub population_size: usize,
 }
 
 impl CorridorController {
     pub fn new(settings: CorridorControllerSettings) -> Self {
         Self {
-            samples: Vec::with_capacity(settings.population_size),
             num_threads: settings.max_threads,
             step_size: settings.max_threads,
             step_dir: DOWN,
@@ -37,15 +32,6 @@ impl CorridorController {
 }
 
 impl Controller for CorridorController {
-    fn sample_received(&mut self, score: f32) {
-        self.samples.push(score);
-        if self.samples.len() >= self.settings.population_size {
-            let mut samples_new = Vec::with_capacity(self.settings.population_size);
-            mem::swap(&mut self.samples, &mut samples_new);
-            self.evolve(samples_new);
-        }
-    }
-
     fn evolve(&mut self, scores: Vec<f32>) {
         let tn = frequency_dist(scores);
 

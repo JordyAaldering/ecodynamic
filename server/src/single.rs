@@ -97,21 +97,18 @@ impl ControllerType {
             Corridor => {
                 let settings = DeltaControllerSettings {
                     max_threads: req.max_threads,
-                    population_size: cli.letterbox_size,
                 };
                 Box::new(DeltaController::new(settings))
             },
             Delta => {
                 let settings = CorridorControllerSettings {
                     max_threads: req.max_threads,
-                    population_size: cli.letterbox_size,
                 };
                 Box::new(CorridorController::new(settings))
             },
             Oscilating => {
                 let settings = OscilatingControllerSettings {
                     max_threads: req.max_threads,
-                    interval: cli.letterbox_size,
                 };
                 Box::new(OscilatingController::new(settings))
             },
