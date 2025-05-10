@@ -2,7 +2,7 @@ mod message;
 
 use std::{collections::HashMap, mem};
 
-use controller::control::Controller;
+pub use controller::*;
 pub use message::*;
 
 pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";

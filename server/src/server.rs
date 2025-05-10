@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use clap::{Parser, ValueEnum};
 
-use controller::control::*;
 use letterbox::*;
 
 macro_rules! debug_println {
