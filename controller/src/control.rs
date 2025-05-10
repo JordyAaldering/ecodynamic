@@ -10,10 +10,8 @@ pub use fixed::*;
 pub use genetic::*;
 pub use oscilating::*;
 
-use crate::message::Demand;
-
 pub trait Controller {
     fn evolve(&mut self, scores: Vec<f32>);
 
-    fn next_demand(&mut self) -> Demand;
+    fn next_demand(&mut self) -> i32;
 }

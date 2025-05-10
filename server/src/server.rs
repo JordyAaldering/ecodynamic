@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use clap::{Parser, ValueEnum};
 
-use controller::{control::*, message::*};
-use letterbox::{Letterbox, MTD_LETTERBOX_PATH};
+use controller::control::*;
+use letterbox::*;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
@@ -136,7 +136,8 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io:
                 debug_println!("Read: {:?}", req);
 
                 // Update letterbox
-                let demand = letterbox.try_get_demand(req);
+                let num_threads = letterbox.try_get_demand(req);
+                let demand = Demand { num_threads };
 
                 // Write to stream
                 debug_println!("Send: {:?}", demand);
@@ -151,7 +152,7 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io:
                 if let Some(w) = &mut log {
                     w.write_fmt(format_args!("{},{},{},{},{}\n",
                         sample.region_uid,
-                        letterbox.get_demand(sample.region_uid).num_threads,
+                        letterbox.get_demand(sample.region_uid),
                         sample.runtime,
                         sample.usertime,
                         sample.energy)

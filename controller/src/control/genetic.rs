@@ -1,5 +1,3 @@
-use crate::message::Demand;
-
 use super::Controller;
 
 pub struct GeneticController {
@@ -79,13 +77,13 @@ impl Controller for GeneticController {
         self.population.sort();
     }
 
-    fn next_demand(&mut self) -> Demand {
+    fn next_demand(&mut self) -> i32 {
         // Use the number of samples to determine the current index into the population.
         // The population is reset every `population_size` iterations.
         // In between, we want every chromosome to be applied once.
         let num_threads = self.population[self.sample_index].num_threads;
         self.sample_index += 1;
-        Demand { num_threads }
+        num_threads
     }
 }
 

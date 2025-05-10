@@ -1,5 +1,3 @@
-use crate::message::Demand;
-
 use super::Controller;
 
 pub struct OscilatingController {
@@ -29,7 +27,7 @@ impl Controller for OscilatingController {
         }
     }
 
-    fn next_demand(&mut self) -> Demand {
-        Demand { num_threads: self.num_threads }
+    fn next_demand(&mut self) -> i32 {
+        self.num_threads
     }
 }

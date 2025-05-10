@@ -1,5 +1,3 @@
-use crate::message::Demand;
-
 use super::Controller;
 
 const _UP: i32 = 1;
@@ -51,8 +49,8 @@ impl Controller for CorridorController {
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
     }
 
-    fn next_demand(&mut self) -> Demand {
-        Demand { num_threads: self.num_threads }
+    fn next_demand(&mut self) -> i32 {
+        self.num_threads
     }
 }
 

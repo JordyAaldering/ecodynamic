@@ -1,5 +1,3 @@
-use crate::message::Demand;
-
 use super::Controller;
 
 pub struct FixedController {
@@ -15,7 +13,7 @@ impl FixedController {
 impl Controller for FixedController {
     fn evolve(&mut self, _scores: Vec<f32>) { }
 
-    fn next_demand(&mut self) -> Demand {
-        Demand { num_threads: self.max_threads }
+    fn next_demand(&mut self) -> i32 {
+        self.max_threads
     }
 }

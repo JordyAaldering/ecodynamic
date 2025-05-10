@@ -6,6 +6,3 @@ edition = "2024"
 [dependencies]
 permutation = "0.4.1"
 rand = "0.9.1"
-
-[build-dependencies]
-cbindgen = "0.28.0"

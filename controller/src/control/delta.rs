@@ -1,5 +1,3 @@
-use crate::message::Demand;
-
 use super::Controller;
 
 const UP: f32 = 1.0;
@@ -60,8 +58,8 @@ impl Controller for DeltaController {
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
     }
 
-    fn next_demand(&mut self) -> Demand {
-        Demand { num_threads: self.num_threads.round() as i32 }
+    fn next_demand(&mut self) -> i32 {
+        self.num_threads.round() as i32
     }
 }
 
