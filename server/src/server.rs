@@ -2,7 +2,7 @@ use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use clap::{Parser, ValueEnum};
 
@@ -50,6 +50,24 @@ struct Cli {
     log_path: Option<PathBuf>,
 }
 
+impl GeneticControllerConfig for Cli {
+    fn population_size(&self) -> usize {
+        self.letterbox_size
+    }
+
+    fn survival_rate(&self) -> f32 {
+        self.survival_rate
+    }
+
+    fn mutation_rate(&self) -> f32 {
+        self.mutation_rate
+    }
+
+    fn immigration_rate(&self) -> f32 {
+        self.immigration_rate
+    }
+}
+
 #[derive(ValueEnum)]
 #[derive(Copy, Clone, Debug)]
 enum ControllerType {
@@ -83,17 +101,11 @@ impl ScoreFunction {
 }
 
 impl ControllerType {
-    fn build(cli: Arc<Cli>, req: Request) -> Box<dyn Controller> {
+    fn build(config: Arc<Mutex<Cli>>, req: Request) -> Box<dyn Controller> {
         use ControllerType::*;
-        match cli.controller_type {
+        match config.lock().unwrap().controller_type {
             Genetic => {
-                let config = GeneticControllerConfig {
-                    population_size: cli.letterbox_size,
-                    survival_rate: cli.survival_rate,
-                    mutation_rate: cli.mutation_rate,
-                    immigration_rate: cli.immigration_rate,
-                };
-                Box::new(GeneticController::new(req.max_threads, config))
+                Box::new(GeneticController::new(req.max_threads, config.clone()))
             },
             Corridor => {
                 Box::new(DeltaController::new(req.max_threads as f32))
@@ -111,12 +123,12 @@ impl ControllerType {
     }
 }
 
-fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io::Result<()> {
-    let mut letterbox = Letterbox::new(|req| ControllerType::build(cli.clone(), req));
+fn handle_client(mut stream: UnixStream, config: Arc<Mutex<Cli>>, client_id: usize) -> io::Result<()> {
+    let mut letterbox = Letterbox::new(|req| ControllerType::build(config.clone(), req));
 
     let mut buffer = [0u8; Sample::SIZE];
 
-    let mut log = if let Some(path) = &cli.log_path {
+    let mut log = if let Some(path) = &config.lock().unwrap().log_path {
         let path = path.join(format!("client{:02}.csv", client_id));
         println!("Creating log file at {:?}", path);
         let file = File::create_new(path)?;
@@ -159,8 +171,8 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io:
                     )?;
                 }
 
-                let score = cli.score_function.score(&sample);
-                if score >= cli.score_cutoff {
+                let score = config.lock().unwrap().score_function.score(&sample);
+                if score >= config.lock().unwrap().score_cutoff {
                     letterbox.update(sample.region_uid, score);
                 }
             }
@@ -184,10 +196,10 @@ fn handle_client(mut stream: UnixStream, cli: Arc<Cli>, client_id: usize) -> io:
 
 fn main() -> io::Result<()> {
     let args = Cli::parse();
-    let args = Arc::new(args);
+    let args = Arc::new(Mutex::new(args));
 
     // Check if log directory exists
-    if let Some(path) = &args.log_path {
+    if let Some(path) = &args.lock().unwrap().log_path {
         let path = fs::canonicalize(path)?;
         println!("Writing logs to {:?}", path);
     }
@@ -206,9 +218,9 @@ fn main() -> io::Result<()> {
         match stream {
             Ok(stream) => {
                 client_count += 1;
-                let cli = args.clone();
+                let config = args.clone();
                 std::thread::spawn(move || {
-                    handle_client(stream, cli, client_count)
+                    handle_client(stream, config, client_count)
                 });
             }
             Err(e) => {
