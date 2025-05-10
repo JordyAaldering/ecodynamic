@@ -14,7 +14,4 @@ path = "src/single.rs"
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
 controller = { path = "../controller" }
-controller = { path = "../letterbox" }
-
-[build-dependencies]
-cbindgen = "0.28.0"
+letterbox = { path = "../letterbox" }

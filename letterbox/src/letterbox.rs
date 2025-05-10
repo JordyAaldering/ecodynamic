@@ -1,9 +1,8 @@
 use std::{collections::HashMap, mem};
 
 pub use controller::*;
-pub use letterbox::*;
 
-pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
+use crate::message::*;
 
 pub struct Letterbox<F>
     where F: Fn(Request) -> Box<dyn Controller>

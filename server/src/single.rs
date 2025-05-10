@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 
+use controller::*;
 use letterbox::*;
 
 macro_rules! debug_println {

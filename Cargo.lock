@@ -214,6 +214,10 @@ checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 [[package]]
 name = "letterbox"
 version = "0.1.0"
+dependencies = [
+ "cbindgen",
+ "controller",
+]
 
 [[package]]
 name = "libc"
@@ -377,9 +381,9 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
- "cbindgen",
  "clap",
  "controller",
+ "letterbox",
 ]
 
 [[package]]
