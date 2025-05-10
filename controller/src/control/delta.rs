@@ -33,6 +33,27 @@ impl DeltaController {
         }
     }
 
+    /// Reset the step direction with a slight preference for increasing the thread count;
+    /// since typically we don't want to end up in a case where we are single-threaded.
+    fn reset_direction(&mut self) {
+        self.step_dir = if self.num_threads < self.settings.max_threads as f32 * 0.65 {
+            UP
+        } else {
+            DOWN
+        };
+    }
+}
+
+impl Controller for DeltaController {
+    fn sample_received(&mut self, score: f32) {
+        self.samples.push(score);
+        if self.samples.len() >= self.settings.population_size {
+            let mut samples_new = Vec::with_capacity(self.settings.population_size);
+            mem::swap(&mut self.samples, &mut samples_new);
+            self.evolve(samples_new);
+        }
+    }
+
     fn evolve(&mut self, scores: Vec<f32>) {
         let e_next = median(scores);
 
@@ -55,27 +76,6 @@ impl DeltaController {
         self.e_prev = e_next;
         self.num_threads += self.step_dir * self.step_size;
         self.num_threads = self.num_threads.max(1.0).min(self.settings.max_threads as f32);
-    }
-
-    /// Reset the step direction with a slight preference for increasing the thread count;
-    /// since typically we don't want to end up in a case where we are single-threaded.
-    fn reset_direction(&mut self) {
-        self.step_dir = if self.num_threads < self.settings.max_threads as f32 * 0.65 {
-            UP
-        } else {
-            DOWN
-        };
-    }
-}
-
-impl Controller for DeltaController {
-    fn sample_received(&mut self, score: f32) {
-        self.samples.push(score);
-        if self.samples.len() >= self.settings.population_size {
-            let mut samples_new = Vec::with_capacity(self.settings.population_size);
-            mem::swap(&mut self.samples, &mut samples_new);
-            self.evolve(samples_new);
-        }
     }
 
     fn get_demand(&self) -> Demand {

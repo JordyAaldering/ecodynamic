@@ -34,6 +34,17 @@ impl CorridorController {
             settings,
         }
     }
+}
+
+impl Controller for CorridorController {
+    fn sample_received(&mut self, score: f32) {
+        self.samples.push(score);
+        if self.samples.len() >= self.settings.population_size {
+            let mut samples_new = Vec::with_capacity(self.settings.population_size);
+            mem::swap(&mut self.samples, &mut samples_new);
+            self.evolve(samples_new);
+        }
+    }
 
     fn evolve(&mut self, scores: Vec<f32>) {
         let tn = frequency_dist(scores);
@@ -56,17 +67,6 @@ impl CorridorController {
         self.t_prev = tn;
         self.num_threads += self.step_dir * self.step_size;
         self.num_threads = self.num_threads.max(1).min(self.settings.max_threads);
-    }
-}
-
-impl Controller for CorridorController {
-    fn sample_received(&mut self, score: f32) {
-        self.samples.push(score);
-        if self.samples.len() >= self.settings.population_size {
-            let mut samples_new = Vec::with_capacity(self.settings.population_size);
-            mem::swap(&mut self.samples, &mut samples_new);
-            self.evolve(samples_new);
-        }
     }
 
     fn get_demand(&self) -> Demand {

@@ -44,6 +44,22 @@ impl GeneticController {
         }
     }
 
+    fn sort(&mut self, scores: Vec<f32>) {
+        let mut permutation = permutation::sort_by(&scores, |a, b| a.partial_cmp(b).unwrap());
+        permutation.apply_slice_in_place(&mut self.population);
+    }
+}
+
+impl Controller for GeneticController {
+    fn sample_received(&mut self, score: f32) {
+        self.samples.push(score);
+        if self.samples.len() >= self.settings.population_size {
+            let mut samples_new = Vec::with_capacity(self.settings.population_size);
+            mem::swap(&mut self.samples, &mut samples_new);
+            self.evolve(samples_new);
+        }
+    }
+
     fn evolve(&mut self, scores: Vec<f32>) {
         self.sort(scores);
 
@@ -71,22 +87,6 @@ impl GeneticController {
         // We want to sort the population by recommended thread-count
         // here, to minimise changes in the running program.
         self.population.sort();
-    }
-
-    fn sort(&mut self, scores: Vec<f32>) {
-        let mut permutation = permutation::sort_by(&scores, |a, b| a.partial_cmp(b).unwrap());
-        permutation.apply_slice_in_place(&mut self.population);
-    }
-}
-
-impl Controller for GeneticController {
-    fn sample_received(&mut self, score: f32) {
-        self.samples.push(score);
-        if self.samples.len() >= self.settings.population_size {
-            let mut samples_new = Vec::with_capacity(self.settings.population_size);
-            mem::swap(&mut self.samples, &mut samples_new);
-            self.evolve(samples_new);
-        }
     }
 
     fn get_demand(&self) -> Demand {
