@@ -1,9 +1,7 @@
-mod message;
-
 use std::{collections::HashMap, mem};
 
 pub use controller::*;
-pub use message::*;
+pub use letterbox::*;
 
 pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 
