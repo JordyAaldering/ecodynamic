@@ -21,12 +21,12 @@ impl<F> Letterbox<F>
     pub fn try_get_demand(&mut self, req: Request) -> i32 {
         self.letterbox.entry(req.region_uid)
             .or_insert_with(|| (Vec::new(), (self.build)(req)))
-            .1.next_demand()
+            .1.num_threads()
     }
 
     pub fn get_demand(&mut self, region_uid: i32) -> i32 {
         self.letterbox.get_mut(&region_uid).unwrap()
-            .1.next_demand()
+            .1.num_threads()
     }
 
     pub fn update(&mut self, region_uid: i32, score: f32) {

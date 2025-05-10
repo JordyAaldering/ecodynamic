@@ -1,8 +1,5 @@
 use super::Controller;
 
-const _UP: i32 = 1;
-const DOWN: i32 = -1;
-
 pub struct CorridorController {
     max_threads: i32,
     num_threads: i32,
@@ -18,7 +15,7 @@ impl CorridorController {
             max_threads,
             num_threads: max_threads,
             step_size: max_threads,
-            step_dir: DOWN,
+            step_dir: -1,
             t_prev: f32::MAX,
             t1: f32::MAX,
         }
@@ -30,8 +27,8 @@ impl Controller for CorridorController {
         let tn = frequency_dist(scores);
 
         if self.t1 / tn < 0.5 * self.num_threads as f32 {
-            self.step_dir = DOWN;
             self.step_size = i32::max(1, self.num_threads / 2);
+            self.step_dir = -1;
         } else {
             if self.t1 / tn > self.num_threads as f32 {
                 self.t1 = tn * self.num_threads as f32;
@@ -49,7 +46,7 @@ impl Controller for CorridorController {
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
     }
 
-    fn next_demand(&mut self) -> i32 {
+    fn num_threads(&mut self) -> i32 {
         self.num_threads
     }
 }

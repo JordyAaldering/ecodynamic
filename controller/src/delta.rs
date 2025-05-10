@@ -58,7 +58,7 @@ impl Controller for DeltaController {
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
     }
 
-    fn next_demand(&mut self) -> i32 {
+    fn num_threads(&mut self) -> i32 {
         self.num_threads.round() as i32
     }
 }

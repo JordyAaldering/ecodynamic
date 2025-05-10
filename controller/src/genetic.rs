@@ -79,7 +79,7 @@ impl Controller for GeneticController {
         self.population.sort();
     }
 
-    fn next_demand(&mut self) -> i32 {
+    fn num_threads(&mut self) -> i32 {
         // Use the number of samples to determine the current index into the population.
         // The population is reset every `population_size` iterations.
         // In between, we want every chromosome to be applied once.

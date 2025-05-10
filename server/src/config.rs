@@ -1,4 +1,5 @@
-use std::{path::PathBuf, sync::{Arc, Mutex}};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use clap::{Parser, ValueEnum};
 use controller::*;
@@ -78,21 +79,11 @@ impl ControllerType {
     pub fn build(config: Arc<Mutex<Config>>, req: Request) -> Box<dyn Controller> {
         use ControllerType::*;
         match config.lock().unwrap().controller_type {
-            Genetic => {
-                Box::new(GeneticController::new(req.max_threads, config.clone()))
-            },
-            Corridor => {
-                Box::new(DeltaController::new(req.max_threads as f32))
-            },
-            Delta => {
-                Box::new(CorridorController::new(req.max_threads))
-            },
-            Oscilating => {
-                Box::new(OscilatingController::new(req.max_threads))
-            },
-            Fixed => {
-                Box::new(FixedController::new(req.max_threads))
-            },
+            Genetic    => Box::new(GeneticController::new(req.max_threads, config.clone())),
+            Corridor   => Box::new(DeltaController::new(req.max_threads as f32)),
+            Delta      => Box::new(CorridorController::new(req.max_threads)),
+            Oscilating => Box::new(OscilatingController::new(req.max_threads)),
+            Fixed      => Box::new(FixedController::new(req.max_threads)),
         }
     }
 }

@@ -13,5 +13,5 @@ pub use oscilating::*;
 pub trait Controller {
     fn evolve(&mut self, scores: Vec<f32>);
 
-    fn next_demand(&mut self) -> i32;
+    fn num_threads(&mut self) -> i32;
 }
