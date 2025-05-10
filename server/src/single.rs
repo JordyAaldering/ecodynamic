@@ -85,13 +85,13 @@ impl ControllerType {
         use ControllerType::*;
         match cli.controller_type {
             Genetic => {
-                let settings = GeneticControllerSettings {
+                let config = GeneticControllerConfig {
                     population_size: cli.letterbox_size,
                     survival_rate: cli.survival_rate,
                     mutation_rate: cli.mutation_rate,
                     immigration_rate: cli.immigration_rate,
                 };
-                Box::new(GeneticController::new(req.max_threads, settings))
+                Box::new(GeneticController::new(req.max_threads, config))
             },
             Corridor => {
                 Box::new(DeltaController::new(req.max_threads as f32))

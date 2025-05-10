@@ -29,7 +29,7 @@ impl Controller for OscilatingController {
         }
     }
 
-    fn get_demand(&self) -> Demand {
+    fn next_demand(&mut self) -> Demand {
         Demand { num_threads: self.num_threads }
     }
 }

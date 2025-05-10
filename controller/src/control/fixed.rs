@@ -15,7 +15,7 @@ impl FixedController {
 impl Controller for FixedController {
     fn evolve(&mut self, _scores: Vec<f32>) { }
 
-    fn get_demand(&self) -> Demand {
+    fn next_demand(&mut self) -> Demand {
         Demand { num_threads: self.max_threads }
     }
 }

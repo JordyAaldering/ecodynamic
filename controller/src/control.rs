@@ -15,5 +15,5 @@ use crate::message::Demand;
 pub trait Controller {
     fn evolve(&mut self, scores: Vec<f32>);
 
-    fn get_demand(&self) -> Demand;
+    fn next_demand(&mut self) -> Demand;
 }

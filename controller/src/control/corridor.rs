@@ -51,7 +51,7 @@ impl Controller for CorridorController {
         self.num_threads = self.num_threads.max(1).min(self.max_threads);
     }
 
-    fn get_demand(&self) -> Demand {
+    fn next_demand(&mut self) -> Demand {
         Demand { num_threads: self.num_threads }
     }
 }
