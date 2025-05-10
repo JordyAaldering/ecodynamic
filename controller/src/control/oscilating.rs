@@ -3,22 +3,17 @@ use crate::message::Demand;
 use super::Controller;
 
 pub struct OscilatingController {
+    max_threads: i32,
     num_threads: i32,
     direction: i32,
-    settings: OscilatingControllerSettings,
-}
-
-pub struct OscilatingControllerSettings {
-    pub max_threads: i32,
 }
 
 impl OscilatingController {
-    pub fn new(settings: OscilatingControllerSettings) -> Self {
-        const DOWN: i32 = -1;
+    pub fn new(max_threads: i32) -> Self {
         Self {
-            num_threads: settings.max_threads,
-            direction: DOWN,
-            settings,
+            max_threads,
+            num_threads: max_threads,
+            direction: -1,
         }
     }
 }
@@ -29,7 +24,7 @@ impl Controller for OscilatingController {
         self.num_threads += self.direction;
 
         // Swap direction if we are at an edge
-        if self.num_threads <= 1 || self.num_threads >= self.settings.max_threads {
+        if self.num_threads <= 1 || self.num_threads >= self.max_threads {
             self.direction = -self.direction;
         }
     }

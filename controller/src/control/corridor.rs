@@ -6,27 +6,23 @@ const _UP: i32 = 1;
 const DOWN: i32 = -1;
 
 pub struct CorridorController {
+    max_threads: i32,
     num_threads: i32,
     step_size: i32,
     step_dir: i32,
     t_prev: f32,
     t1: f32,
-    settings: CorridorControllerSettings,
-}
-
-pub struct CorridorControllerSettings {
-    pub max_threads: i32,
 }
 
 impl CorridorController {
-    pub fn new(settings: CorridorControllerSettings) -> Self {
+    pub fn new(max_threads: i32) -> Self {
         Self {
-            num_threads: settings.max_threads,
-            step_size: settings.max_threads,
+            max_threads,
+            num_threads: max_threads,
+            step_size: max_threads,
             step_dir: DOWN,
             t_prev: f32::MAX,
             t1: f32::MAX,
-            settings,
         }
     }
 }
@@ -52,7 +48,7 @@ impl Controller for CorridorController {
 
         self.t_prev = tn;
         self.num_threads += self.step_dir * self.step_size;
-        self.num_threads = self.num_threads.max(1).min(self.settings.max_threads);
+        self.num_threads = self.num_threads.max(1).min(self.max_threads);
     }
 
     fn get_demand(&self) -> Demand {

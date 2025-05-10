@@ -86,37 +86,24 @@ impl ControllerType {
         match cli.controller_type {
             Genetic => {
                 let settings = GeneticControllerSettings {
-                    max_threads: req.max_threads,
                     population_size: cli.letterbox_size,
                     survival_rate: cli.survival_rate,
                     mutation_rate: cli.mutation_rate,
                     immigration_rate: cli.immigration_rate,
                 };
-                Box::new(GeneticController::new(settings))
+                Box::new(GeneticController::new(req.max_threads, settings))
             },
             Corridor => {
-                let settings = DeltaControllerSettings {
-                    max_threads: req.max_threads,
-                };
-                Box::new(DeltaController::new(settings))
+                Box::new(DeltaController::new(req.max_threads as f32))
             },
             Delta => {
-                let settings = CorridorControllerSettings {
-                    max_threads: req.max_threads,
-                };
-                Box::new(CorridorController::new(settings))
+                Box::new(CorridorController::new(req.max_threads))
             },
             Oscilating => {
-                let settings = OscilatingControllerSettings {
-                    max_threads: req.max_threads,
-                };
-                Box::new(OscilatingController::new(settings))
+                Box::new(OscilatingController::new(req.max_threads))
             },
             Fixed => {
-                let settings = FixedControllerSettings {
-                    max_threads: req.max_threads,
-                };
-                Box::new(FixedController::new(settings))
+                Box::new(FixedController::new(req.max_threads))
             },
         }
     }

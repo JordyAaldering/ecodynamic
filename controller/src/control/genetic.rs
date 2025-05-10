@@ -3,13 +3,13 @@ use crate::message::Demand;
 use super::Controller;
 
 pub struct GeneticController {
+    max_threads: i32,
     samples: Vec<f32>,
     pub population: Vec<Chromosome>,
     settings: GeneticControllerSettings,
 }
 
 pub struct GeneticControllerSettings {
-    pub max_threads: i32,
     pub population_size: usize,
     pub survival_rate: f32,
     pub mutation_rate: f32,
@@ -27,15 +27,16 @@ impl GeneticControllerSettings {
 }
 
 impl GeneticController {
-    pub fn new(settings: GeneticControllerSettings) -> Self {
+    pub fn new(max_threads: i32, settings: GeneticControllerSettings) -> Self {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
         let population = (0..settings.population_size).map(|i| {
-                let num_threads = 1 + (i as f64 * (settings.max_threads - 1) as f64 / (settings.population_size - 1) as f64).round() as i32;
+                let num_threads = 1 + (i as f64 * (max_threads - 1) as f64 / (settings.population_size - 1) as f64).round() as i32;
                 Chromosome::new(num_threads)
             }).collect();
 
         Self {
+            max_threads,
             samples: Vec::with_capacity(settings.population_size),
             population,
             settings,
@@ -62,7 +63,7 @@ impl Controller for GeneticController {
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(&parent2);
             if rand::random_range(0.0..1.0) < self.settings.mutation_rate {
-                child.mutate(self.settings.max_threads);
+                child.mutate(self.max_threads);
             }
 
             self.population[i] = child;
@@ -70,7 +71,7 @@ impl Controller for GeneticController {
 
         // Fill remaining chromosomes by immigration
         for i in immigration_start..self.settings.population_size {
-            self.population[i] = Chromosome::rand(self.settings.max_threads);
+            self.population[i] = Chromosome::rand(self.max_threads);
         }
 
         // We want to sort the population by recommended thread-count
