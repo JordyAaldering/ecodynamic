@@ -63,10 +63,9 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
                     )?;
                 }
 
-                let score = CONFIG.lock().unwrap().score_function.score(&sample);
-                if score >= CONFIG.lock().unwrap().score_cutoff {
-                    letterbox.update(sample.region_uid, score);
-                }
+                let uid = sample.region_uid;
+                let score = CONFIG.lock().unwrap().score_function.score(sample);
+                letterbox.update(uid, score);
             }
             Ok(0) => {
                 println!("Client disconnected");

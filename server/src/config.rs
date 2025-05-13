@@ -20,10 +20,6 @@ pub struct Config {
     #[arg(short('s'), long)]
     pub letterbox_size: usize,
 
-    /// Ignore samples with a score lower than <sample-cutoff>.
-    #[arg(long, default_value_t = 0.0)]
-    pub score_cutoff: f32,
-
     /// Genetic algorithm survival rate.
     #[arg(long, default_value_t = 0.50)]
     pub survival_rate: f32,
@@ -96,7 +92,7 @@ pub enum ScoreFunction {
 }
 
 impl ScoreFunction {
-    pub fn score(self, sample: &Sample) -> f32 {
+    pub fn score(self, sample: Sample) -> f32 {
         use ScoreFunction::*;
         match self {
             Runtime => sample.runtime,
