@@ -1,12 +1,12 @@
-use std::sync::{Arc, Mutex};
-
 use super::Controller;
 
-pub struct GeneticController {
+pub struct GeneticController<Config>
+    where Config: GeneticControllerConfig
+{
     max_threads: i32,
     population: Vec<Chromosome>,
     sample_index: usize,
-    config: Arc<Mutex<dyn GeneticControllerConfig>>,
+    config: Config,
 }
 
 pub trait GeneticControllerConfig {
@@ -16,9 +16,11 @@ pub trait GeneticControllerConfig {
     fn mutation_rate(&self) -> f32;
 }
 
-impl GeneticController {
-    pub fn new(max_threads: i32, config: Arc<Mutex<dyn GeneticControllerConfig>>) -> Self {
-        let population_size = config.lock().unwrap().population_size();
+impl<Config> GeneticController<Config>
+    where Config: GeneticControllerConfig
+{
+    pub fn new(max_threads: i32, config: Config) -> Self {
+        let population_size = config.population_size();
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
         let population = (0..population_size).map(|i| {
@@ -40,13 +42,15 @@ impl GeneticController {
     }
 }
 
-impl Controller for GeneticController {
+impl<Config> Controller for GeneticController<Config>
+    where Config: GeneticControllerConfig
+{
     fn evolve(&mut self, scores: Vec<f32>) {
         self.sort(scores);
 
-        let population_size = self.config.lock().unwrap().population_size();
-        let survival_count = self.config.lock().unwrap().survival_count();
-        let immigration_count = self.config.lock().unwrap().immigration_count();
+        let population_size = self.config.population_size();
+        let survival_count = self.config.survival_count();
+        let immigration_count = self.config.immigration_count();
         let immigration_start = population_size - immigration_count;
 
         // Replace chromosomes by children of the best performing chromosomes
@@ -54,7 +58,7 @@ impl Controller for GeneticController {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(&parent2);
-            if rand::random_range(0.0..1.0) < self.config.lock().unwrap().mutation_rate() {
+            if rand::random_range(0.0..1.0) < self.config.mutation_rate() {
                 child.mutate(self.max_threads);
             }
 

@@ -9,11 +9,11 @@ macro_rules! debug_println {
 }
 
 fn handle_client(mut stream: UnixStream, client_id: usize) -> io::Result<()> {
-    let mut lbs = Letterbox::new(|req| ControllerType::build(CONFIG.clone(), req));
+    let mut lbs = Letterbox::new(|req| ControllerType::build(req));
 
     let mut buffer = [0u8; Sample::SIZE];
 
-    let mut log = if let Some(path) = &CONFIG.lock().unwrap().log_path {
+    let mut log = if let Some(path) = &CONFIG.lock().log_path {
         let path = path.join(format!("client{:02}.csv", client_id));
         println!("Creating log file at {:?}", path);
         let file = File::create_new(path)?;
@@ -62,7 +62,7 @@ fn handle_client(mut stream: UnixStream, client_id: usize) -> io::Result<()> {
                 }
 
                 if let Some(samples) = samples.push_until_full(sample) {
-                    let score = CONFIG.lock().unwrap().score_function.score(samples);
+                    let score = CONFIG.lock().score_function.score(samples);
                     controller.evolve(score);
                 }
             }
@@ -86,7 +86,7 @@ fn handle_client(mut stream: UnixStream, client_id: usize) -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     // Check if log directory exists
-    if let Some(path) = &CONFIG.lock().unwrap().log_path {
+    if let Some(path) = &CONFIG.lock().log_path {
         let path = fs::canonicalize(path)?;
         println!("Writing logs to {:?}", path);
     }

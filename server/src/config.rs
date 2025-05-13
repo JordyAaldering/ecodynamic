@@ -1,8 +1,29 @@
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+mod controller_type;
+mod score_fn;
 
-use clap::{Parser, ValueEnum};
-use controller::*;
+use clap::Parser;
+pub use controller_type::*;
+pub use score_fn::*;
+
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, MutexGuard};
+
+#[derive(Clone)]
+pub struct SharedConfig {
+    inner: Arc<Mutex<Config>>,
+}
+
+impl SharedConfig {
+    pub fn new(config: Config) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(config)),
+        }
+    }
+
+    pub fn lock(&self) -> MutexGuard<'_, Config> {
+        self.inner.lock().unwrap()
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -35,67 +56,4 @@ pub struct Config {
     /// Creates a file for each client.
     #[arg(long)]
     pub log_path: Option<PathBuf>,
-}
-
-impl GeneticControllerConfig for Config {
-    fn population_size(&self) -> usize {
-        self.letterbox_size
-    }
-
-    fn survival_count(&self) -> usize {
-        (self.population_size() as f32 * self.survival_rate).round() as usize
-    }
-
-    fn immigration_count(&self) -> usize {
-        (self.population_size() as f32 * self.immigration_rate).round() as usize
-    }
-
-    fn mutation_rate(&self) -> f32 {
-        self.mutation_rate
-    }
-}
-
-#[derive(ValueEnum)]
-#[derive(Copy, Clone, Debug)]
-pub enum ControllerType {
-    /// Genetic algorithm approach.
-    Genetic,
-    /// Algorithm based on a performance corridor.
-    Corridor,
-    /// Algorithm based on deltas between runs.
-    Delta,
-    /// Continuously oscilates between 1 and <max-threads>.
-    Oscilating,
-    /// Always returns <max-threads>.
-    Fixed,
-}
-
-impl ControllerType {
-    pub fn build(config: Arc<Mutex<Config>>, req: Request) -> Box<dyn Controller> {
-        use ControllerType::*;
-        match config.lock().unwrap().controller_type {
-            Genetic    => Box::new(GeneticController::new(req.max_threads, config.clone())),
-            Corridor   => Box::new(DeltaController::new(req.max_threads as f32)),
-            Delta      => Box::new(CorridorController::new(req.max_threads)),
-            Oscilating => Box::new(OscilatingController::new(req.max_threads)),
-            Fixed      => Box::new(FixedController::new(req.max_threads)),
-        }
-    }
-}
-
-#[derive(ValueEnum)]
-#[derive(Copy, Clone, Debug)]
-pub enum ScoreFunction {
-    Runtime,
-    Energy,
-}
-
-impl ScoreFunction {
-    pub fn score(self, sample: Vec<Sample>) -> Vec<f32> {
-        use ScoreFunction::*;
-        match self {
-            Runtime => sample.into_iter().map(|x| x.runtime).collect(),
-            Energy => sample.into_iter().map(|x| x.energy).collect(),
-        }
-    }
 }

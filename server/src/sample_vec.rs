@@ -10,7 +10,7 @@ pub struct SampleVec {
 
 impl SampleVec {
     pub fn new() -> Self {
-        let capacity = CONFIG.lock().unwrap().letterbox_size;
+        let capacity = CONFIG.lock().letterbox_size;
         Self {
             inner: Vec::with_capacity(capacity),
         }
@@ -19,7 +19,7 @@ impl SampleVec {
     pub fn push_until_full(&mut self, sample: Sample) -> Option<Vec<Sample>> {
         self.inner.push(sample);
 
-        let capacity = CONFIG.lock().unwrap().letterbox_size;
+        let capacity = CONFIG.lock().letterbox_size;
 
         if self.inner.len() >= capacity {
             let mut swap = Vec::with_capacity(capacity);

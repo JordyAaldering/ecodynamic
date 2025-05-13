@@ -1,24 +1,19 @@
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::sync::{Arc, Mutex};
 
-use clap::Parser;
 use mtd_server::*;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
 }
 
-#[static_init::dynamic]
-static CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config::parse()));
-
 fn handle_client(mut stream: UnixStream) -> io::Result<()> {
-    let mut lbs = Letterbox::new(|req| ControllerType::build(CONFIG.clone(), req));
+    let mut lbs = Letterbox::new(|req| ControllerType::build(req));
 
     let mut buffer = [0u8; Sample::SIZE];
 
-    let mut log = if let Some(path) = &CONFIG.lock().unwrap().log_path {
+    let mut log = if let Some(path) = &CONFIG.lock().log_path {
         println!("Creating log file at {:?}", path);
         let file = File::create_new(path)?;
         let mut w = BufWriter::new(file);
@@ -65,7 +60,7 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
                 }
 
                 if let Some(samples) = samples.push_until_full(sample) {
-                    let score = CONFIG.lock().unwrap().score_function.score(samples);
+                    let score = CONFIG.lock().score_function.score(samples);
                     controller.evolve(score);
                 }
             }
