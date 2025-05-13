@@ -20,12 +20,9 @@ impl ScoreFunction {
                 samples.into_iter().map(|x| x.energy).collect()
             },
             Pareto => {
-                let num_samples = samples.len();
-                let indexed: Vec<(usize, Sample)> = samples.into_iter().enumerate().collect();
-                let mut fronts = non_dominated_sort(&indexed, &SampleDominanceOrd);
-                println!("{:#?}", fronts);
+                let mut fronts = non_dominated_sort(&samples, &SampleDominanceOrd);
 
-                let mut scores = vec![0.0; num_samples];
+                let mut scores = vec![0.0; samples.len()];
                 let mut dominated_count = 0.0;
                 while !fronts.is_empty() {
                     for &index in fronts.current_front_indices() {
@@ -44,9 +41,9 @@ impl ScoreFunction {
 pub struct SampleDominanceOrd;
 
 impl DominanceOrd for SampleDominanceOrd {
-    type T = (usize, Sample);
+    type T = Sample;
 
-    fn dominates(&self, (_, a): &Self::T, (_, b): &Self::T) -> bool {
+    fn dominates(&self, a: &Self::T, b: &Self::T) -> bool {
         a.runtime < b.runtime
             && a.energy < b.energy
     }
