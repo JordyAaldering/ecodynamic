@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
+non-dominated-sort = "0.3.1"
 permutation = "0.4.1"
 rand = "0.9.1"
 

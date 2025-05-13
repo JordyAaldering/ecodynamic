@@ -79,9 +79,8 @@ impl Controller for GeneticController {
             self.population[i] = Chromosome::rand(self.max_threads);
         }
 
-        // We want to sort the population by recommended thread-count
-        // here, to minimise changes in the running program.
-        self.population.sort();
+        // To minimise changes in the runtime we sort by the recommended thread-count
+        self.population.sort_by_key(|c| c.num_threads);
     }
 
     fn num_threads(&mut self) -> i32 {
@@ -94,7 +93,7 @@ impl Controller for GeneticController {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug)]
 pub struct Chromosome {
     pub num_threads: i32,
 }

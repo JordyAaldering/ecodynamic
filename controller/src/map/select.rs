@@ -1,7 +1,5 @@
-use clap::ValueEnum;
-
 #[derive(Copy, Clone, Debug)]
-#[derive(ValueEnum)]
+#[derive(clap::ValueEnum)]
 pub enum SelectionFunction {
     Median,
     FrequencyDist,

@@ -153,6 +153,7 @@ version = "0.1.0"
 dependencies = [
  "cbindgen",
  "clap",
+ "non-dominated-sort",
  "permutation",
  "rand",
 ]
@@ -469,7 +470,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "controller",
- "non-dominated-sort",
  "static_init",
 ]
 
