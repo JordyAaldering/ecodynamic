@@ -47,16 +47,16 @@ impl GeneticControllerConfig for Config {
         self.letterbox_size
     }
 
-    fn survival_rate(&self) -> f32 {
-        self.survival_rate
+    fn survival_count(&self) -> usize {
+        (self.population_size() as f32 * self.survival_rate).round() as usize
+    }
+
+    fn immigration_count(&self) -> usize {
+        (self.population_size() as f32 * self.immigration_rate).round() as usize
     }
 
     fn mutation_rate(&self) -> f32 {
         self.mutation_rate
-    }
-
-    fn immigration_rate(&self) -> f32 {
-        self.immigration_rate
     }
 }
 

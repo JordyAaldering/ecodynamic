@@ -11,17 +11,9 @@ pub struct GeneticController {
 
 pub trait GeneticControllerConfig {
     fn population_size(&self) -> usize;
-    fn survival_rate(&self) -> f32;
+    fn survival_count(&self) -> usize;
+    fn immigration_count(&self) -> usize;
     fn mutation_rate(&self) -> f32;
-    fn immigration_rate(&self) -> f32;
-
-    fn survival_count(&self) -> usize {
-        (self.population_size() as f32 * self.survival_rate()).round() as usize
-    }
-
-    fn immigration_count(&self) -> usize {
-        (self.population_size() as f32 * self.immigration_rate()).round() as usize
-    }
 }
 
 impl GeneticController {
