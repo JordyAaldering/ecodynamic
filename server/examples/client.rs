@@ -4,7 +4,7 @@ use std::os::unix::net::UnixStream;
 use std::thread::sleep;
 use std::time::Duration;
 
-use letterbox::*;
+use controller::*;
 
 fn main() -> std::io::Result<()> {
     let mut stream = UnixStream::connect(MTD_LETTERBOX_PATH)?;

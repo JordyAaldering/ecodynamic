@@ -1,17 +1,9 @@
-mod corridor;
-mod delta;
-mod fixed;
-mod genetic;
-mod oscilating;
+mod controller;
+mod letterbox;
+mod message;
 
-pub use corridor::*;
-pub use delta::*;
-pub use fixed::*;
-pub use genetic::*;
-pub use oscilating::*;
+pub use controller::*;
+pub use letterbox::*;
+pub use message::*;
 
-pub trait Controller {
-    fn evolve(&mut self, scores: Vec<f32>);
-
-    fn num_threads(&mut self) -> i32;
-}
+pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";

@@ -151,6 +151,7 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 name = "controller"
 version = "0.1.0"
 dependencies = [
+ "cbindgen",
  "permutation",
  "rand",
 ]
@@ -237,14 +238,6 @@ name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
-
-[[package]]
-name = "letterbox"
-version = "0.1.0"
-dependencies = [
- "cbindgen",
- "controller",
-]
 
 [[package]]
 name = "libc"
@@ -460,7 +453,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "controller",
- "letterbox",
  "static_init",
 ]
 

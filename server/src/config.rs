@@ -3,7 +3,6 @@ use std::sync::{Arc, Mutex};
 
 use clap::{Parser, ValueEnum};
 use controller::*;
-use letterbox::*;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

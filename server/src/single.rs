@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use clap::Parser;
 use config::*;
-use letterbox::*;
+use controller::*;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));

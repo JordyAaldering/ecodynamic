@@ -14,5 +14,4 @@ path = "src/single.rs"
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
 controller = { path = "../controller" }
-letterbox = { path = "../letterbox" }
 static_init = "1.0.3"

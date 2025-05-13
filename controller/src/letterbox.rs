@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-pub use controller::*;
-
-use crate::message::*;
+use crate::{message::*, Controller};
 
 pub struct Letterbox<F>
     where F: Fn(Request) -> Box<dyn Controller>
