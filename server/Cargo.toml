@@ -3,13 +3,17 @@ name = "server"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "mtd_server"
+path = "src/lib.rs"
+
 [[bin]]
 name = "server"
-path = "src/server.rs"
+path = "src/bin/server.rs"
 
 [[bin]]
 name = "single"
-path = "src/single.rs"
+path = "src/bin/single.rs"
 
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }

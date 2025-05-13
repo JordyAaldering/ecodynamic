@@ -1,28 +1,20 @@
-mod config;
-
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
-use std::mem;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::sync::{Arc, Mutex};
 
-use clap::Parser;
-use config::*;
-use controller::*;
+use mtd_server::*;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
 }
 
-#[static_init::dynamic]
-static CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config::parse()));
-
-fn handle_client(mut stream: UnixStream) -> io::Result<()> {
-    let mut letterbox = Letterbox::new(|req| ControllerType::build(CONFIG.clone(), req));
+fn handle_client(mut stream: UnixStream, client_id: usize) -> io::Result<()> {
+    let mut lbs = Letterbox::new(|req| ControllerType::build(CONFIG.clone(), req));
 
     let mut buffer = [0u8; Sample::SIZE];
 
     let mut log = if let Some(path) = &CONFIG.lock().unwrap().log_path {
+        let path = path.join(format!("client{:02}.csv", client_id));
         println!("Creating log file at {:?}", path);
         let file = File::create_new(path)?;
         let mut w = BufWriter::new(file);
@@ -41,7 +33,9 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
                 debug_println!("Read: {:?}", req);
 
                 // Update letterbox
-                let (_, controller) = letterbox.get(req.region_uid);
+
+                let (_, controller) = lbs.letterbox.entry(req.region_uid)
+                    .or_insert_with(|| (SampleVec::new(), (lbs.build_fn)(req)));
                 let num_threads = controller.num_threads();
                 let demand = Demand { num_threads };
 
@@ -55,7 +49,7 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
 
                 debug_println!("Recv: {:?}", sample);
 
-                let (samples, controller) = letterbox.get(sample.region_uid);
+                let (samples, controller) = lbs.letterbox.get_mut(&sample.region_uid).unwrap();
 
                 if let Some(w) = &mut log {
                     w.write_fmt(format_args!("{},{},{},{},{}\n",
@@ -67,11 +61,8 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
                     )?;
                 }
 
-                samples.push(sample);
-                if samples.len() >= CONFIG.lock().unwrap().letterbox_size {
-                    let mut samples_swap = Vec::new();
-                    mem::swap(samples, &mut samples_swap);
-                    let score = CONFIG.lock().unwrap().score_function.score(samples_swap);
+                if let Some(samples) = samples.push_until_full(sample) {
+                    let score = CONFIG.lock().unwrap().score_function.score(samples);
                     controller.evolve(score);
                 }
             }
@@ -94,6 +85,12 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
+    // Check if log directory exists
+    if let Some(path) = &CONFIG.lock().unwrap().log_path {
+        let path = fs::canonicalize(path)?;
+        println!("Writing logs to {:?}", path);
+    }
+
     // Remove any existing socket file
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
         fs::remove_file(MTD_LETTERBOX_PATH)?;
@@ -102,14 +99,21 @@ fn main() -> io::Result<()> {
     // Create a listener
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     println!("Server listening on {}", MTD_LETTERBOX_PATH);
+    let mut client_count: usize = 0;
 
-    let stream = listener.incoming().next().unwrap();
-    match stream {
-        Ok(stream) => handle_client(stream)?,
-        Err(e) => eprintln!("Connection failed: {}", e),
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                client_count += 1;
+                std::thread::spawn(move || {
+                    handle_client(stream, client_count)
+                });
+            }
+            Err(e) => {
+                eprintln!("Connection failed: {}", e);
+            }
+        }
     }
 
-    println!("Server shutting down");
-    fs::remove_file(MTD_LETTERBOX_PATH)?;
-    Ok(())
+    unreachable!()
 }
