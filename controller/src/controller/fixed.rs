@@ -1,3 +1,5 @@
+use crate::Sample;
+
 use super::Controller;
 
 pub struct FixedController {
@@ -11,7 +13,7 @@ impl FixedController {
 }
 
 impl Controller for FixedController {
-    fn evolve(&mut self, _scores: Vec<f32>) { }
+    fn evolve(&mut self, _scores: Vec<Sample>) { }
 
     fn num_threads(&mut self) -> i32 {
         self.num_threads

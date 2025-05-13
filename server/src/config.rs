@@ -1,8 +1,5 @@
-mod score_fn;
-
 use clap::{Parser, Subcommand};
 use controller::*;
-pub use score_fn::*;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -33,10 +30,6 @@ pub struct Config {
     #[command(subcommand)]
     pub controller: ControllerType,
 
-    /// Controller type.
-    #[arg(short('f'), long)]
-    pub score_function: ScoreFunction,
-
     /// Size of the letterbox.
     #[arg(short('s'), long)]
     pub letterbox_size: usize,
@@ -57,9 +50,9 @@ pub enum ControllerType {
     /// Genetic algorithm approach.
     Genetic(GeneticControllerConfig),
     /// Algorithm based on a performance corridor.
-    Corridor,
+    Corridor(CorridorControllerConfig),
     /// Algorithm based on deltas between runs.
-    Delta,
+    Delta(DeltaControllerConfig),
     /// Continuously oscilates between 1 and <max-threads>.
     Oscilating,
     /// Always returns <max-threads>.
@@ -71,10 +64,10 @@ impl ControllerType {
         use ControllerType::*;
         match &CONFIG.lock().controller {
             Genetic(config) => Box::new(GeneticController::new(req.max_threads, CONFIG.lock().letterbox_size, config.clone())),
-            Corridor   => Box::new(DeltaController::new(req.max_threads as f32)),
-            Delta      => Box::new(CorridorController::new(req.max_threads)),
+            Corridor(config) => Box::new(CorridorController::new(req.max_threads, config.clone())),
+            Delta(config) => Box::new(DeltaController::new(req.max_threads as f32, config.clone())),
             Oscilating => Box::new(OscilatingController::new(req.max_threads)),
-            Fixed      => Box::new(FixedController::new(req.max_threads)),
+            Fixed => Box::new(FixedController::new(req.max_threads)),
         }
     }
 }

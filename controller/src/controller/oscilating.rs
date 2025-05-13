@@ -1,3 +1,5 @@
+use crate::Sample;
+
 use super::Controller;
 
 pub struct OscilatingController {
@@ -17,7 +19,7 @@ impl OscilatingController {
 }
 
 impl Controller for OscilatingController {
-    fn evolve(&mut self, _scores: Vec<f32>) {
+    fn evolve(&mut self, _: Vec<Sample>) {
         self.num_threads += self.direction;
         if self.num_threads <= 1 || self.num_threads >= self.max_threads {
             self.direction = -self.direction;

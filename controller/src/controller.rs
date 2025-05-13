@@ -10,8 +10,10 @@ pub use fixed::*;
 pub use genetic::*;
 pub use oscilating::*;
 
+use crate::Sample;
+
 pub trait Controller {
-    fn evolve(&mut self, scores: Vec<f32>);
+    fn evolve(&mut self, scores: Vec<Sample>);
 
     fn num_threads(&mut self) -> i32;
 }

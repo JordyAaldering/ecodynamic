@@ -1,4 +1,6 @@
-use clap::{arg, Parser};
+use clap::Parser;
+
+use crate::{Sample, ScoreFunction};
 
 use super::Controller;
 
@@ -12,6 +14,9 @@ pub struct GeneticController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
+    #[arg(long)]
+    pub score: ScoreFunction,
+
     /// Genetic algorithm survival rate.
     #[arg(long, default_value_t = 0.50)]
     pub survival_rate: f32,
@@ -49,8 +54,8 @@ impl GeneticController {
 }
 
 impl Controller for GeneticController {
-    fn evolve(&mut self, scores: Vec<f32>) {
-        self.sort(scores);
+    fn evolve(&mut self, samples: Vec<Sample>) {
+        self.sort(self.config.score.score(samples));
 
         let population_size = self.population.len();
         let survival_count = (population_size as f32 * self.config.survival_rate).round() as usize;

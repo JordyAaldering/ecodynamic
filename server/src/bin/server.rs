@@ -62,8 +62,7 @@ fn handle_client(mut stream: UnixStream, client_id: usize) -> io::Result<()> {
                 }
 
                 if let Some(samples) = samples.push_until_full(sample) {
-                    let score = CONFIG.lock().score_function.score(samples);
-                    controller.evolve(score);
+                    controller.evolve(samples);
                 }
             }
             Ok(0) => {

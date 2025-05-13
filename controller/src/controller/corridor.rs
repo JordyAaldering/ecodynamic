@@ -1,3 +1,7 @@
+use clap::Parser;
+
+use crate::{Sample, ScoreFunction, SelectionFunction};
+
 use super::Controller;
 
 pub struct CorridorController {
@@ -7,10 +11,11 @@ pub struct CorridorController {
     step_dir: i32,
     t_prev: f32,
     t1: f32,
+    config: CorridorControllerConfig,
 }
 
 impl CorridorController {
-    pub fn new(max_threads: i32) -> Self {
+    pub fn new(max_threads: i32, config: CorridorControllerConfig) -> Self {
         Self {
             max_threads,
             num_threads: max_threads,
@@ -18,13 +23,24 @@ impl CorridorController {
             step_dir: -1,
             t_prev: f32::MAX,
             t1: f32::MAX,
+            config,
         }
     }
 }
 
+#[derive(Clone, Debug)]
+#[derive(Parser)]
+pub struct CorridorControllerConfig {
+    #[arg(long)]
+    pub score: ScoreFunction,
+
+    #[arg(long)]
+    pub select: SelectionFunction,
+}
+
 impl Controller for CorridorController {
-    fn evolve(&mut self, scores: Vec<f32>) {
-        let tn = frequency_dist(scores);
+    fn evolve(&mut self, samples: Vec<Sample>) {
+        let tn = self.config.select.select(self.config.score.score(samples));
 
         if self.t1 / tn < 0.5 * self.num_threads as f32 {
             self.step_size = i32::max(1, self.num_threads / 2);
@@ -49,29 +65,4 @@ impl Controller for CorridorController {
     fn num_threads(&mut self) -> i32 {
         self.num_threads
     }
-}
-
-fn frequency_dist(mut scores: Vec<f32>) -> f32 {
-    const NUM_RANGES: usize = 5;
-
-    scores.sort_by(|a, b| a.partial_cmp(&b).unwrap());
-
-    let min = scores[0];
-    let max = scores[scores.len() - 1];
-    let dist_size = (max - min) / NUM_RANGES as f32;
-    let mut dist_max = (1..=NUM_RANGES).map(|i| min + dist_size * i as f32).collect::<Vec<f32>>();
-    dist_max[NUM_RANGES - 1] = max;
-
-    let mut dist = vec![Vec::new(); NUM_RANGES];
-    let mut dist_index = 0;
-    for x in scores {
-        while x > dist_max[dist_index] {
-            dist_index += 1;
-        }
-
-        dist[dist_index].push(x);
-    }
-
-    let biggest_dist = dist.into_iter().max_by_key(Vec::len).unwrap();
-    biggest_dist[0]
 }

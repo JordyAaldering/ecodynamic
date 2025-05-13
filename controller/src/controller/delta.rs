@@ -1,3 +1,7 @@
+use clap::Parser;
+
+use crate::{Sample, ScoreFunction, SelectionFunction};
+
 use super::Controller;
 
 const UP: f32 = 1.0;
@@ -9,16 +13,28 @@ pub struct DeltaController {
     step_size: f32,
     step_dir: f32,
     e_prev: f32,
+    config: DeltaControllerConfig,
+}
+
+#[derive(Clone, Debug)]
+#[derive(Parser)]
+pub struct DeltaControllerConfig {
+    #[arg(long)]
+    pub score: ScoreFunction,
+
+    #[arg(long)]
+    pub select: SelectionFunction,
 }
 
 impl DeltaController {
-    pub fn new(max_threads: f32) -> Self {
+    pub fn new(max_threads: f32, config: DeltaControllerConfig) -> Self {
         Self {
             max_threads,
             num_threads: max_threads,
             step_size: max_threads,
             step_dir: DOWN,
             e_prev: 0.0,
+            config,
         }
     }
 
@@ -34,8 +50,8 @@ impl DeltaController {
 }
 
 impl Controller for DeltaController {
-    fn evolve(&mut self, scores: Vec<f32>) {
-        let e_next = median(scores);
+    fn evolve(&mut self, samples: Vec<Sample>) {
+        let e_next = self.config.select.select(self.config.score.score(samples));
 
         if e_next > self.e_prev * 1.50 {
             self.step_size = self.max_threads * 0.5;
@@ -61,9 +77,4 @@ impl Controller for DeltaController {
     fn num_threads(&mut self) -> i32 {
         self.num_threads.round() as i32
     }
-}
-
-fn median(mut xs: Vec<f32>) -> f32 {
-    xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    xs[xs.len() / 2]
 }
