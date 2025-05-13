@@ -19,8 +19,8 @@ impl ScoreFunction {
             Pareto => {
                 let mut fronts = non_dominated_sort(&samples, &SampleDominanceOrd);
 
-                let mut scores = vec![0.0; samples.len()];
-                let mut dominated_count = 0.0;
+                let mut scores = vec![-1.0; samples.len()];
+                let mut dominated_count = 1.0;
                 while !fronts.is_empty() {
                     for &index in fronts.current_front_indices() {
                         scores[index] = dominated_count;
