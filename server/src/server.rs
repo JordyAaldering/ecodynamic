@@ -2,6 +2,7 @@ mod config;
 
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
+use std::mem;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::{Arc, Mutex};
 
@@ -41,7 +42,8 @@ fn handle_client(mut stream: UnixStream, client_id: usize) -> io::Result<()> {
                 debug_println!("Read: {:?}", req);
 
                 // Update letterbox
-                let num_threads = letterbox.try_get_demand(req);
+                let (_, controller) = letterbox.get(req.region_uid);
+                let num_threads = controller.num_threads();
                 let demand = Demand { num_threads };
 
                 // Write to stream
@@ -54,19 +56,25 @@ fn handle_client(mut stream: UnixStream, client_id: usize) -> io::Result<()> {
 
                 debug_println!("Recv: {:?}", sample);
 
+                let (samples, controller) = letterbox.get(sample.region_uid);
+
                 if let Some(w) = &mut log {
                     w.write_fmt(format_args!("{},{},{},{},{}\n",
                         sample.region_uid,
-                        letterbox.get_demand(sample.region_uid),
+                        controller.num_threads(),
                         sample.runtime,
                         sample.usertime,
                         sample.energy)
                     )?;
                 }
 
-                let uid = sample.region_uid;
-                let score = CONFIG.lock().unwrap().score_function.score(sample);
-                letterbox.update(uid, score);
+                samples.push(sample);
+                if samples.len() >= CONFIG.lock().unwrap().letterbox_size {
+                    let mut samples_swap = Vec::new();
+                    mem::swap(samples, &mut samples_swap);
+                    let score = CONFIG.lock().unwrap().score_function.score(samples_swap);
+                    controller.evolve(score);
+                }
             }
             Ok(0) => {
                 println!("Client disconnected");

@@ -92,11 +92,11 @@ pub enum ScoreFunction {
 }
 
 impl ScoreFunction {
-    pub fn score(self, sample: Sample) -> f32 {
+    pub fn score(self, sample: Vec<Sample>) -> Vec<f32> {
         use ScoreFunction::*;
         match self {
-            Runtime => sample.runtime,
-            Energy => sample.energy,
+            Runtime => sample.into_iter().map(|x| x.runtime).collect(),
+            Energy => sample.into_iter().map(|x| x.energy).collect(),
         }
     }
 }
