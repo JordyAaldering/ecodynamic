@@ -33,7 +33,6 @@ fn handle_client(mut stream: UnixStream, client_id: usize) -> io::Result<()> {
                 debug_println!("Read: {:?}", req);
 
                 // Update letterbox
-
                 let (_, controller) = lbs.letterbox.entry(req.region_uid)
                     .or_insert_with(|| (SampleVec::new(), (lbs.build_fn)(req)));
                 let num_threads = controller.num_threads();

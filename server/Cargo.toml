@@ -8,10 +8,10 @@ name = "mtd_server"
 path = "src/lib.rs"
 
 [[bin]]
-name = "server"
+name = "mtd_server"
 path = "src/bin/server.rs"
 
 [dependencies]
-clap = { version = "4.5.37", features = ["derive"] }
+clap = { version = "4.5.38", features = ["derive"] }
 controller = { path = "../controller" }
 static_init = "1.0.3"

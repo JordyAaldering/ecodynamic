@@ -4,22 +4,19 @@ use controller::*;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use crate::CONFIG;
+#[static_init::dynamic]
+pub static CONFIG: SharedConfig = SharedConfig::new(Config::parse());
 
 #[derive(Clone)]
-pub struct SharedConfig {
-    inner: Arc<Mutex<Config>>,
-}
+pub struct SharedConfig(Arc<Mutex<Config>>);
 
 impl SharedConfig {
     pub fn new(config: Config) -> Self {
-        Self {
-            inner: Arc::new(Mutex::new(config)),
-        }
+        Self(Arc::new(Mutex::new(config)))
     }
 
     pub fn lock(&self) -> MutexGuard<'_, Config> {
-        self.inner.lock().unwrap()
+        self.0.lock().unwrap()
     }
 }
 
