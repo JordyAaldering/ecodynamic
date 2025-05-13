@@ -11,10 +11,6 @@ path = "src/lib.rs"
 name = "server"
 path = "src/bin/server.rs"
 
-[[bin]]
-name = "single"
-path = "src/bin/single.rs"
-
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }
 controller = { path = "../controller" }

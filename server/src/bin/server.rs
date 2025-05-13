@@ -99,21 +99,29 @@ fn main() -> io::Result<()> {
     // Create a listener
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     println!("Server listening on {}", MTD_LETTERBOX_PATH);
-    let mut client_count: usize = 0;
 
-    for stream in listener.incoming() {
+    if CONFIG.lock().single {
+        let stream = listener.incoming().next().unwrap();
         match stream {
-            Ok(stream) => {
-                client_count += 1;
-                std::thread::spawn(move || {
-                    handle_client(stream, client_count)
-                });
-            }
-            Err(e) => {
-                eprintln!("Connection failed: {}", e);
+            Ok(stream) => handle_client(stream, 0)?,
+            Err(e) => eprintln!("Connection failed: {}", e),
+        }
+    } else {
+        let mut client_count: usize = 0;
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    client_count += 1;
+                    std::thread::spawn(move || {
+                        handle_client(stream, client_count)
+                    });
+                }
+                Err(e) => {
+                    eprintln!("Connection failed: {}", e);
+                }
             }
         }
     }
 
-    unreachable!()
+    Ok(())
 }

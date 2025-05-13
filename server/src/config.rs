@@ -56,4 +56,8 @@ pub struct Config {
     /// Creates a file for each client.
     #[arg(long)]
     pub log_path: Option<PathBuf>,
+
+    /// Run the resource controller for a single connection only
+    #[arg(long, action)]
+    pub single: bool
 }
