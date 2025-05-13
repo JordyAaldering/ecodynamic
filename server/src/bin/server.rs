@@ -122,5 +122,8 @@ fn main() -> io::Result<()> {
         }
     }
 
+    // Remove socket file
+    fs::remove_file(MTD_LETTERBOX_PATH)?;
+
     Ok(())
 }

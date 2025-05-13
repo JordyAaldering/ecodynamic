@@ -13,7 +13,7 @@ impl FixedController {
 }
 
 impl Controller for FixedController {
-    fn evolve(&mut self, _scores: Vec<Sample>) { }
+    fn evolve(&mut self, _: Vec<Sample>) { }
 
     fn num_threads(&mut self) -> i32 {
         self.num_threads

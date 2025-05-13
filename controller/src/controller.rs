@@ -13,7 +13,7 @@ pub use oscilating::*;
 use crate::Sample;
 
 pub trait Controller {
-    fn evolve(&mut self, scores: Vec<Sample>);
+    fn evolve(&mut self, samples: Vec<Sample>);
 
     fn num_threads(&mut self) -> i32;
 }
