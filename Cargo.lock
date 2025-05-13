@@ -157,6 +157,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dominance-ord"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3dd45ca02161491b6d86974d44aec71a877450fc495d0b809a0ed1e7eb43ee30"
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -272,6 +278,15 @@ name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
+
+[[package]]
+name = "non-dominated-sort"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc4de93a05386d1e59116dc4f0ee3e94dd10bff66ffd8b2746dc4c183e45c2b2"
+dependencies = [
+ "dominance-ord",
+]
 
 [[package]]
 name = "once_cell"
@@ -453,6 +468,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "controller",
+ "non-dominated-sort",
  "static_init",
 ]
 
