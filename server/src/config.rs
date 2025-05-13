@@ -1,12 +1,13 @@
-mod controller_type;
 mod score_fn;
 
-use clap::Parser;
-pub use controller_type::*;
+use clap::{Parser, Subcommand};
+use controller::*;
 pub use score_fn::*;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
+
+use crate::CONFIG;
 
 #[derive(Clone)]
 pub struct SharedConfig {
@@ -29,8 +30,8 @@ impl SharedConfig {
 #[command(version, about, long_about = None)]
 pub struct Config {
     /// Controller type.
-    #[arg(short('c'), long)]
-    pub controller_type: ControllerType,
+    #[command(subcommand)]
+    pub controller: ControllerType,
 
     /// Controller type.
     #[arg(short('f'), long)]
@@ -40,18 +41,6 @@ pub struct Config {
     #[arg(short('s'), long)]
     pub letterbox_size: usize,
 
-    /// Genetic algorithm survival rate.
-    #[arg(long, default_value_t = 0.50)]
-    pub survival_rate: f32,
-
-    /// Genetic algorithm mutation rate.
-    #[arg(long, default_value_t = 0.25)]
-    pub mutation_rate: f32,
-
-    /// Genetic algorithm immigration rate.
-    #[arg(long, default_value_t = 0.0)]
-    pub immigration_rate: f32,
-
     /// Log received samples to this path.
     /// Creates a file for each client.
     #[arg(long)]
@@ -60,4 +49,32 @@ pub struct Config {
     /// Run the resource controller for a single connection only
     #[arg(long, action)]
     pub single: bool,
+}
+
+#[derive(Debug)]
+#[derive(Subcommand)]
+pub enum ControllerType {
+    /// Genetic algorithm approach.
+    Genetic(GeneticControllerConfig),
+    /// Algorithm based on a performance corridor.
+    Corridor,
+    /// Algorithm based on deltas between runs.
+    Delta,
+    /// Continuously oscilates between 1 and <max-threads>.
+    Oscilating,
+    /// Always returns <max-threads>.
+    Fixed,
+}
+
+impl ControllerType {
+    pub fn build(req: Request) -> Box<dyn Controller> {
+        use ControllerType::*;
+        match &CONFIG.lock().controller {
+            Genetic(config) => Box::new(GeneticController::new(req.max_threads, CONFIG.lock().letterbox_size, config.clone())),
+            Corridor   => Box::new(DeltaController::new(req.max_threads as f32)),
+            Delta      => Box::new(CorridorController::new(req.max_threads)),
+            Oscilating => Box::new(OscilatingController::new(req.max_threads)),
+            Fixed      => Box::new(FixedController::new(req.max_threads)),
+        }
+    }
 }

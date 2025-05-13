@@ -1,26 +1,32 @@
+use clap::{arg, Parser};
+
 use super::Controller;
 
-pub struct GeneticController<Config>
-    where Config: GeneticControllerConfig
-{
+pub struct GeneticController {
     max_threads: i32,
     population: Vec<Chromosome>,
     sample_index: usize,
-    config: Config,
+    config: GeneticControllerConfig,
 }
 
-pub trait GeneticControllerConfig {
-    fn population_size(&self) -> usize;
-    fn survival_count(&self) -> usize;
-    fn immigration_count(&self) -> usize;
-    fn mutation_rate(&self) -> f32;
+#[derive(Clone, Debug)]
+#[derive(Parser)]
+pub struct GeneticControllerConfig {
+    /// Genetic algorithm survival rate.
+    #[arg(long, default_value_t = 0.50)]
+    pub survival_rate: f32,
+
+    /// Genetic algorithm mutation rate.
+    #[arg(long, default_value_t = 0.25)]
+    pub mutation_rate: f32,
+
+    /// Genetic algorithm immigration rate.
+    #[arg(long, default_value_t = 0.0)]
+    pub immigration_rate: f32,
 }
 
-impl<Config> GeneticController<Config>
-    where Config: GeneticControllerConfig
-{
-    pub fn new(max_threads: i32, config: Config) -> Self {
-        let population_size = config.population_size();
+impl GeneticController {
+    pub fn new(max_threads: i32, population_size: usize, config: GeneticControllerConfig) -> Self {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
         let population = (0..population_size).map(|i| {
@@ -42,15 +48,13 @@ impl<Config> GeneticController<Config>
     }
 }
 
-impl<Config> Controller for GeneticController<Config>
-    where Config: GeneticControllerConfig
-{
+impl Controller for GeneticController {
     fn evolve(&mut self, scores: Vec<f32>) {
         self.sort(scores);
 
-        let population_size = self.config.population_size();
-        let survival_count = self.config.survival_count();
-        let immigration_count = self.config.immigration_count();
+        let population_size = self.population.len();
+        let survival_count = (population_size as f32 * self.config.survival_rate).round() as usize;
+        let immigration_count = (population_size as f32 * self.config.immigration_rate).round() as usize;
         let immigration_start = population_size - immigration_count;
 
         // Replace chromosomes by children of the best performing chromosomes
@@ -58,7 +62,7 @@ impl<Config> Controller for GeneticController<Config>
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(&parent2);
-            if rand::random_range(0.0..1.0) < self.config.mutation_rate() {
+            if rand::random_range(0.0..1.0) < self.config.mutation_rate {
                 child.mutate(self.max_threads);
             }
 
