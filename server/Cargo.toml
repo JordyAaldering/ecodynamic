@@ -14,4 +14,3 @@ path = "src/bin/server.rs"
 [dependencies]
 clap = { version = "4.5.38", features = ["derive"] }
 controller = { path = "../controller" }
-static_init = "1.0.3"

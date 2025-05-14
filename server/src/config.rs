@@ -2,25 +2,8 @@ use clap::{Parser, Subcommand};
 use controller::*;
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
 
-#[static_init::dynamic]
-pub static CONFIG: SharedConfig = SharedConfig::new(Config::parse());
-
-#[derive(Clone)]
-pub struct SharedConfig(Arc<Mutex<Config>>);
-
-impl SharedConfig {
-    pub fn new(config: Config) -> Self {
-        Self(Arc::new(Mutex::new(config)))
-    }
-
-    pub fn lock(&self) -> MutexGuard<'_, Config> {
-        self.0.lock().unwrap()
-    }
-}
-
-#[derive(Parser, Debug)]
+#[derive(Clone, Debug, Parser)]
 #[command(version, about, long_about = None)]
 pub struct Config {
     /// Controller type.
@@ -36,13 +19,12 @@ pub struct Config {
     #[arg(long)]
     pub log_path: Option<PathBuf>,
 
-    /// Run the resource controller for a single connection only
+    /// Run the resource controller for a single connection only.
     #[arg(long, action)]
     pub single: bool,
 }
 
-#[derive(Debug)]
-#[derive(Subcommand)]
+#[derive(Clone, Debug, Subcommand)]
 pub enum ControllerType {
     /// Genetic algorithm approach.
     Genetic(GeneticControllerConfig),
@@ -56,11 +38,11 @@ pub enum ControllerType {
     Fixed,
 }
 
-impl ControllerType {
-    pub fn build(req: Request) -> Box<dyn Controller> {
+impl Config {
+    pub fn build(&self, req: Request) -> Box<dyn Controller> {
         use ControllerType::*;
-        match &CONFIG.lock().controller {
-            Genetic(config) => Box::new(GeneticController::new(req.max_threads, CONFIG.lock().letterbox_size, config.clone())),
+        match &self.controller {
+            Genetic(config) => Box::new(GeneticController::new(req.max_threads, self.letterbox_size, config.clone())),
             Corridor(config) => Box::new(CorridorController::new(req.max_threads, config.clone())),
             Delta(config) => Box::new(DeltaController::new(req.max_threads as f32, config.clone())),
             Oscilating => Box::new(OscilatingController::new(req.max_threads)),
