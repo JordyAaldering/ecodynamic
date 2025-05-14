@@ -3,7 +3,7 @@ mod config;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
-use std::mem;
+use std::{mem, process};
 use std::os::unix::net::{UnixListener, UnixStream};
 
 use clap::Parser;
@@ -102,12 +102,21 @@ fn main() -> io::Result<()> {
 
     // Remove any existing socket file
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
+        debug_println!("Closing existing socket at {}", MTD_LETTERBOX_PATH);
         fs::remove_file(MTD_LETTERBOX_PATH)?;
     }
 
     // Create a listener
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     println!("Server listening on {}", MTD_LETTERBOX_PATH);
+
+    // Ensure the socket is closed when a control-C occurs
+    ctrlc::set_handler(move || {
+        debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
+        fs::remove_file(MTD_LETTERBOX_PATH)
+            .expect(&format!("Error closing socket at {}", MTD_LETTERBOX_PATH));
+        process::exit(0);
+    }).unwrap();
 
     if config.single {
         let stream = listener.incoming().next().unwrap();
@@ -126,14 +135,12 @@ fn main() -> io::Result<()> {
                         handle_client(stream, config_clone, client_count)
                     });
                 }
-                Err(e) => {
-                    eprintln!("Connection failed: {}", e);
-                }
+                Err(e) => eprintln!("Connection failed: {}", e),
             }
         }
     }
 
-    // Remove socket file
+    debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
     fs::remove_file(MTD_LETTERBOX_PATH)?;
 
     Ok(())
