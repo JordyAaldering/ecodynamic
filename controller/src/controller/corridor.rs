@@ -14,6 +14,16 @@ pub struct CorridorController {
     config: CorridorControllerConfig,
 }
 
+#[derive(Clone, Debug)]
+#[derive(Parser)]
+pub struct CorridorControllerConfig {
+    #[arg(long)]
+    pub score: ScoreFunction,
+
+    #[arg(long)]
+    pub select: SelectionFunction,
+}
+
 impl CorridorController {
     pub fn new(max_threads: i32, config: CorridorControllerConfig) -> Self {
         Self {
@@ -26,16 +36,6 @@ impl CorridorController {
             config,
         }
     }
-}
-
-#[derive(Clone, Debug)]
-#[derive(Parser)]
-pub struct CorridorControllerConfig {
-    #[arg(long)]
-    pub score: ScoreFunction,
-
-    #[arg(long)]
-    pub select: SelectionFunction,
 }
 
 impl Controller for CorridorController {
