@@ -1,17 +1,21 @@
+mod config;
+
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
 use std::mem;
 use std::os::unix::net::{UnixListener, UnixStream};
 
 use clap::Parser;
-use mtd_server::*;
+use config::Config;
+use controller::*;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
 }
 
 fn handle_client(mut stream: UnixStream, config: Config, client_id: usize) -> io::Result<()> {
-    let mut lbs = Letterbox::new(|req| config.build(req));
+    let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
 
     let mut buffer = [0u8; Sample::SIZE];
 
@@ -35,8 +39,8 @@ fn handle_client(mut stream: UnixStream, config: Config, client_id: usize) -> io
                 debug_println!("Read: {:?}", req);
 
                 // Update letterbox
-                let (_, controller) = lbs.letterbox.entry(req.region_uid)
-                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), (lbs.build_fn)(req)));
+                let (_, controller) = lbs.entry(req.region_uid)
+                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req)));
                 let num_threads = controller.num_threads();
                 let demand = Demand { num_threads };
 
@@ -50,7 +54,7 @@ fn handle_client(mut stream: UnixStream, config: Config, client_id: usize) -> io
 
                 debug_println!("Recv: {:?}", sample);
 
-                let (samples, controller) = lbs.letterbox.get_mut(&sample.region_uid).unwrap();
+                let (samples, controller) = lbs.get_mut(&sample.region_uid).unwrap();
 
                 if let Some(w) = &mut log {
                     w.write_fmt(format_args!("{},{},{},{},{}\n",
