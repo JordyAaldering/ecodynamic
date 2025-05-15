@@ -81,7 +81,7 @@ fn main() -> io::Result<()> {
 
     // Create a listener
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
-    println!("Server listening on {}", MTD_LETTERBOX_PATH);
+    debug_println!("Server listening on {}", MTD_LETTERBOX_PATH);
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(move || {
