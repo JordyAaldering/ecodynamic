@@ -1,8 +1,6 @@
 use clap::{Parser, Subcommand};
 use controller::*;
 
-use std::path::PathBuf;
-
 #[derive(Clone, Debug, Parser)]
 #[command(version, about, long_about = None)]
 pub struct Config {
@@ -13,11 +11,6 @@ pub struct Config {
     /// Size of the letterbox.
     #[arg(short('s'), long)]
     pub letterbox_size: usize,
-
-    /// Log received samples to this path.
-    /// Creates a file for each client.
-    #[arg(long)]
-    pub log_path: Option<PathBuf>,
 
     /// Run the resource controller for a single connection only.
     #[arg(long, action)]
