@@ -15,6 +15,8 @@ struct Request {
 struct Demand {
     /// Recommended number of threads to use for the next parallel iteration.
     int32_t num_threads;
+    /// Maximum allowed CPU power in micro watts.
+    uint64_t power_limit_uw;
 };
 
 struct Sample {

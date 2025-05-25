@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Sample, ScoreFunction};
+use crate::{Demand, Sample, ScoreFunction};
 
 use super::Controller;
 
@@ -88,18 +88,14 @@ impl Controller for GeneticController {
         self.population.sort_by_key(|c| c.num_threads);
     }
 
-    fn num_threads(&mut self) -> i32 {
+    fn next_demand(&mut self) -> Demand {
         // Use the number of samples to determine the current index into the population.
         // The population is reset every `population_size` iterations.
         // In between, we want every chromosome to be applied once.
         let num_threads = self.population[self.sample_index].num_threads;
+        let power_limit_uw = self.population[self.sample_index].power_limit_uw;
         self.sample_index += 1;
-        num_threads
-    }
-
-    /// This is really hacky; we should combine num_threads and power_limit
-    fn power_limit_uw(&mut self) -> u64 {
-        self.population[self.sample_index].power_limit_uw
+        Demand { num_threads, power_limit_uw }
     }
 }
 

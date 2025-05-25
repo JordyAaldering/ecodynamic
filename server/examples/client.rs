@@ -1,4 +1,3 @@
-use std::mem;
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::thread::sleep;
@@ -19,7 +18,7 @@ fn main() -> std::io::Result<()> {
         stream.write_all(&req.to_bytes())?;
 
         // Read from stream
-        let mut buffer = [0u8; mem::size_of::<Demand>()];
+        let mut buffer = [0u8; Demand::SIZE];
         stream.read_exact(&mut buffer)?;
         let demand = Demand::from(buffer);
         println!("Recv: {:?}", demand);

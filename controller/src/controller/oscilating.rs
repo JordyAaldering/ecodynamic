@@ -1,4 +1,4 @@
-use crate::Sample;
+use crate::{Demand, Sample};
 
 use super::Controller;
 
@@ -26,11 +26,7 @@ impl Controller for OscilatingController {
         }
     }
 
-    fn num_threads(&mut self) -> i32 {
-        self.num_threads
-    }
-
-    fn power_limit_uw(&mut self) -> u64 {
-        0
+    fn next_demand(&mut self) -> Demand {
+        Demand { num_threads: self.num_threads, power_limit_uw: 0 }
     }
 }

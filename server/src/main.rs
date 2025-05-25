@@ -32,15 +32,12 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 let (_, controller) = lbs.entry(req.region_uid)
                     .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req)));
 
-                let power_limit = controller.power_limit_uw();
-                if power_limit > 0 {
-                    Constraint::now(0, 0, None)
-                        .unwrap()
-                        .set_power_limit_uw(power_limit);
-                }
+                let demand = controller.next_demand();
 
-                let num_threads = controller.num_threads();
-                let demand = Demand { num_threads };
+                if demand.power_limit_uw > 0 {
+                    Constraint::now(0, 0, None).unwrap()
+                        .set_power_limit_uw(demand.power_limit_uw);
+                }
 
                 // Write to stream
                 debug_println!("Send: {:?}", demand);
@@ -49,7 +46,6 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
             }
             Ok(Sample::SIZE) => {
                 let sample = Sample::from(buffer);
-
                 debug_println!("Recv: {:?}", sample);
 
                 let (samples, controller) = lbs.get_mut(&sample.region_uid).unwrap();

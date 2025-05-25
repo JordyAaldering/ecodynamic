@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Sample, ScoreFunction, SelectionFunction};
+use crate::{Demand, Sample, ScoreFunction, SelectionFunction};
 
 use super::Controller;
 
@@ -74,11 +74,7 @@ impl Controller for DeltaController {
         self.num_threads = self.num_threads.max(1.0).min(self.max_threads);
     }
 
-    fn num_threads(&mut self) -> i32 {
-        self.num_threads.round() as i32
-    }
-
-    fn power_limit_uw(&mut self) -> u64 {
-        0
+    fn next_demand(&mut self) -> Demand {
+        Demand { num_threads: self.num_threads.round() as i32, power_limit_uw: 0 }
     }
 }

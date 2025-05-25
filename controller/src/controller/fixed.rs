@@ -1,4 +1,4 @@
-use crate::Sample;
+use crate::{Demand, Sample};
 
 use super::Controller;
 
@@ -15,11 +15,7 @@ impl FixedController {
 impl Controller for FixedController {
     fn evolve(&mut self, _: Vec<Sample>) { }
 
-    fn num_threads(&mut self) -> i32 {
-        self.num_threads
-    }
-
-    fn power_limit_uw(&mut self) -> u64 {
-        0
+    fn next_demand(&mut self) -> Demand {
+        Demand { num_threads: self.num_threads, power_limit_uw: 0 }
     }
 }
