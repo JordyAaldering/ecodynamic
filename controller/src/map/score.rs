@@ -1,3 +1,5 @@
+use std::fmt;
+
 use non_dominated_sort::{non_dominated_sort, DominanceOrd};
 
 use crate::Sample;
@@ -31,6 +33,17 @@ impl ScoreFunction {
 
                 scores
             }
+        }
+    }
+}
+
+impl fmt::Display for ScoreFunction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use ScoreFunction::*;
+        match self {
+            Energy => write!(f, "Energy"),
+            Runtime => write!(f, "Runtime"),
+            Pareto => write!(f, "Pareto"),
         }
     }
 }

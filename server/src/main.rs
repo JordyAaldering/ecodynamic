@@ -9,6 +9,7 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use clap::Parser;
 use config::Config;
 use controller::*;
+use rapl_energy::Constraint;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
@@ -30,6 +31,14 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 // Update letterbox
                 let (_, controller) = lbs.entry(req.region_uid)
                     .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req)));
+
+                let power_limit = controller.power_limit_uw();
+                if power_limit > 0 {
+                    Constraint::now(0, 0, None)
+                        .unwrap()
+                        .set_power_limit_uw(power_limit);
+                }
+
                 let num_threads = controller.num_threads();
                 let demand = Demand { num_threads };
 

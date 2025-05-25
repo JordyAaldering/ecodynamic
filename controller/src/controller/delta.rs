@@ -77,4 +77,8 @@ impl Controller for DeltaController {
     fn num_threads(&mut self) -> i32 {
         self.num_threads.round() as i32
     }
+
+    fn power_limit_uw(&mut self) -> u64 {
+        0
+    }
 }

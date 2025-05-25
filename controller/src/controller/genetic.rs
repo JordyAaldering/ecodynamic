@@ -6,6 +6,7 @@ use super::Controller;
 
 pub struct GeneticController {
     max_threads: i32,
+    max_power_uw: u64,
     population: Vec<Chromosome>,
     sample_index: usize,
     config: GeneticControllerConfig,
@@ -14,7 +15,7 @@ pub struct GeneticController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
-    #[arg(long)]
+    #[arg(long, default_value_t = ScoreFunction::Pareto)]
     pub score: ScoreFunction,
 
     /// Genetic algorithm survival rate.
@@ -31,16 +32,20 @@ pub struct GeneticControllerConfig {
 }
 
 impl GeneticController {
-    pub fn new(max_threads: i32, population_size: usize, config: GeneticControllerConfig) -> Self {
+    pub fn new(max_threads: i32, max_power_uw: u64, population_size: usize, config: GeneticControllerConfig) -> Self {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
+        // I.e. value = lower + i * (upper - lower) / length
         let population = (0..population_size).map(|i| {
                 let num_threads = 1 + (i as f64 * (max_threads - 1) as f64 / (population_size - 1) as f64).round() as i32;
-                Chromosome::new(num_threads)
+                let min_power_uw = max_power_uw / 2;
+                let power_limit_uw = min_power_uw + (i as f64 * (max_power_uw - min_power_uw) as f64 / (population_size - 1) as f64).round() as u64;
+                Chromosome::new(num_threads, power_limit_uw)
             }).collect();
 
         Self {
             max_threads,
+            max_power_uw,
             population,
             sample_index: 0,
             config,
@@ -68,7 +73,7 @@ impl Controller for GeneticController {
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(&parent2);
             if rand::random_range(0.0..1.0) < self.config.mutation_rate {
-                child.mutate(self.max_threads);
+                child.mutate(self.max_threads, self.max_power_uw);
             }
 
             self.population[i] = child;
@@ -76,7 +81,7 @@ impl Controller for GeneticController {
 
         // Fill remaining chromosomes by immigration
         for i in immigration_start..population_size {
-            self.population[i] = Chromosome::rand(self.max_threads);
+            self.population[i] = Chromosome::rand(self.max_threads, self.max_power_uw);
         }
 
         // To minimise changes in the runtime we sort by the recommended thread-count
@@ -91,33 +96,49 @@ impl Controller for GeneticController {
         self.sample_index += 1;
         num_threads
     }
+
+    /// This is really hacky; we should combine num_threads and power_limit
+    fn power_limit_uw(&mut self) -> u64 {
+        self.population[self.sample_index].power_limit_uw
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct Chromosome {
-    pub num_threads: i32,
+    num_threads: i32,
+    power_limit_uw: u64,
 }
 
 impl Chromosome {
-    fn new(num_threads: i32) -> Self {
-        Self { num_threads }
+    fn new(num_threads: i32, power_limit_uw: u64) -> Self {
+        Self { num_threads, power_limit_uw }
     }
 
     /// Generate a random chromosome for immigration
-    fn rand(max_threads: i32) -> Self {
+    fn rand(max_threads: i32, max_power_uw: u64) -> Self {
         let num_threads = rand::random_range(1..=max_threads);
-        Self::new(num_threads)
+        let power_limit_uw = rand::random_range((max_power_uw / 2)..=max_power_uw);
+        Self::new(num_threads, power_limit_uw)
     }
 
     fn crossover(&self, other: &Self) -> Self {
         Self {
             num_threads: (self.num_threads + other.num_threads) / 2,
+            power_limit_uw: (self.power_limit_uw + other.power_limit_uw) / 2,
         }
     }
 
     /// Add or subtract one thread
-    fn mutate(&mut self, max_threads: i32) {
+    fn mutate(&mut self, max_threads: i32, max_power_uw: u64) {
         self.num_threads += rand::random_range(0..=1) * 2 - 1;
-        self.num_threads = self.num_threads.max(1).min(max_threads)
+        self.num_threads = self.num_threads.max(1).min(max_threads);
+
+        if rand::random_bool(0.5) {
+            self.power_limit_uw += rand::random_range(0..=(max_power_uw / 10));
+            self.power_limit_uw = self.power_limit_uw.min(max_power_uw);
+        } else {
+            self.power_limit_uw -= rand::random_range(0..=(max_power_uw / 10));
+            self.power_limit_uw = self.power_limit_uw.max(max_power_uw / 2);
+        }
     }
 }

@@ -65,4 +65,8 @@ impl Controller for CorridorController {
     fn num_threads(&mut self) -> i32 {
         self.num_threads
     }
+
+    fn power_limit_uw(&mut self) -> u64 {
+        0
+    }
 }

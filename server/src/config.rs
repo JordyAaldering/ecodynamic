@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use controller::*;
+use rapl_energy::Constraint;
 
 #[derive(Clone, Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -35,7 +36,16 @@ impl Config {
     pub fn build(&self, req: Request) -> Box<dyn Controller> {
         use ControllerType::*;
         match &self.controller {
-            Genetic(config) => Box::new(GeneticController::new(req.max_threads, self.letterbox_size, config.clone())),
+            Genetic(config) => {
+                let max_power_uw = if let Some(constraint) = Constraint::now(0, 0, None) {
+                    // Use current power limit if maximum is not defined
+                    constraint.max_power_uw.unwrap_or(constraint.power_limit_uw)
+                } else {
+                    0
+                };
+
+                Box::new(GeneticController::new(req.max_threads, max_power_uw, self.letterbox_size, config.clone()))
+            },
             Corridor(config) => Box::new(CorridorController::new(req.max_threads, config.clone())),
             Delta(config) => Box::new(DeltaController::new(req.max_threads as f32, config.clone())),
             Oscilating => Box::new(OscilatingController::new(req.max_threads)),
