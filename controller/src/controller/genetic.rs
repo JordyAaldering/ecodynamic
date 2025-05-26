@@ -60,6 +60,9 @@ impl GeneticController {
 
 impl Controller for GeneticController {
     fn evolve(&mut self, samples: Vec<Sample>) {
+        // Reset sample index for next
+        self.sample_index = 0;
+
         self.sort(self.config.score.score(samples));
 
         let population_size = self.population.len();
