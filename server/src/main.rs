@@ -48,10 +48,6 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
             Ok(Sample::SIZE) => {
                 let sample = Sample::from(buffer);
                 debug_println!("Recv: {:?}", sample);
-                if sample.runtime < config.runtime_cutoff {
-                    // Break if runtime is smaller than cut-off
-                    continue;
-                }
 
                 let (samples, controller) = lbs.get_mut(&sample.region_uid).unwrap();
 
