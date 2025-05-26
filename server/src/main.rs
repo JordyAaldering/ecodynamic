@@ -99,9 +99,9 @@ fn main() -> io::Result<()> {
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(move || {
+        reset_power_limit(power_limit_uw);
         debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
         let _ = fs::remove_file(MTD_LETTERBOX_PATH);
-        reset_power_limit(power_limit_uw);
         process::exit(0);
     }).unwrap();
 
@@ -125,9 +125,9 @@ fn main() -> io::Result<()> {
         }
     }
 
+    reset_power_limit(power_limit_uw);
     debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
     fs::remove_file(MTD_LETTERBOX_PATH)?;
-    reset_power_limit(power_limit_uw);
 
     Ok(())
 }
