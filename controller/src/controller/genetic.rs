@@ -39,7 +39,7 @@ impl GeneticController {
         let population = (0..population_size).map(|i| {
                 //let num_threads = 1 + (i as f64 * (max_threads - 1) as f64 / (population_size - 1) as f64).round() as i32;
                 let num_threads = max_threads;
-                let min_power_uw = max_power_uw / 2;
+                let min_power_uw = max_power_uw / 4;
                 let power_limit_uw = min_power_uw + (i as f64 * (max_power_uw - min_power_uw) as f64 / (population_size - 1) as f64).round() as u64;
                 Chromosome::new(num_threads, power_limit_uw)
             }).collect();
@@ -89,7 +89,7 @@ impl Controller for GeneticController {
         }
 
         // To minimise changes in the runtime we sort by the recommended thread-count
-        self.population.sort_by_key(|c| c.num_threads);
+        self.population.sort_by_key(|c| c.power_limit_uw);
     }
 
     fn next_demand(&mut self) -> Demand {

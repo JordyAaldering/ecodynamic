@@ -38,9 +38,7 @@ impl Config {
         match &self.controller {
             Genetic(config) => {
                 let max_power_uw = if let Some(constraint) = Constraint::now(0, 0, None) {
-                    // Use current power limit if maximum is not defined
-                    // For some reason max_power_uw may be lower than power_limit_uw; so we take the maximum of the two.
-                    constraint.max_power_uw.map_or(constraint.power_limit_uw, |max_power_uw| max_power_uw.max(constraint.power_limit_uw))
+                    constraint.power_limit_uw
                 } else {
                     0
                 };
