@@ -13,6 +13,10 @@ pub struct Config {
     #[arg(short('s'), long)]
     pub letterbox_size: usize,
 
+    /// Minimal runtime required for samples
+    #[arg(long)]
+    pub runtime_cutoff: f32,
+
     /// Run the resource controller for a single connection only.
     #[arg(long, action)]
     pub single: bool,
