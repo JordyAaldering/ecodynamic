@@ -37,7 +37,8 @@ impl GeneticController {
         // reduce duplication and increase the chances of finding an optimum immediately.
         // I.e. value = lower + i * (upper - lower) / length
         let population = (0..population_size).map(|i| {
-                let num_threads = 1 + (i as f64 * (max_threads - 1) as f64 / (population_size - 1) as f64).round() as i32;
+                //let num_threads = 1 + (i as f64 * (max_threads - 1) as f64 / (population_size - 1) as f64).round() as i32;
+                let num_threads = max_threads;
                 let min_power_uw = max_power_uw / 2;
                 let power_limit_uw = min_power_uw + (i as f64 * (max_power_uw - min_power_uw) as f64 / (population_size - 1) as f64).round() as u64;
                 Chromosome::new(num_threads, power_limit_uw)
@@ -115,7 +116,8 @@ impl Chromosome {
 
     /// Generate a random chromosome for immigration
     fn rand(max_threads: i32, max_power_uw: u64) -> Self {
-        let num_threads = rand::random_range(1..=max_threads);
+        //let num_threads = rand::random_range(1..=max_threads);
+        let num_threads = max_threads;
         let power_limit_uw = rand::random_range((max_power_uw / 2)..=max_power_uw);
         Self::new(num_threads, power_limit_uw)
     }
@@ -128,9 +130,9 @@ impl Chromosome {
     }
 
     /// Add or subtract one thread
-    fn mutate(&mut self, max_threads: i32, max_power_uw: u64) {
-        self.num_threads += rand::random_range(0..=1) * 2 - 1;
-        self.num_threads = self.num_threads.max(1).min(max_threads);
+    fn mutate(&mut self, _max_threads: i32, max_power_uw: u64) {
+        //self.num_threads += rand::random_range(0..=1) * 2 - 1;
+        //self.num_threads = self.num_threads.max(1).min(max_threads);
 
         if rand::random_bool(0.5) {
             self.power_limit_uw += rand::random_range(0..=(max_power_uw / 10));
