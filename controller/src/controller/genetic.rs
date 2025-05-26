@@ -40,7 +40,7 @@ impl GeneticController {
                 //let num_threads = 1 + (i as f64 * (max_threads - 1) as f64 / (population_size - 1) as f64).round() as i32;
                 let num_threads = max_threads;
                 let min_power_uw = max_power_uw / 4;
-                let power_limit_uw = min_power_uw + (i as f64 * (max_power_uw - min_power_uw) as f64 / (population_size - 1) as f64).round() as u64;
+                let power_limit_uw = min_power_uw + (i as u64 * (max_power_uw - min_power_uw) / (population_size as u64 - 1));
                 Chromosome::new(num_threads, power_limit_uw)
             }).collect();
 
