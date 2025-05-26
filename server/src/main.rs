@@ -36,7 +36,11 @@ fn handle_client(mut stream: UnixStream, config: Config, power_limit_uw: u64) ->
 
                 if demand.power_limit_uw > 0 {
                     debug_println!("Set power limit to {}", demand.power_limit_uw);
+                    // long-term power limit
                     Constraint::now(0, 0, None).unwrap()
+                        .set_power_limit_uw(demand.power_limit_uw);
+                    // short-term power limit
+                    Constraint::now(1, 0, None).unwrap()
                         .set_power_limit_uw(demand.power_limit_uw);
                 }
 
