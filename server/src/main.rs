@@ -35,8 +35,9 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 let demand = controller.next_demand();
 
                 if demand.power_limit_uw > 0 {
-                    Constraint::now(0, 0, None).unwrap()
-                        .set_power_limit_uw(demand.power_limit_uw);
+                    let mut constraint = Constraint::now(0, 0, None).unwrap();
+                    println!("Setting power limit of {:?} to {}", constraint, demand.power_limit_uw);
+                    constraint.set_power_limit_uw(demand.power_limit_uw);
                 }
 
                 // Write to stream

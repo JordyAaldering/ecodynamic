@@ -44,6 +44,8 @@ impl Config {
                     0
                 };
 
+                println!("Building genetic controller with {} max threads, {} max power, and config {:?}",
+                         req.max_threads, max_power_uw, config);
                 Box::new(GeneticController::new(req.max_threads, max_power_uw, self.letterbox_size, config.clone()))
             },
             Corridor(config) => Box::new(CorridorController::new(req.max_threads, config.clone())),
