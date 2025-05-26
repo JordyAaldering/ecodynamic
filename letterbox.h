@@ -5,18 +5,17 @@
 
 #define MTD_LETTERBOX_PATH "/tmp/mtd_letterbox"
 
+/// Application-specific demands that have to be set by the controlled application.
+struct LocalDemand {
+    /// Recommended number of threads to use for the next parallel iteration.
+    int32_t num_threads;
+};
+
 struct Request {
     /// A unique identifier of the parallel region we are controlling.
     int32_t region_uid;
     /// The maximum number of threads allowed for this parallel region.
     int32_t max_threads;
-};
-
-struct Demand {
-    /// Recommended number of threads to use for the next parallel iteration.
-    int32_t num_threads;
-    /// Maximum allowed CPU power in micro watts.
-    uint64_t power_limit_uw;
 };
 
 struct Sample {

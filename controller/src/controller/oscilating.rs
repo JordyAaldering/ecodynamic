@@ -1,4 +1,4 @@
-use crate::{Demand, Sample};
+use crate::{GlobalDemand, LocalDemand, Sample};
 
 use super::Controller;
 
@@ -26,7 +26,9 @@ impl Controller for OscilatingController {
         }
     }
 
-    fn next_demand(&mut self) -> Demand {
-        Demand { num_threads: self.num_threads, power_limit_uw: 0 }
+    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
+        let global = GlobalDemand::default();
+        let local = LocalDemand { num_threads: self.num_threads };
+        (global, local)
     }
 }

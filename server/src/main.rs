@@ -32,21 +32,21 @@ fn handle_client(mut stream: UnixStream, config: Config, power_limit_uw: u64) ->
                 let (_, controller) = lbs.entry(req.region_uid)
                     .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req, power_limit_uw)));
 
-                let demand = controller.next_demand();
+                let (global_demand, local_demand) = controller.next_demand();
 
-                if demand.power_limit_uw > 0 {
-                    debug_println!("Set power limit to {}", demand.power_limit_uw);
+                if global_demand.power_limit_uw > 0 {
+                    debug_println!("Set power limit to {}", global_demand.power_limit_uw);
                     // long-term power limit
                     Constraint::now(0, 0, None).unwrap()
-                        .set_power_limit_uw(demand.power_limit_uw);
+                        .set_power_limit_uw(global_demand.power_limit_uw);
                     // short-term power limit
                     Constraint::now(1, 0, None).unwrap()
-                        .set_power_limit_uw(demand.power_limit_uw);
+                        .set_power_limit_uw(global_demand.power_limit_uw);
                 }
 
                 // Write to stream
-                debug_println!("Send: {:?}", demand);
-                let buf: [u8; Demand::SIZE] = demand.to_bytes();
+                debug_println!("Send: {:?}", local_demand);
+                let buf: [u8; LocalDemand::SIZE] = local_demand.to_bytes();
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {

@@ -18,9 +18,9 @@ fn main() -> std::io::Result<()> {
         stream.write_all(&req.to_bytes())?;
 
         // Read from stream
-        let mut buffer = [0u8; Demand::SIZE];
+        let mut buffer = [0u8; LocalDemand::SIZE];
         stream.read_exact(&mut buffer)?;
-        let demand = Demand::from(buffer);
+        let demand = LocalDemand::from(buffer);
         println!("Recv: {:?}", demand);
 
         sleep(Duration::from_secs(1));
