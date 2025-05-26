@@ -539,7 +539,7 @@ dependencies = [
 [[package]]
 name = "rapl-energy"
 version = "0.1.24"
-source = "git+https://github.com/JordyAaldering/rapl-energy.git#4ae06e3a25d0d412ddcb5b78eb84613a9920d997"
+source = "git+https://github.com/JordyAaldering/rapl-energy.git#7bcf80f6507d5475bdcdbf00491d253f2520b3d1"
 dependencies = [
  "cbindgen",
  "indexmap",
