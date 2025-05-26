@@ -35,9 +35,9 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 let demand = controller.next_demand();
 
                 if demand.power_limit_uw > 0 {
-                    let mut constraint = Constraint::now(0, 0, None).unwrap();
-                    println!("Setting power limit of {:?} to {}", constraint, demand.power_limit_uw);
-                    constraint.set_power_limit_uw(demand.power_limit_uw);
+                    debug_println!("Set power limit to {}", demand.power_limit_uw);
+                    Constraint::now(0, 0, None).unwrap()
+                        .set_power_limit_uw(demand.power_limit_uw);
                 }
 
                 // Write to stream
@@ -76,6 +76,12 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
     Ok(())
 }
 
+fn reset_power_limit(power_limit_uw: u64) {
+    debug_println!("Reset power limit to {}", power_limit_uw);
+    Constraint::now(0, 0, None).unwrap()
+        .set_power_limit_uw(power_limit_uw)
+}
+
 fn main() -> io::Result<()> {
     let config = Config::parse();
 
@@ -89,10 +95,13 @@ fn main() -> io::Result<()> {
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     debug_println!("Server listening on {}", MTD_LETTERBOX_PATH);
 
+    let initial_power_limit_uw = Constraint::now(0, 0, None).unwrap().power_limit_uw;
+
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(move || {
         debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
         let _ = fs::remove_file(MTD_LETTERBOX_PATH);
+        reset_power_limit(initial_power_limit_uw);
         process::exit(0);
     }).unwrap();
 
@@ -118,6 +127,7 @@ fn main() -> io::Result<()> {
 
     debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
     fs::remove_file(MTD_LETTERBOX_PATH)?;
+    reset_power_limit(initial_power_limit_uw);
 
     Ok(())
 }
