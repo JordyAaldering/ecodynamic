@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
 use controller::*;
-use rapl_energy::Constraint;
 
 #[derive(Clone, Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -33,18 +32,13 @@ pub enum ControllerType {
 }
 
 impl Config {
-    pub fn build(&self, req: Request) -> Box<dyn Controller> {
+    pub fn build(&self, req: Request, power_limit_uw: u64) -> Box<dyn Controller> {
         use ControllerType::*;
         match &self.controller {
             Genetic(config) => {
-                let max_power_uw = if let Some(constraint) = Constraint::now(0, 0, None) {
-                    constraint.power_limit_uw
-                } else {
-                    0
-                };
                 println!("Building genetic controller with {} max threads, {} max power, and config {:?}",
-                         req.max_threads, max_power_uw, config);
-                Box::new(GeneticController::new(req.max_threads, max_power_uw, self.letterbox_size, config.clone()))
+                         req.max_threads, power_limit_uw, config);
+                Box::new(GeneticController::new(req.max_threads, power_limit_uw, self.letterbox_size, config.clone()))
             },
             Corridor(config) => Box::new(CorridorController::new(req.max_threads, config.clone())),
             Delta(config) => Box::new(DeltaController::new(req.max_threads as f32, config.clone())),

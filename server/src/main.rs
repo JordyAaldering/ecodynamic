@@ -15,7 +15,7 @@ macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
 }
 
-fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
+fn handle_client(mut stream: UnixStream, config: Config, power_limit_uw: u64) -> io::Result<()> {
     let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
 
     let mut buffer = [0u8; Sample::SIZE];
@@ -30,7 +30,7 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
 
                 // Update letterbox
                 let (_, controller) = lbs.entry(req.region_uid)
-                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req)));
+                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req, power_limit_uw)));
 
                 let demand = controller.next_demand();
 
@@ -95,20 +95,20 @@ fn main() -> io::Result<()> {
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     debug_println!("Server listening on {}", MTD_LETTERBOX_PATH);
 
-    let initial_power_limit_uw = Constraint::now(0, 0, None).unwrap().power_limit_uw;
+    let power_limit_uw = Constraint::now(0, 0, None).unwrap().power_limit_uw;
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(move || {
         debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
         let _ = fs::remove_file(MTD_LETTERBOX_PATH);
-        reset_power_limit(initial_power_limit_uw);
+        reset_power_limit(power_limit_uw);
         process::exit(0);
     }).unwrap();
 
     if config.single {
         let stream = listener.incoming().next().unwrap();
         match stream {
-            Ok(stream) => handle_client(stream, config)?,
+            Ok(stream) => handle_client(stream, config, power_limit_uw)?,
             Err(e) => eprintln!("Connection failed: {}", e),
         }
     } else {
@@ -117,7 +117,7 @@ fn main() -> io::Result<()> {
                 Ok(stream) => {
                     let config_clone = config.clone();
                     std::thread::spawn(move || {
-                        handle_client(stream, config_clone)
+                        handle_client(stream, config_clone, power_limit_uw)
                     });
                 }
                 Err(e) => eprintln!("Connection failed: {}", e),
@@ -127,7 +127,7 @@ fn main() -> io::Result<()> {
 
     debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
     fs::remove_file(MTD_LETTERBOX_PATH)?;
-    reset_power_limit(initial_power_limit_uw);
+    reset_power_limit(power_limit_uw);
 
     Ok(())
 }
