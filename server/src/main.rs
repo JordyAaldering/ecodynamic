@@ -88,6 +88,7 @@ fn reset_power_limit(power_limit_uw: u64) {
 
 fn main() -> io::Result<()> {
     let config = Config::parse();
+    println!("{:?}", config);
 
     // Remove any existing socket file
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
