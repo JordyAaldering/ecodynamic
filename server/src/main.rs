@@ -15,7 +15,7 @@ macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
 }
 
-fn handle_client(mut stream: UnixStream, config: Config, power_limit_uw: u64) -> io::Result<()> {
+fn handle_client(mut stream: UnixStream, config: Config, power_limit_old: u64) -> io::Result<()> {
     let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
 
     let mut buffer = [0u8; Sample::SIZE];
@@ -30,18 +30,12 @@ fn handle_client(mut stream: UnixStream, config: Config, power_limit_uw: u64) ->
 
                 // Update letterbox
                 let (_, controller) = lbs.entry(req.region_uid)
-                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req, power_limit_uw)));
+                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req, power_limit_old)));
 
                 let (global_demand, local_demand) = controller.next_demand();
 
                 if global_demand.power_limit_uw > 0 {
-                    debug_println!("Set power limit to {}", global_demand.power_limit_uw);
-                    // long-term power limit
-                    Constraint::now(0, 0, None).unwrap()
-                        .set_power_limit_uw(global_demand.power_limit_uw);
-                    // short-term power limit
-                    Constraint::now(1, 0, None).unwrap()
-                        .set_power_limit_uw(global_demand.power_limit_uw);
+                    set_power_limit(global_demand.power_limit_uw);
                 }
 
                 // Write to stream
@@ -80,10 +74,12 @@ fn handle_client(mut stream: UnixStream, config: Config, power_limit_uw: u64) ->
     Ok(())
 }
 
-fn reset_power_limit(power_limit_uw: u64) {
-    debug_println!("Reset power limit to {}", power_limit_uw);
-    Constraint::now(0, 0, None).unwrap()
-        .set_power_limit_uw(power_limit_uw)
+fn set_power_limit(power_limit_uw: u64) {
+    debug_println!("Set power limit to {}", power_limit_uw);
+    // long-term power limit
+    Constraint::now(0, 0, None).unwrap().set_power_limit_uw(power_limit_uw);
+    // short-term power limit
+    Constraint::now(1, 0, None).unwrap().set_power_limit_uw(power_limit_uw);
 }
 
 fn main() -> io::Result<()> {
@@ -100,11 +96,11 @@ fn main() -> io::Result<()> {
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     debug_println!("Server listening on {}", MTD_LETTERBOX_PATH);
 
-    let power_limit_uw = Constraint::now(0, 0, None).unwrap().power_limit_uw;
+    let power_limit_old = Constraint::now(0, 0, None).unwrap().power_limit_uw;
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(move || {
-        reset_power_limit(power_limit_uw);
+        set_power_limit(power_limit_old);
         debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
         let _ = fs::remove_file(MTD_LETTERBOX_PATH);
         process::exit(0);
@@ -113,7 +109,7 @@ fn main() -> io::Result<()> {
     if config.single {
         let stream = listener.incoming().next().unwrap();
         match stream {
-            Ok(stream) => handle_client(stream, config, power_limit_uw)?,
+            Ok(stream) => handle_client(stream, config, power_limit_old)?,
             Err(e) => eprintln!("Connection failed: {}", e),
         }
     } else {
@@ -122,7 +118,7 @@ fn main() -> io::Result<()> {
                 Ok(stream) => {
                     let config_clone = config.clone();
                     std::thread::spawn(move || {
-                        handle_client(stream, config_clone, power_limit_uw)
+                        handle_client(stream, config_clone, power_limit_old)
                     });
                 }
                 Err(e) => eprintln!("Connection failed: {}", e),
@@ -130,7 +126,7 @@ fn main() -> io::Result<()> {
         }
     }
 
-    reset_power_limit(power_limit_uw);
+    set_power_limit(power_limit_old);
     debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
     fs::remove_file(MTD_LETTERBOX_PATH)?;
 
