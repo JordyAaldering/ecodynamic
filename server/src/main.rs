@@ -77,9 +77,9 @@ fn handle_client(mut stream: UnixStream, config: Config, power_limit_old: u64) -
 fn set_power_limit(power_limit_uw: u64) {
     debug_println!("Set power limit to {}", power_limit_uw);
     // long-term power limit
-    Constraint::now(0, 0, None).unwrap().set_power_limit_uw(power_limit_uw);
+    Constraint::now(0, 0, None).map(|mut c| c.set_power_limit_uw(power_limit_uw));
     // short-term power limit
-    Constraint::now(1, 0, None).unwrap().set_power_limit_uw(power_limit_uw);
+    Constraint::now(1, 0, None).map(|mut c| c.set_power_limit_uw(power_limit_uw));
 }
 
 fn main() -> io::Result<()> {
@@ -96,7 +96,7 @@ fn main() -> io::Result<()> {
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     debug_println!("Server listening on {}", MTD_LETTERBOX_PATH);
 
-    let power_limit_old = Constraint::now(0, 0, None).unwrap().power_limit_uw;
+    let power_limit_old = Constraint::now(0, 0, None).map_or(0, |c| c.power_limit_uw);
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(move || {
