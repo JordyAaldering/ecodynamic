@@ -106,7 +106,7 @@ fn main() -> io::Result<()> {
         process::exit(0);
     }).unwrap();
 
-    if config.single {
+    if config.once {
         let stream = listener.incoming().next().unwrap();
         match stream {
             Ok(stream) => handle_client(stream, config, power_limit_old)?,

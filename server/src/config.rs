@@ -14,7 +14,7 @@ pub struct Config {
 
     /// Run the resource controller for a single connection only.
     #[arg(long, action)]
-    pub single: bool,
+    pub once: bool,
 }
 
 #[derive(Clone, Debug, Subcommand)]
