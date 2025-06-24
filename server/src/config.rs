@@ -35,11 +35,7 @@ impl Config {
     pub fn build(&self, req: Request) -> Box<dyn Controller> {
         use ControllerType::*;
         match &self.controller {
-            Genetic(config) => {
-                println!("Building genetic controller with {} max threads, and config {:?}",
-                         req.max_threads, config);
-                Box::new(GeneticController::new(req.max_threads, self.letterbox_size, config.clone()))
-            },
+            Genetic(config) => Box::new(GeneticController::new(req.max_threads, self.letterbox_size, config.clone())),
             Corridor(config) => Box::new(CorridorController::new(req.max_threads, config.clone())),
             Delta(config) => Box::new(DeltaController::new(req.max_threads as f32, config.clone())),
             Oscilating => Box::new(OscilatingController::new(req.max_threads)),

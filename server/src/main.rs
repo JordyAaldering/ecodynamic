@@ -76,14 +76,13 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
 }
 
 fn set_power_limit(power_limit_pct: f64) {
-    debug_println!("Set power limit to {}%", power_limit_pct * 100.0);
     let mut rapl = RAPL.lock().unwrap();
     for package in &mut rapl.packages {
         for constraint in &mut package.constraints {
             if let Some(max_power_uw) = constraint.max_power_uw {
                 constraint.set_power_limit_uw((max_power_uw as f64 * power_limit_pct) as u64);
             } else {
-                println!("No max_power_uw found for constraint")
+                eprintln!("No max_power_uw found for constraint")
             }
         }
     }
@@ -96,7 +95,7 @@ fn reset_default_power_limit() {
             if let Some(max_power_uw) = constraint.max_power_uw {
                 constraint.set_power_limit_uw(max_power_uw);
             } else {
-                println!("No max_power_uw found for constraint")
+                eprintln!("No max_power_uw found for constraint")
             }
         }
     }
@@ -108,18 +107,18 @@ fn main() -> io::Result<()> {
 
     // Remove any existing socket file
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
-        debug_println!("Closing existing socket at {}", MTD_LETTERBOX_PATH);
+        print!("Closing existing socket at {}", MTD_LETTERBOX_PATH);
         fs::remove_file(MTD_LETTERBOX_PATH)?;
     }
 
     // Create a listener
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
-    debug_println!("Server listening on {}", MTD_LETTERBOX_PATH);
+    println!("Server listening on {}", MTD_LETTERBOX_PATH);
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(move || {
         reset_default_power_limit();
-        debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
+        print!("Closing socket at {}", MTD_LETTERBOX_PATH);
         let _ = fs::remove_file(MTD_LETTERBOX_PATH);
         process::exit(0);
     }).unwrap();
@@ -145,7 +144,7 @@ fn main() -> io::Result<()> {
     }
 
     reset_default_power_limit();
-    debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
+    println!("Closing socket at {}", MTD_LETTERBOX_PATH);
     fs::remove_file(MTD_LETTERBOX_PATH)?;
 
     Ok(())
