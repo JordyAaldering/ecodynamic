@@ -2,33 +2,34 @@ use crate::{GlobalDemand, LocalDemand, Sample};
 
 use super::Controller;
 
+const THREADS_PCT_MIN: f32 = 0.1;
+
 pub struct OscilatingController {
-    max_threads: i32,
-    num_threads: i32,
-    direction: i32,
+    threads_pct: f32,
+    direction: f32,
 }
 
 impl OscilatingController {
-    pub fn new(max_threads: i32) -> Self {
+    pub fn new() -> Self {
         Self {
-            max_threads,
-            num_threads: max_threads,
-            direction: -1,
+            threads_pct: 1.0,
+            direction: -0.1,
         }
     }
 }
 
 impl Controller for OscilatingController {
     fn evolve(&mut self, _: Vec<Sample>) {
-        self.num_threads += self.direction;
-        if self.num_threads <= 1 || self.num_threads >= self.max_threads {
+        self.threads_pct += self.direction;
+        if self.threads_pct <= THREADS_PCT_MIN || self.threads_pct >= 1.0 {
+            self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
             self.direction = -self.direction;
         }
     }
 
     fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
         let global = GlobalDemand::default();
-        let local = LocalDemand { num_threads: self.num_threads };
+        let local = LocalDemand { threads_pct: self.threads_pct };
         (global, local)
     }
 }

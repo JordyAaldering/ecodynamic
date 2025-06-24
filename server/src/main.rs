@@ -28,12 +28,12 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
         match stream.read(&mut buffer) {
             Ok(Request::SIZE) => {
                 let buf: [u8; Request::SIZE] = buffer[0..Request::SIZE].try_into().unwrap();
-                let req = Request::from(buf);
-                debug_println!("Read: {:?}", req);
+                let Request { region_uid, .. } = Request::from(buf);
+                debug_println!("Read: {:?}", region_uid);
 
                 // Update letterbox
-                let (_, controller) = lbs.entry(req.region_uid)
-                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req)));
+                let (_, controller) = lbs.entry(region_uid)
+                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build()));
 
                 let (global_demand, local_demand) = controller.next_demand();
 
@@ -75,12 +75,12 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
     Ok(())
 }
 
-fn set_power_limit(power_limit_pct: f64) {
+fn set_power_limit(power_limit_pct: f32) {
     let mut rapl = RAPL.lock().unwrap();
     for package in &mut rapl.packages {
         for constraint in &mut package.constraints {
             if let Some(max_power_uw) = constraint.max_power_uw {
-                constraint.set_power_limit_uw((max_power_uw as f64 * power_limit_pct) as u64);
+                constraint.set_power_limit_uw((max_power_uw as f32 * power_limit_pct) as u64);
             } else {
                 eprintln!("No max_power_uw found for constraint")
             }

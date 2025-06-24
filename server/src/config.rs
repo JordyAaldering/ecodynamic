@@ -32,14 +32,14 @@ pub enum ControllerType {
 }
 
 impl Config {
-    pub fn build(&self, req: Request) -> Box<dyn Controller> {
+    pub fn build(&self) -> Box<dyn Controller> {
         use ControllerType::*;
         match &self.controller {
-            Genetic(config) => Box::new(GeneticController::new(req.max_threads, self.letterbox_size, config.clone())),
-            Corridor(config) => Box::new(CorridorController::new(req.max_threads, config.clone())),
-            Delta(config) => Box::new(DeltaController::new(req.max_threads as f32, config.clone())),
-            Oscilating => Box::new(OscilatingController::new(req.max_threads)),
-            Fixed => Box::new(FixedController::new(req.max_threads)),
+            Genetic(config) => Box::new(GeneticController::new(self.letterbox_size, config.clone())),
+            Corridor(config) => Box::new(CorridorController::new(config.clone())),
+            Delta(config) => Box::new(DeltaController::new(config.clone())),
+            Oscilating => Box::new(OscilatingController::new()),
+            Fixed => Box::new(FixedController::new()),
         }
     }
 }

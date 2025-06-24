@@ -8,14 +8,14 @@
 /// Application-specific demands that have to be set by the controlled application.
 struct LocalDemand {
     /// Recommended number of threads to use for the next parallel iteration.
-    int32_t num_threads;
+    float threads_pct;
 };
 
 struct Request {
     /// A unique identifier of the parallel region we are controlling.
     int32_t region_uid;
-    /// The maximum number of threads allowed for this parallel region.
-    int32_t max_threads;
+    /// The same region might have a varying input size.
+    int32_t problem_size;
 };
 
 struct Sample {
