@@ -3,8 +3,8 @@ use std::mem;
 /// System-wide demands that have to be set by this controller.
 #[derive(Clone, Debug, Default)]
 pub struct GlobalDemand {
-    /// Maximum allowed CPU power in micro watts.
-    pub power_limit_uw: u64,
+    /// Maximum allowed CPU power as a fraction beteen (0,1].
+    pub power_limit_pct: f64,
 }
 
 /// Application-specific demands that have to be set by the controlled application.

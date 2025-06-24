@@ -3,19 +3,22 @@ mod config;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, Write};
+use std::sync::{LazyLock, Mutex};
 use std::{mem, process};
 use std::os::unix::net::{UnixListener, UnixStream};
 
 use clap::Parser;
 use config::Config;
 use controller::*;
-use rapl_energy::Constraint;
+use rapl_energy::Rapl;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
 }
 
-fn handle_client(mut stream: UnixStream, config: Config, power_limit_old: u64) -> io::Result<()> {
+static RAPL: LazyLock<Mutex<Rapl>> = LazyLock::new(|| Mutex::new(Rapl::now(false).expect("RAPL interface not found")));
+
+fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
     let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
 
     let mut buffer = [0u8; Sample::SIZE];
@@ -30,13 +33,11 @@ fn handle_client(mut stream: UnixStream, config: Config, power_limit_old: u64) -
 
                 // Update letterbox
                 let (_, controller) = lbs.entry(req.region_uid)
-                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req, power_limit_old)));
+                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build(req)));
 
                 let (global_demand, local_demand) = controller.next_demand();
 
-                if global_demand.power_limit_uw > 0 {
-                    set_power_limit(global_demand.power_limit_uw);
-                }
+                set_power_limit(global_demand.power_limit_pct);
 
                 // Write to stream
                 debug_println!("Send: {:?}", local_demand);
@@ -74,12 +75,31 @@ fn handle_client(mut stream: UnixStream, config: Config, power_limit_old: u64) -
     Ok(())
 }
 
-fn set_power_limit(power_limit_uw: u64) {
-    debug_println!("Set power limit to {}", power_limit_uw);
-    // long-term power limit
-    Constraint::now(0, 0, None).map(|mut c| c.set_power_limit_uw(power_limit_uw));
-    // short-term power limit
-    Constraint::now(1, 0, None).map(|mut c| c.set_power_limit_uw(power_limit_uw));
+fn set_power_limit(power_limit_pct: f64) {
+    debug_println!("Set power limit to {}%", power_limit_pct * 100.0);
+    let mut rapl = RAPL.lock().unwrap();
+    for package in &mut rapl.packages {
+        for constraint in &mut package.constraints {
+            if let Some(max_power_uw) = constraint.max_power_uw {
+                constraint.set_power_limit_uw((max_power_uw as f64 * power_limit_pct) as u64);
+            } else {
+                println!("No max_power_uw found for constraint")
+            }
+        }
+    }
+}
+
+fn reset_default_power_limit() {
+    let mut rapl = RAPL.lock().unwrap();
+    for package in &mut rapl.packages {
+        for constraint in &mut package.constraints {
+            if let Some(max_power_uw) = constraint.max_power_uw {
+                constraint.set_power_limit_uw(max_power_uw);
+            } else {
+                println!("No max_power_uw found for constraint")
+            }
+        }
+    }
 }
 
 fn main() -> io::Result<()> {
@@ -96,11 +116,9 @@ fn main() -> io::Result<()> {
     let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
     debug_println!("Server listening on {}", MTD_LETTERBOX_PATH);
 
-    let power_limit_old = Constraint::now(0, 0, None).map_or(0, |c| c.power_limit_uw);
-
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(move || {
-        set_power_limit(power_limit_old);
+        reset_default_power_limit();
         debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
         let _ = fs::remove_file(MTD_LETTERBOX_PATH);
         process::exit(0);
@@ -109,7 +127,7 @@ fn main() -> io::Result<()> {
     if config.once {
         let stream = listener.incoming().next().unwrap();
         match stream {
-            Ok(stream) => handle_client(stream, config, power_limit_old)?,
+            Ok(stream) => handle_client(stream, config)?,
             Err(e) => eprintln!("Connection failed: {}", e),
         }
     } else {
@@ -118,7 +136,7 @@ fn main() -> io::Result<()> {
                 Ok(stream) => {
                     let config_clone = config.clone();
                     std::thread::spawn(move || {
-                        handle_client(stream, config_clone, power_limit_old)
+                        handle_client(stream, config_clone)
                     });
                 }
                 Err(e) => eprintln!("Connection failed: {}", e),
@@ -126,7 +144,7 @@ fn main() -> io::Result<()> {
         }
     }
 
-    set_power_limit(power_limit_old);
+    reset_default_power_limit();
     debug_println!("Closing socket at {}", MTD_LETTERBOX_PATH);
     fs::remove_file(MTD_LETTERBOX_PATH)?;
 

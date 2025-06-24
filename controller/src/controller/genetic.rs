@@ -4,9 +4,11 @@ use crate::{GlobalDemand, LocalDemand, Sample, ScoreFunction};
 
 use super::Controller;
 
+const POWER_LIMIT_FRAC_MIN: f64 = 0.1;
+const POWER_LIMIT_FRAC_MAX: f64 = 1.0;
+
 pub struct GeneticController {
     max_threads: i32,
-    power_limit_uw: u64,
     population: Vec<Chromosome>,
     sample_index: usize,
     config: GeneticControllerConfig,
@@ -32,21 +34,19 @@ pub struct GeneticControllerConfig {
 }
 
 impl GeneticController {
-    pub fn new(max_threads: i32, power_limit_uw: u64, population_size: usize, config: GeneticControllerConfig) -> Self {
+    pub fn new(max_threads: i32, population_size: usize, config: GeneticControllerConfig) -> Self {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
         // I.e. value = lower + i * (upper - lower) / length
         let population = (0..population_size).map(|i| {
                 //let num_threads = 1 + (i as f64 * (max_threads - 1) as f64 / (population_size - 1) as f64).round() as i32;
                 let num_threads = max_threads;
-                let min_power_uw = power_limit_uw / 4;
-                let power_limit_uw = min_power_uw + (i as u64 * (power_limit_uw - min_power_uw) / (population_size as u64 - 1));
-                Chromosome::new(num_threads, power_limit_uw)
+                let power_limit_pct = POWER_LIMIT_FRAC_MIN + (i as f64 * (POWER_LIMIT_FRAC_MAX - POWER_LIMIT_FRAC_MIN) / (population_size - 1) as f64);
+                Chromosome::new(num_threads, power_limit_pct)
             }).collect();
 
         Self {
             max_threads,
-            power_limit_uw,
             population,
             sample_index: 0,
             config,
@@ -77,7 +77,7 @@ impl Controller for GeneticController {
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(&parent2);
             if rand::random_range(0.0..1.0) < self.config.mutation_rate {
-                child.mutate(self.max_threads, self.power_limit_uw);
+                child.mutate(self.max_threads);
             }
 
             self.population[i] = child;
@@ -85,11 +85,11 @@ impl Controller for GeneticController {
 
         // Fill remaining chromosomes by immigration
         for i in immigration_start..population_size {
-            self.population[i] = Chromosome::rand(self.max_threads, self.power_limit_uw);
+            self.population[i] = Chromosome::rand(self.max_threads);
         }
 
-        // To minimise changes in the runtime we sort by the recommended thread-count
-        self.population.sort_by_key(|c| c.power_limit_uw);
+        // To minimise changes in the runtime we sort by the recommended power limit
+        self.population.sort_by(|a, b| a.power_limit_pct.partial_cmp(&b.power_limit_pct).unwrap());
     }
 
     fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
@@ -99,7 +99,7 @@ impl Controller for GeneticController {
         let chromosome = &self.population[self.sample_index];
         self.sample_index += 1;
 
-        let global = GlobalDemand { power_limit_uw: chromosome.power_limit_uw };
+        let global = GlobalDemand { power_limit_pct: chromosome.power_limit_pct };
         let local = LocalDemand { num_threads: chromosome.num_threads };
         (global, local)
     }
@@ -108,40 +108,35 @@ impl Controller for GeneticController {
 #[derive(Clone, Debug)]
 pub struct Chromosome {
     num_threads: i32,
-    power_limit_uw: u64,
+    power_limit_pct: f64,
 }
 
 impl Chromosome {
-    fn new(num_threads: i32, power_limit_uw: u64) -> Self {
-        Self { num_threads, power_limit_uw }
+    fn new(num_threads: i32, power_limit_pct: f64) -> Self {
+        Self { num_threads, power_limit_pct }
     }
 
     /// Generate a random chromosome for immigration
-    fn rand(max_threads: i32, max_power_uw: u64) -> Self {
+    fn rand(max_threads: i32) -> Self {
         //let num_threads = rand::random_range(1..=max_threads);
         let num_threads = max_threads;
-        let power_limit_uw = rand::random_range((max_power_uw / 2)..=max_power_uw);
-        Self::new(num_threads, power_limit_uw)
+        let power_limit_pct = rand::random_range(POWER_LIMIT_FRAC_MIN..=POWER_LIMIT_FRAC_MAX);
+        Self::new(num_threads, power_limit_pct)
     }
 
     fn crossover(&self, other: &Self) -> Self {
         Self {
             num_threads: (self.num_threads + other.num_threads) / 2,
-            power_limit_uw: (self.power_limit_uw + other.power_limit_uw) / 2,
+            power_limit_pct: (self.power_limit_pct + other.power_limit_pct) / 2.0,
         }
     }
 
     /// Add or subtract one thread
-    fn mutate(&mut self, _max_threads: i32, max_power_uw: u64) {
+    fn mutate(&mut self, _max_threads: i32) {
         //self.num_threads += rand::random_range(0..=1) * 2 - 1;
         //self.num_threads = self.num_threads.max(1).min(max_threads);
 
-        if rand::random_bool(0.5) {
-            self.power_limit_uw += rand::random_range(0..=(max_power_uw / 10));
-            self.power_limit_uw = self.power_limit_uw.min(max_power_uw);
-        } else {
-            self.power_limit_uw -= rand::random_range(0..=(max_power_uw / 10));
-            self.power_limit_uw = self.power_limit_uw.max(max_power_uw / 2);
-        }
+        self.power_limit_pct += rand::random_range(-POWER_LIMIT_FRAC_MAX..=POWER_LIMIT_FRAC_MAX);
+        self.power_limit_pct = self.power_limit_pct.max(POWER_LIMIT_FRAC_MIN).min(POWER_LIMIT_FRAC_MAX);
     }
 }
