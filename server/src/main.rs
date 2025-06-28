@@ -82,12 +82,13 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
 fn set_power_limit(power_limit_pct: f32) {
     let mut rapl = RAPL.lock().unwrap();
     for package in &mut rapl.packages {
-        for constraint in &mut package.constraints {
-            if let Some(max_power_uw) = constraint.max_power_uw {
+        // For some reason power_limit_uw is 0 for the short-term power limit, so we reuse the long-term limit.
+        if let Some(max_power_uw) = package.constraints[0].max_power_uw {
+            for constraint in &mut package.constraints {
                 constraint.set_power_limit_uw((max_power_uw as f32 * power_limit_pct) as u64);
-            } else {
-                eprintln!("No max_power_uw found for constraint")
             }
+        } else {
+            eprintln!("No max_power_uw found for constraint")
         }
     }
 }
