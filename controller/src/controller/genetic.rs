@@ -6,6 +6,7 @@ use super::Controller;
 
 const _THREADS_PCT_MIN: f32 = 0.1;
 const POWER_PCT_MIN: f32 = 0.1;
+const MUTATION_STRENGTH: f32 = 0.25;
 
 pub struct GeneticController {
     population: Vec<Chromosome>,
@@ -50,11 +51,6 @@ impl GeneticController {
             config,
         }
     }
-
-    fn sort(&mut self, scores: Vec<f32>) {
-        let mut permutation = permutation::sort_by(&scores, |a, b| a.partial_cmp(b).unwrap());
-        permutation.apply_slice_in_place(&mut self.population);
-    }
 }
 
 impl Controller for GeneticController {
@@ -62,7 +58,8 @@ impl Controller for GeneticController {
         // Reset sample index for next
         self.sample_index = 0;
 
-        self.sort(self.config.score.score(samples));
+        let scores = self.config.score.score(samples);
+        sort(scores, &mut self.population);
 
         let population_size = self.population.len();
         let survival_count = (population_size as f32 * self.config.survival_rate).round() as usize;
@@ -103,6 +100,11 @@ impl Controller for GeneticController {
     }
 }
 
+fn sort<T>(scores: Vec<f32>, population: &mut Vec<T>) {
+    let mut permutation = permutation::sort_by(&scores, |a, b| a.partial_cmp(b).unwrap());
+    permutation.apply_slice_in_place(population);
+}
+
 #[derive(Clone, Debug)]
 pub struct Chromosome {
     threads_pct: f32,
@@ -131,10 +133,24 @@ impl Chromosome {
 
     /// Add or subtract one thread
     fn mutate(&mut self) {
-        //self.num_threads += rand::random_range(-0.5..=0.5);
+        //self.num_threads += rand::random_range(-MUTATION_STRENGTH..=MUTATION_STRENGTH);
         //self.num_threads = self.num_threads.max(THREADS_PCT_MIN).min(1.0);
 
-        self.power_limit_pct += rand::random_range(-0.5..=0.5);
+        self.power_limit_pct += rand::random_range(-MUTATION_STRENGTH..=MUTATION_STRENGTH);
         self.power_limit_pct = self.power_limit_pct.max(POWER_PCT_MIN).min(1.0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// Population should be sorted from lowest to highest runtime/energy consumption.
+    #[test]
+    fn test_sort() {
+        let vals = vec![0.2, 0.1, 0.4, 0.3];
+        let mut idxs = vec![2, 1, 4, 3];
+
+        super::sort(vals, &mut idxs);
+
+        assert_eq!(idxs, vec![1, 2, 3, 4]);
     }
 }
