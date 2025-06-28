@@ -16,7 +16,11 @@ macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
 }
 
-static RAPL: LazyLock<Mutex<Rapl>> = LazyLock::new(|| Mutex::new(Rapl::now(false).expect("RAPL interface not found")));
+static RAPL: LazyLock<Mutex<Rapl>> = LazyLock::new(|| {
+    let rapl = Rapl::now(false).expect("RAPL interface not found");
+    println!("Found RAPL interface: {:?}", rapl);
+    Mutex::new(rapl)
+});
 
 fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
     let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
