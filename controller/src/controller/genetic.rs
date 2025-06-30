@@ -78,7 +78,7 @@ impl Controller for GeneticController {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(&parent2);
-            if rand::random_range(0.0..1.0) < self.config.mutation_rate {
+            if rand::random_bool(self.config.mutation_rate as f64) {
                 child.mutate(&self.config);
             }
 
@@ -125,7 +125,6 @@ impl Chromosome {
 
     /// Generate a random chromosome for immigration
     fn rand(config: &GeneticControllerConfig) -> Self {
-        //let num_threads = rand::random_range(THREADS_PCT_MIN..=1.0);
         let num_threads = rand::random_range(config.threads_rate_min..=1.0);
         let power_limit_pct = rand::random_range(config.power_rate_min..=1.0);
         Self::new(num_threads, power_limit_pct)
