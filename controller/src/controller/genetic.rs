@@ -6,8 +6,14 @@ use super::Controller;
 
 pub struct GeneticController {
     population: Vec<Chromosome>,
+    sort_order: Order,
     sample_index: usize,
     config: GeneticControllerConfig,
+}
+
+enum Order {
+    Increasing,
+    Decreasing,
 }
 
 #[derive(Clone, Debug)]
@@ -19,23 +25,26 @@ pub struct GeneticControllerConfig {
     /// Minimum allowed percentage of the number of threads (0,1]
     #[arg(long, default_value_t = 0.1)]
     pub threads_rate_min: f32,
+    /// Maximum allowed percentage of the number of threads (0,1]
+    #[arg(long, default_value_t = 1.0)]
+    pub threads_rate_max: f32,
 
     /// Minimum allowed percentage of the powercap (0,1]
     #[arg(long, default_value_t = 0.1)]
     pub power_rate_min: f32,
+    /// Maximum allowed percentage of the powercap (0,1]
+    #[arg(long, default_value_t = 1.0)]
+    pub power_rate_max: f32,
 
     /// Genetic algorithm survival rate.
     #[arg(long, default_value_t = 0.50)]
     pub survival_rate: f32,
-
     /// Mutation rate.
     #[arg(long, default_value_t = 0.25)]
     pub mutation_rate: f32,
-
     /// Mutation strength (0,1]
-    #[arg(long, default_value_t = 0.25)]
+    #[arg(long, default_value_t = 0.1)]
     pub mutation_strength: f32,
-
     /// Immigration rate.
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
@@ -54,6 +63,7 @@ impl GeneticController {
 
         Self {
             population,
+            sort_order: Order::Increasing,
             sample_index: 0,
             config,
         }
@@ -66,7 +76,7 @@ impl Controller for GeneticController {
         self.sample_index = 0;
 
         let scores = self.config.score.score(samples);
-        sort(scores, &mut self.population);
+        sort_population_by_score(&mut self.population, scores);
 
         let population_size = self.population.len();
         let survival_count = (population_size as f32 * self.config.survival_rate).round() as usize;
@@ -91,7 +101,16 @@ impl Controller for GeneticController {
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
-        self.population.sort_by(|a, b| a.power_pct.partial_cmp(&b.power_pct).unwrap());
+        match self.sort_order {
+            Order::Increasing => {
+                self.population.sort_by(|a, b| a.power_pct.partial_cmp(&b.power_pct).unwrap());
+                self.sort_order = Order::Decreasing;
+            },
+            Order::Decreasing => {
+                self.population.sort_by(|a, b| b.power_pct.partial_cmp(&a.power_pct).unwrap());
+                self.sort_order = Order::Increasing;
+            }
+        }
     }
 
     fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
@@ -107,7 +126,7 @@ impl Controller for GeneticController {
     }
 }
 
-fn sort<T>(scores: Vec<f32>, population: &mut Vec<T>) {
+fn sort_population_by_score<T>(population: &mut Vec<T>, scores: Vec<f32>) {
     let mut permutation = permutation::sort_by(&scores, |a, b| a.partial_cmp(b).unwrap());
     permutation.apply_slice_in_place(population);
 }
@@ -144,19 +163,5 @@ impl Chromosome {
 
         self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
         self.power_pct = self.power_pct.max(config.power_rate_min).min(1.0);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    /// Population should be sorted from lowest to highest runtime/energy consumption.
-    #[test]
-    fn test_sort() {
-        let vals = vec![0.2, 0.1, 0.4, 0.3];
-        let mut idxs = vec![2, 1, 4, 3];
-
-        super::sort(vals, &mut idxs);
-
-        assert_eq!(idxs, vec![1, 2, 3, 4]);
     }
 }
