@@ -101,13 +101,14 @@ impl Controller for GeneticController {
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
+        // and we oscilate between an increasing and decreasing order.
         match self.sort_order {
             Order::Increasing => {
-                self.population.sort_by(|a, b| a.power_pct.partial_cmp(&b.power_pct).unwrap());
+                self.population.sort_by(|a, b| a.partial_cmp(&b).unwrap());
                 self.sort_order = Order::Decreasing;
             },
             Order::Decreasing => {
-                self.population.sort_by(|a, b| b.power_pct.partial_cmp(&a.power_pct).unwrap());
+                self.population.sort_by(|a, b| b.partial_cmp(&a).unwrap());
                 self.sort_order = Order::Increasing;
             }
         }
@@ -131,7 +132,7 @@ fn sort_population_by_score<T>(population: &mut Vec<T>, scores: Vec<f32>) {
     permutation.apply_slice_in_place(population);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Chromosome {
     threads_pct: f32,
     power_pct: f32,
@@ -163,5 +164,11 @@ impl Chromosome {
 
         self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
         self.power_pct = self.power_pct.max(config.power_rate_min).min(1.0);
+    }
+}
+
+impl PartialOrd for Chromosome {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.power_pct.partial_cmp(&other.power_pct)
     }
 }
