@@ -46,6 +46,12 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.1)]
     pub mutation_strength: f32,
     /// Immigration rate.
+    /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
+    /// avoid immigration to occur in every evolution step. Setting the value to less than
+    /// 1 / population_size ensures this.
+    /// We have two choices for resolving this:
+    ///  1. Keep track of how many evolutions we have done and base immigration count on that total.
+    ///  2. Or, during every evolution apply immigration based on random change.
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
 }
