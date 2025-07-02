@@ -56,8 +56,8 @@ impl GeneticController {
         // reduce duplication and increase the chances of finding an optimum immediately.
         // I.e. value = lower + i * (upper - lower) / length
         let population = (0..population_size).map(|i| {
-                let threads_pct = config.threads_rate_min + (i as f32 * (1.0 - config.threads_rate_min) / (population_size - 1) as f32);
-                let power_pct = config.power_rate_min + (i as f32 * (1.0 - config.power_rate_min) / (population_size - 1) as f32);
+                let threads_pct = config.threads_rate_min + (i as f32 * (config.threads_rate_max - config.threads_rate_min) / (population_size - 1) as f32);
+                let power_pct = config.power_rate_min + (i as f32 * (config.power_rate_max - config.power_rate_min) / (population_size - 1) as f32);
                 Chromosome::new(threads_pct, power_pct)
             }).collect();
 
@@ -145,25 +145,25 @@ impl Chromosome {
 
     /// Generate a random chromosome for immigration
     fn rand(config: &GeneticControllerConfig) -> Self {
-        let num_threads = rand::random_range(config.threads_rate_min..=1.0);
-        let power_limit_pct = rand::random_range(config.power_rate_min..=1.0);
+        let num_threads = rand::random_range(config.threads_rate_min..=config.threads_rate_max);
+        let power_limit_pct = rand::random_range(config.power_rate_min..=config.power_rate_max);
         Self::new(num_threads, power_limit_pct)
     }
 
     fn crossover(&self, other: &Self) -> Self {
         Self {
-            threads_pct: (self.threads_pct + other.threads_pct) / 2.0,
-            power_pct: (self.power_pct + other.power_pct) / 2.0,
+            threads_pct: (self.threads_pct + other.threads_pct) * 0.5,
+            power_pct: (self.power_pct + other.power_pct) * 0.5,
         }
     }
 
     /// Add or subtract one thread
     fn mutate(&mut self, config: &GeneticControllerConfig) {
         self.threads_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
-        self.threads_pct = self.threads_pct.max(config.threads_rate_min).min(1.0);
+        self.threads_pct = self.threads_pct.max(config.threads_rate_min).min(config.threads_rate_max);
 
         self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
-        self.power_pct = self.power_pct.max(config.power_rate_min).min(1.0);
+        self.power_pct = self.power_pct.max(config.power_rate_min).min(config.power_rate_max);
     }
 }
 
