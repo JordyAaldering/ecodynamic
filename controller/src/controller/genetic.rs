@@ -65,11 +65,11 @@ impl GeneticController {
                 let threads_pct = config.threads_rate_min + (i as f32 * (config.threads_rate_max - config.threads_rate_min) / (population_size - 1) as f32);
                 let power_pct = config.power_rate_min + (i as f32 * (config.power_rate_max - config.power_rate_min) / (population_size - 1) as f32);
                 Chromosome::new(threads_pct, power_pct)
-            }).collect();
+            }).rev().collect();
 
         Self {
             population,
-            sort_order: Order::Increasing,
+            sort_order: Order::Decreasing,
             sample_index: 0,
             config,
         }
