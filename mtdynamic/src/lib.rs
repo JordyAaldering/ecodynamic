@@ -33,6 +33,14 @@ impl<I: Iterator> MtdIterator<I> {
         }
     }
 
+    pub fn before(&mut self, f: fn(Demand)) {
+        self.before_fn = Some(f);
+    }
+
+    pub fn after(&mut self, f: fn(Sample)) {
+        self.after_fn = Some(f);
+    }
+
     /// Send a signal to the controller that we are at the start of a parallel region.
     fn signal_start(&mut self) -> SampleInstant {
         if let Some(stream) = &mut self.stream {
