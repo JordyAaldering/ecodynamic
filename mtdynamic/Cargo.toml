@@ -1,0 +1,8 @@
+[package]
+name = "mtdynamic"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+controller = { path = "../controller" }
+rapl-energy = { git = "https://github.com/JordyAaldering/rapl-energy.git" }

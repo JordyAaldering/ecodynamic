@@ -5,12 +5,6 @@
 
 #define MTD_LETTERBOX_PATH "/tmp/mtd_letterbox"
 
-/// Application-specific demands that have to be set by the controlled application.
-struct LocalDemand {
-    /// Recommended number of threads to use for the next parallel iteration.
-    float threads_pct;
-};
-
 struct Request {
     /// A unique identifier of the parallel region we are controlling.
     int32_t region_uid;

@@ -45,7 +45,7 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
 
                 // Write to stream
                 debug_println!("Send: {:?}", local_demand);
-                let buf: [u8; LocalDemand::SIZE] = local_demand.to_bytes();
+                let buf: [u8; Demand::SIZE] = local_demand.to_bytes();
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {

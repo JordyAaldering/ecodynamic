@@ -10,10 +10,10 @@ pub use fixed::*;
 pub use genetic::*;
 pub use oscilating::*;
 
-use crate::{GlobalDemand, LocalDemand, Sample};
+use crate::{GlobalDemand, Demand, Sample};
 
 pub trait Controller {
     fn evolve(&mut self, samples: Vec<Sample>);
 
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand);
+    fn next_demand(&mut self) -> (GlobalDemand, Demand);
 }

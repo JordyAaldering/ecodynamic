@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction, FilterFunction};
+use crate::{Direction, GlobalDemand, Demand, Sample, ScoreFunction, FilterFunction};
 
 use super::Controller;
 
@@ -70,9 +70,9 @@ impl Controller for DeltaController {
         self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
     }
 
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
+    fn next_demand(&mut self) -> (GlobalDemand, Demand) {
         let global = GlobalDemand::default();
-        let local = LocalDemand { threads_pct: self.threads_pct };
+        let local = Demand { threads_pct: self.threads_pct };
         (global, local)
     }
 }

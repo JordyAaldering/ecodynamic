@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction};
+use crate::{Direction, GlobalDemand, Demand, Sample, ScoreFunction};
 
 use super::Controller;
 
@@ -115,7 +115,7 @@ impl Controller for GeneticController {
         }
     }
 
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
+    fn next_demand(&mut self) -> (GlobalDemand, Demand) {
         // Use the number of samples to determine the current index into the population.
         // The population is reset every `population_size` iterations.
         // In between, we want every chromosome to be applied once.
@@ -123,7 +123,7 @@ impl Controller for GeneticController {
         self.sample_index += 1;
 
         let global = GlobalDemand { power_limit_pct: chromosome.power_pct };
-        let local = LocalDemand { threads_pct: chromosome.threads_pct };
+        let local = Demand { threads_pct: chromosome.threads_pct };
         (global, local)
     }
 }

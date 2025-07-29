@@ -4,7 +4,7 @@ use std::os::unix::net::UnixStream;
 use std::time::Instant;
 
 use controller::*;
-use rapl_energy::{Probe, Rapl};
+use rapl_energy::Rapl;
 use rayon::prelude::*;
 
 pub struct Matrix {
@@ -45,9 +45,9 @@ pub fn region_start(stream: &mut UnixStream) -> (f32, Instant, Rapl) {
         problem_size: 0
     }.to_bytes()).unwrap();
 
-    let mut buf = [0u8; LocalDemand::SIZE];
+    let mut buf = [0u8; Demand::SIZE];
     stream.read_exact(&mut buf).unwrap();
-    let LocalDemand { threads_pct } = LocalDemand::from(buf);
+    let Demand { threads_pct } = Demand::from(buf);
 
     let rapl = Rapl::now(false).unwrap();
     let time = Instant::now();

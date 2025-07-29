@@ -10,20 +10,20 @@ pub struct GlobalDemand {
 /// Application-specific demands that have to be set by the controlled application.
 #[repr(C)]
 #[derive(Clone, Debug)]
-pub struct LocalDemand {
+pub struct Demand {
     /// Recommended number of threads to use for the next parallel iteration.
     pub threads_pct: f32,
 }
 
-impl LocalDemand {
+impl Demand {
     pub const SIZE: usize = mem::size_of::<Self>();
 
-    pub fn to_bytes(self) -> [u8; Self::SIZE] {
+    pub fn to_bytes(&self) -> [u8; Self::SIZE] {
         self.threads_pct.to_ne_bytes()
     }
 }
 
-impl From<[u8; Self::SIZE]> for LocalDemand {
+impl From<[u8; Self::SIZE]> for Demand {
     fn from(buffer: [u8; Self::SIZE]) -> Self {
         let threads_pct = f32::from_ne_bytes(buffer);
         Self { threads_pct }

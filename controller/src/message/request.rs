@@ -12,7 +12,7 @@ pub struct Request {
 impl Request {
     pub const SIZE: usize = mem::size_of::<Request>();
 
-    pub fn to_bytes(self) -> [u8; Self::SIZE] {
+    pub fn to_bytes(&self) -> [u8; Self::SIZE] {
         let [i0, i1, i2, i3] = self.region_uid.to_ne_bytes();
         let [s0, s1, s2, s3] = self.problem_size.to_ne_bytes();
         [i0, i1, i2, i3,
