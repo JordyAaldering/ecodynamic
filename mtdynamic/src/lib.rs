@@ -33,12 +33,14 @@ impl<I: Iterator> MtdIterator<I> {
         }
     }
 
-    pub fn before(&mut self, f: fn(Demand)) {
+    pub fn before(mut self, f: fn(Demand)) -> Self {
         self.before_fn = Some(f);
+        self
     }
 
-    pub fn after(&mut self, f: fn(Sample)) {
+    pub fn after(mut self, f: fn(Sample)) -> Self {
         self.after_fn = Some(f);
+        self
     }
 
     /// Send a signal to the controller that we are at the start of a parallel region.
