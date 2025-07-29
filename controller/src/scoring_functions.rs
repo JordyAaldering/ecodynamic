@@ -11,6 +11,8 @@ pub enum ScoreFunction {
     Runtime,
     /// Energy-Delay Product.
     EDP,
+    /// Energy-Squared-Delay Product.
+    E2DP,
     /// Pareto-optimum.
     Pareto,
 }
@@ -22,6 +24,7 @@ impl ScoreFunction {
             Runtime => samples.into_iter().map(|x| x.runtime).collect(),
             Energy => samples.into_iter().map(|x| x.energy).collect(),
             EDP => samples.into_iter().map(|x| x.energy * x.runtime).collect(),
+            E2DP => samples.into_iter().map(|x| x.energy * x.energy * x.runtime).collect(),
             Pareto => {
                 let mut fronts = non_dominated_sort(&samples, &SampleDominanceOrd);
 
@@ -48,6 +51,7 @@ impl fmt::Display for ScoreFunction {
             Energy => write!(f, "Energy"),
             Runtime => write!(f, "Runtime"),
             EDP => write!(f, "EDP"),
+            E2DP => write!(f, "E2DP"),
             Pareto => write!(f, "Pareto"),
         }
     }
