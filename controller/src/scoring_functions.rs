@@ -48,11 +48,11 @@ impl fmt::Display for ScoreFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ScoreFunction::*;
         match self {
-            Energy => write!(f, "Energy"),
-            Runtime => write!(f, "Runtime"),
-            EDP => write!(f, "EDP"),
-            E2DP => write!(f, "E2DP"),
-            Pareto => write!(f, "Pareto"),
+            Energy => write!(f, "energy"),
+            Runtime => write!(f, "runtime"),
+            EDP => write!(f, "edp"),
+            E2DP => write!(f, "e2dp"),
+            Pareto => write!(f, "pareto"),
         }
     }
 }

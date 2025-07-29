@@ -49,6 +49,12 @@ pub struct GeneticControllerConfig {
     ///  2. Or, during every evolution apply immigration based on random change.
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
+
+    /// TODO: Trigger immigration only when the score changes by a certain amount.
+    /// This minimizes changes to the runtime when behaviour is relatively consistent,
+    /// but allows to restart the search when a sudden change in behaviour occurs.
+    #[arg(long)]
+    pub immigration_trigger: Option<f32>,
 }
 
 impl GeneticController {
