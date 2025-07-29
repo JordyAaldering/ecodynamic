@@ -83,7 +83,7 @@ fn set_power_limit(power_limit_pct: f32) {
     let mut rapl = RAPL.lock().unwrap();
     for package in &mut rapl.packages {
         // For some reason power_limit_uw is 0 for the short-term power limit, so we reuse the long-term limit.
-        if let Some(max_power_uw) = package.constraints[0].max_power_uw {
+        if let Some(max_power_uw) = package.constraints.get(0).and_then(|c| c.max_power_uw) {
             for constraint in &mut package.constraints {
                 constraint.set_power_limit_uw((max_power_uw as f32 * power_limit_pct) as u64);
             }
