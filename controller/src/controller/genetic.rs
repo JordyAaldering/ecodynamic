@@ -14,7 +14,7 @@ pub struct GeneticController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
-    #[arg(long, default_value_t = ScoreFunction::Pareto)]
+    #[arg(long, default_value_t = ScoreFunction::E2DP)]
     pub score: ScoreFunction,
 
     /// Minimum allowed percentage of the number of threads (0,1]
