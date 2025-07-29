@@ -9,7 +9,7 @@ pub struct Config {
     pub controller: ControllerType,
 
     /// Size of the letterbox.
-    #[arg(short('s'), long)]
+    #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
 
     /// Run the resource controller for a single connection only.
