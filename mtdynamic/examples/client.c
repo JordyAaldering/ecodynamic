@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include "../../target/debug/letterbox.h"
+#include "letterbox.h"
 
 int open_letterbox(void) {
     // Create Unix domain socket
