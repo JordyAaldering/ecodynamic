@@ -2,6 +2,9 @@ use std::env;
 
 fn main() {
     let lib_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let profile = env::var("PROFILE").unwrap();
+    let header_path = format!("../target/{}/mtdynamic.h", profile);
+
     cbindgen::Builder::new()
         .with_crate(lib_dir)
         .with_tab_width(4)
@@ -14,5 +17,5 @@ fn main() {
         .include_item("Sample")
         .generate()
         .expect("Unable to generate bindings")
-        .write_to_file("../letterbox.h");
+        .write_to_file(header_path);
 }
