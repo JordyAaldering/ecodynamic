@@ -6,6 +6,7 @@ use super::Controller;
 
 pub struct GeneticController {
     population: Vec<Chromosome>,
+    last_median_score: f32,
     sort_order: Direction,
     sample_index: usize,
     config: GeneticControllerConfig,
@@ -14,33 +15,34 @@ pub struct GeneticController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
+    /// Method for scoring the fitness of each chromosome.
     #[arg(long, default_value_t = ScoreFunction::E2DP)]
     pub score: ScoreFunction,
 
-    /// Minimum allowed percentage of the number of threads (0,1]
+    /// Minimum allowed percentage of the number of threads (0,1].
     #[arg(long, default_value_t = 0.1)]
     pub threads_rate_min: f32,
-    /// Maximum allowed percentage of the number of threads (0,1]
+    /// Maximum allowed percentage of the number of threads (0,1].
     #[arg(long, default_value_t = 1.0)]
     pub threads_rate_max: f32,
 
-    /// Minimum allowed percentage of the powercap (0,1]
+    /// Minimum allowed percentage of the powercap (0,1].
     #[arg(long, default_value_t = 0.1)]
     pub power_rate_min: f32,
-    /// Maximum allowed percentage of the powercap (0,1]
+    /// Maximum allowed percentage of the powercap (0,1].
     #[arg(long, default_value_t = 1.0)]
     pub power_rate_max: f32,
 
-    /// Genetic algorithm survival rate.
+    /// Genetic algorithm survival rate (0,1].
     #[arg(long, default_value_t = 0.50)]
     pub survival_rate: f32,
-    /// Mutation rate.
+    /// Mutation rate (0,1]
     #[arg(long, default_value_t = 0.25)]
     pub mutation_rate: f32,
-    /// Mutation strength (0,1]
+    /// Mutation strength (0,1].
     #[arg(long, default_value_t = 0.05)]
     pub mutation_strength: f32,
-    /// Immigration rate.
+    /// Immigration rate (0,1].
     /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
     /// avoid immigration to occur in every evolution step. Setting the value to less than
     /// 1 / population_size ensures this.
@@ -50,7 +52,7 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
 
-    /// TODO: Trigger immigration only when the score changes by a certain amount.
+    /// Trigger immigration only when the score changes by a certain amount in (0,1].
     /// This minimizes changes to the runtime when behaviour is relatively consistent,
     /// but allows to restart the search when a sudden change in behaviour occurs.
     #[arg(long)]
@@ -70,6 +72,7 @@ impl GeneticController {
 
         Self {
             population,
+            last_median_score: f32::MIN,
             sort_order: Direction::Decreasing,
             sample_index: 0,
             config,
@@ -79,16 +82,29 @@ impl GeneticController {
 
 impl Controller for GeneticController {
     fn evolve(&mut self, samples: Vec<Sample>) {
-        // Reset sample index for next
+        // Reset sample index to prepare for the next call to `next_demand`
         self.sample_index = 0;
 
         let scores = self.config.score.score(samples);
+        let median_score = scores[scores.len() / 2];
         sort_population_by_score(&mut self.population, scores);
 
         let population_size = self.population.len();
         let survival_count = (population_size as f32 * self.config.survival_rate).round() as usize;
-        let immigration_count = (population_size as f32 * self.config.immigration_rate).round() as usize;
-        let immigration_start = population_size - immigration_count;
+
+        let do_immigration = if let Some(immigration_trigger) = self.config.immigration_trigger {
+            self.last_median_score != f32::MIN && pct_diff(self.last_median_score, median_score) > immigration_trigger
+        } else {
+            // Immigration trigger is not set; immigration is always enabled
+            true
+        };
+
+        let immigration_start = if do_immigration {
+            let immigration_count = (population_size as f32 * self.config.immigration_rate).round() as usize;
+            (population_size - immigration_count).max(survival_count)
+        } else {
+            population_size
+        };
 
         // Replace chromosomes by children of the best performing chromosomes
         for i in survival_count..immigration_start {
@@ -119,6 +135,8 @@ impl Controller for GeneticController {
                 self.sort_order = Direction::Increasing;
             }
         }
+
+        self.last_median_score = median_score;
     }
 
     fn next_demand(&mut self) -> (GlobalDemand, Demand) {
@@ -178,4 +196,8 @@ impl PartialOrd for Chromosome {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.power_pct.partial_cmp(&other.power_pct)
     }
+}
+
+fn pct_diff(a: f32, b: f32) -> f32 {
+    (a - b).abs() / ((a + b) * 0.5)
 }
