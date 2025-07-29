@@ -38,7 +38,7 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.25)]
     pub mutation_rate: f32,
     /// Mutation strength (0,1]
-    #[arg(long, default_value_t = 0.1)]
+    #[arg(long, default_value_t = 0.05)]
     pub mutation_strength: f32,
     /// Immigration rate.
     /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
