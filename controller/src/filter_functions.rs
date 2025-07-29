@@ -1,6 +1,7 @@
 #[derive(Copy, Clone, Debug)]
 #[derive(clap::ValueEnum)]
 pub enum FilterFunction {
+    Average,
     Median,
     FrequencyDist,
 }
@@ -9,10 +10,16 @@ impl FilterFunction {
     pub fn select(self, scores: Vec<f32>) -> f32 {
         use FilterFunction::*;
         match self {
+            Average => average(scores),
             Median => median(scores),
             FrequencyDist => frequency_dist(scores, 5),
         }
     }
+}
+
+fn average(xs: Vec<f32>) -> f32 {
+    let n = xs.len() as f32;
+    xs.into_iter().sum::<f32>() / n
 }
 
 fn median(mut xs: Vec<f32>) -> f32 {
