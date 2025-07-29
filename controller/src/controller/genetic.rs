@@ -1,19 +1,14 @@
 use clap::Parser;
 
-use crate::{GlobalDemand, LocalDemand, Sample, ScoreFunction};
+use crate::{Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction};
 
 use super::Controller;
 
 pub struct GeneticController {
     population: Vec<Chromosome>,
-    sort_order: Order,
+    sort_order: Direction,
     sample_index: usize,
     config: GeneticControllerConfig,
-}
-
-enum Order {
-    Increasing,
-    Decreasing,
 }
 
 #[derive(Clone, Debug)]
@@ -69,7 +64,7 @@ impl GeneticController {
 
         Self {
             population,
-            sort_order: Order::Decreasing,
+            sort_order: Direction::Decreasing,
             sample_index: 0,
             config,
         }
@@ -109,13 +104,13 @@ impl Controller for GeneticController {
         // To minimise changes in the runtime we sort by the recommended power limit
         // and we oscilate between an increasing and decreasing order.
         match self.sort_order {
-            Order::Increasing => {
+            Direction::Increasing => {
                 self.population.sort_by(|a, b| a.partial_cmp(&b).unwrap());
-                self.sort_order = Order::Decreasing;
+                self.sort_order = Direction::Decreasing;
             },
-            Order::Decreasing => {
+            Direction::Decreasing => {
                 self.population.sort_by(|a, b| b.partial_cmp(&a).unwrap());
-                self.sort_order = Order::Increasing;
+                self.sort_order = Direction::Increasing;
             }
         }
     }

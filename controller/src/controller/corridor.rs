@@ -1,18 +1,15 @@
 use clap::Parser;
 
-use crate::{GlobalDemand, LocalDemand, Sample, ScoreFunction, SelectionFunction};
+use crate::{Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction, FilterFunction};
 
 use super::Controller;
-
-const _UP: f32 = 1.0;
-const DOWN: f32 = -1.0;
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
 pub struct CorridorController {
     threads_pct: f32,
     step_size: f32,
-    step_dir: f32,
+    step_dir: Direction,
     t_prev: f32,
     t1: f32,
     config: CorridorControllerConfig,
@@ -25,7 +22,7 @@ pub struct CorridorControllerConfig {
     pub score: ScoreFunction,
 
     #[arg(long)]
-    pub select: SelectionFunction,
+    pub select: FilterFunction,
 }
 
 impl CorridorController {
@@ -33,7 +30,7 @@ impl CorridorController {
         Self {
             threads_pct: 1.0,
             step_size: 1.0, // Will immediately be halved in the first iteration
-            step_dir: DOWN,
+            step_dir: Direction::Decreasing,
             t_prev: f32::MAX,
             t1: f32::MAX,
             config,
@@ -48,7 +45,7 @@ impl Controller for CorridorController {
         // TODO: check if replacing num_threads with threads_pct here was sufficient, or if we need to update the formula
         if self.t1 / tn < 0.5 * self.threads_pct {
             self.step_size = f32::max(THREADS_PCT_MIN, self.threads_pct / 2.0);
-            self.step_dir = DOWN;
+            self.step_dir = Direction::Decreasing;
         } else {
             if self.t1 / tn > self.threads_pct {
                 self.t1 = tn * self.threads_pct;
@@ -62,7 +59,7 @@ impl Controller for CorridorController {
         }
 
         self.t_prev = tn;
-        self.threads_pct += self.step_dir * self.step_size;
+        self.threads_pct += Into::<f32>::into(self.step_dir) * self.step_size;
         self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
     }
 

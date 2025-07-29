@@ -1,13 +1,13 @@
 #[derive(Copy, Clone, Debug)]
 #[derive(clap::ValueEnum)]
-pub enum SelectionFunction {
+pub enum FilterFunction {
     Median,
     FrequencyDist,
 }
 
-impl SelectionFunction {
+impl FilterFunction {
     pub fn select(self, scores: Vec<f32>) -> f32 {
-        use SelectionFunction::*;
+        use FilterFunction::*;
         match self {
             Median => median(scores),
             FrequencyDist => frequency_dist(scores, 5),
