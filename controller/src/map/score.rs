@@ -9,6 +9,9 @@ use crate::Sample;
 pub enum ScoreFunction {
     Energy,
     Runtime,
+    /// Energy-Delay Product.
+    EDP,
+    /// Pareto-optimum.
     Pareto,
 }
 
@@ -18,6 +21,7 @@ impl ScoreFunction {
         match self {
             Runtime => samples.into_iter().map(|x| x.runtime).collect(),
             Energy => samples.into_iter().map(|x| x.energy).collect(),
+            EDP => samples.into_iter().map(|x| x.energy * x.runtime).collect(),
             Pareto => {
                 let mut fronts = non_dominated_sort(&samples, &SampleDominanceOrd);
 
@@ -43,6 +47,7 @@ impl fmt::Display for ScoreFunction {
         match self {
             Energy => write!(f, "Energy"),
             Runtime => write!(f, "Runtime"),
+            EDP => write!(f, "EDP"),
             Pareto => write!(f, "Pareto"),
         }
     }
