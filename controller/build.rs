@@ -3,7 +3,7 @@ use std::env;
 fn main() {
     let lib_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap();
-    let header_path = format!("../target/{}/mtdynamic.h", profile);
+    let header_path = format!("../target/{}/letterbox.h", profile);
 
     cbindgen::Builder::new()
         .with_crate(lib_dir)
