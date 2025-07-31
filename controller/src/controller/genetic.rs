@@ -46,9 +46,6 @@ pub struct GeneticControllerConfig {
     /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
     /// avoid immigration to occur in every evolution step. Setting the value to less than
     /// 1 / population_size ensures this.
-    /// We have two choices for resolving this:
-    ///  1. Keep track of how many evolutions we have done and base immigration count on that total.
-    ///  2. Or, during every evolution apply immigration based on random change.
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
 
@@ -90,7 +87,18 @@ impl Controller for GeneticController {
         sort_population_by_score(&mut self.population, scores);
 
         let population_size = self.population.len();
-        let survival_count = (population_size as f32 * self.config.survival_rate).round() as usize;
+
+        // When survival rate is less than 1 / population_size, we use a random
+        // chance based on the remainder to ensure survival can still occur.
+        let survival_count = {
+            let survival_count = population_size as f32 * self.config.survival_rate;
+            let survival_remainder = survival_count.fract();
+            let mut survival_count = survival_count.floor() as usize;
+            if rand::random_bool(survival_remainder as f64) {
+                survival_count += 1;
+            }
+            survival_count
+        };
 
         let do_immigration = if let Some(immigration_trigger) = self.config.immigration_trigger {
             self.last_median_score != f32::MIN && pct_diff(self.last_median_score, median_score) > immigration_trigger
@@ -100,7 +108,15 @@ impl Controller for GeneticController {
         };
 
         let immigration_start = if do_immigration {
-            let immigration_count = (population_size as f32 * self.config.immigration_rate).round() as usize;
+            // When immigration rate is less than 1 / population_size, we use a random
+            // chance based on the remainder to ensure immigration can still occur.
+            let immigration_count = population_size as f32 * self.config.immigration_rate;
+            let immigration_remainder = immigration_count.fract();
+            let mut immigration_count = immigration_count.floor() as usize;
+            if rand::random_bool(immigration_remainder as f64) {
+                immigration_count += 1;
+            }
+
             (population_size - immigration_count).max(survival_count)
         } else {
             population_size
