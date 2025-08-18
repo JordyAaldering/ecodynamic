@@ -1,6 +1,7 @@
 #[derive(Copy, Clone, Debug)]
 #[derive(clap::ValueEnum)]
 pub enum FilterFunction {
+    Min,
     Average,
     Median,
     FrequencyDist,
@@ -10,11 +11,16 @@ impl FilterFunction {
     pub fn select(self, scores: Vec<f32>) -> f32 {
         use FilterFunction::*;
         match self {
+            Min => min(scores),
             Average => average(scores),
             Median => median(scores),
             FrequencyDist => frequency_dist(scores, 5),
         }
     }
+}
+
+fn min(xs: Vec<f32>) -> f32 {
+    xs.into_iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()
 }
 
 fn average(xs: Vec<f32>) -> f32 {
