@@ -85,9 +85,16 @@ fn set_power_limit(power_limit_pct: f32) {
         // For some reason power_limit_uw is 0 for the short-term power limit, so we reuse the long-term limit.
         if let Some(max_power_uw) = package.constraints.get(0).and_then(|c| c.max_power_uw) {
             let limit = (max_power_uw as f32 * power_limit_pct) as u64;
-            let _ = package.constraints.get_mut(0).unwrap().set_power_limit_uw(limit);
+            let e = package.constraints.get_mut(0).unwrap().set_power_limit_uw(limit);
+            if let Err(e) = e {
+                eprintln!("{}", e);
+            }
+
             if let Some(constriant) = package.constraints.get_mut(1) {
-                let _ = constriant.set_power_limit_uw(limit);
+                let e = constriant.set_power_limit_uw(limit);
+                if let Err(e) = e {
+                    eprintln!("{}", e);
+                }
             }
         } else {
             eprintln!("No max_power_uw found for constraint")
@@ -99,9 +106,16 @@ fn reset_default_power_limit() {
     let mut rapl = RAPL.lock().unwrap();
     for package in &mut rapl.packages {
         if let Some(max_power_uw) = package.constraints.get(0).and_then(|c| c.max_power_uw) {
-            let _ = package.constraints.get_mut(0).unwrap().set_power_limit_uw(max_power_uw);
+            let e = package.constraints.get_mut(0).unwrap().set_power_limit_uw(max_power_uw);
+            if let Err(e) = e {
+                eprintln!("{}", e);
+            }
+
             if let Some(constriant) = package.constraints.get_mut(1) {
-                let _ = constriant.set_power_limit_uw(max_power_uw);
+                let e = constriant.set_power_limit_uw(max_power_uw);
+                if let Err(e) = e {
+                    eprintln!("{}", e);
+                }
             }
         } else {
             eprintln!("No max_power_uw found for constraint")
