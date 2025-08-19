@@ -98,12 +98,13 @@ fn set_power_limit(power_limit_pct: f32) {
 fn reset_default_power_limit() {
     let mut rapl = RAPL.lock().unwrap();
     for package in &mut rapl.packages {
-        for constraint in &mut package.constraints {
-            if let Some(max_power_uw) = constraint.max_power_uw {
-                constraint.set_power_limit_uw(max_power_uw);
-            } else {
-                eprintln!("No max_power_uw found for constraint")
+        if let Some(max_power_uw) = package.constraints.get(0).and_then(|c| c.max_power_uw) {
+            package.constraints.get_mut(0).unwrap().set_power_limit_uw(max_power_uw);
+            if let Some(constriant) = package.constraints.get_mut(1) {
+                constriant.set_power_limit_uw(max_power_uw);
             }
+        } else {
+            eprintln!("No max_power_uw found for constraint")
         }
     }
 }
