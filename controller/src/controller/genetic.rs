@@ -6,7 +6,7 @@ use super::Controller;
 
 pub struct GeneticController {
     population: Vec<Chromosome>,
-    last_median_score: f32,
+    last_avg_score: f32,
     sort_order: Direction,
     sample_index: usize,
     config: GeneticControllerConfig,
@@ -16,14 +16,14 @@ pub struct GeneticController {
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
     /// Method for scoring the fitness of each chromosome.
-    #[arg(long, default_value_t = ScoreFunction::E2DP)]
+    #[arg(long, default_value_t = ScoreFunction::Energy)]
     pub score: ScoreFunction,
 
     /// Minimum allowed percentage of the number of threads (0,1].
     #[arg(long, default_value_t = 0.1)]
     pub threads_rate_min: f32,
     /// Maximum allowed percentage of the number of threads (0,1].
-    #[arg(long, default_value_t = 1.0)]
+    #[arg(long, default_value_t = 0.5)]
     pub threads_rate_max: f32,
 
     /// Minimum allowed percentage of the powercap (0,1].
@@ -34,13 +34,13 @@ pub struct GeneticControllerConfig {
     pub power_rate_max: f32,
 
     /// Genetic algorithm survival rate (0,1].
-    #[arg(long, default_value_t = 0.50)]
+    #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
     /// Mutation rate (0,1]
-    #[arg(long, default_value_t = 0.25)]
+    #[arg(long, default_value_t = 0.30)]
     pub mutation_rate: f32,
     /// Mutation strength (0,1].
-    #[arg(long, default_value_t = 0.05)]
+    #[arg(long, default_value_t = 0.005)]
     pub mutation_strength: f32,
     /// Immigration rate (0,1].
     /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
@@ -69,7 +69,7 @@ impl GeneticController {
 
         Self {
             population,
-            last_median_score: f32::MIN,
+            last_avg_score: f32::MIN,
             sort_order: Direction::Decreasing,
             sample_index: 0,
             config,
@@ -83,7 +83,7 @@ impl Controller for GeneticController {
         self.sample_index = 0;
 
         let scores = self.config.score.score(samples);
-        let median_score = scores[scores.len() / 2];
+        let avg_score = scores.iter().sum::<f32>() / 2.0;
         sort_population_by_score(&mut self.population, scores);
 
         let population_size = self.population.len();
@@ -100,14 +100,14 @@ impl Controller for GeneticController {
             survival_count
         };
 
-        let do_immigration = if let Some(immigration_trigger) = self.config.immigration_trigger {
-            self.last_median_score != f32::MIN && pct_diff(self.last_median_score, median_score) > immigration_trigger
+        let allow_immigration = if let Some(immigration_trigger) = self.config.immigration_trigger {
+            self.last_avg_score != f32::MIN && pct_diff(self.last_avg_score, avg_score) > immigration_trigger
         } else {
             // Immigration trigger is not set; immigration is always enabled
             true
         };
 
-        let immigration_start = if do_immigration {
+        let immigration_start = if allow_immigration {
             // When immigration rate is less than 1 / population_size, we use a random
             // chance based on the remainder to ensure immigration can still occur.
             let immigration_count = population_size as f32 * self.config.immigration_rate;
@@ -152,7 +152,7 @@ impl Controller for GeneticController {
             }
         }
 
-        self.last_median_score = median_score;
+        self.last_avg_score = avg_score;
     }
 
     fn next_demand(&mut self) -> (GlobalDemand, Demand) {
