@@ -366,7 +366,8 @@ dependencies = [
 [[package]]
 name = "rapl-energy"
 version = "0.1.24"
-source = "git+https://github.com/JordyAaldering/rapl-energy.git#329ffb66075d53112beeae83791944b6f4aa823a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c0f40a932aac29c1bf9e9607b6e38014b988b0176eaac5326cf9c309fb7b780"
 dependencies = [
  "cbindgen",
  "indexmap",
