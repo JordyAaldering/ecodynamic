@@ -28,7 +28,7 @@ fn average(xs: Vec<f32>) -> f32 {
     xs.into_iter().sum::<f32>() / n
 }
 
-fn median(mut xs: Vec<f32>) -> f32 {
+pub fn median(mut xs: Vec<f32>) -> f32 {
     xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
     xs[xs.len() / 2]
 }

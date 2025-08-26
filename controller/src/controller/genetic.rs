@@ -1,12 +1,10 @@
 use clap::Parser;
 
-use crate::{Direction, GlobalDemand, Demand, Sample, ScoreFunction};
-
-use super::Controller;
+use crate::*;
 
 pub struct GeneticController {
     population: Vec<Chromosome>,
-    last_avg_score: f32,
+    prev_median_score: Option<f32>,
     sort_order: Direction,
     sample_index: usize,
     config: GeneticControllerConfig,
@@ -23,21 +21,21 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.1)]
     pub threads_rate_min: f32,
     /// Maximum allowed percentage of the number of threads (0,1].
-    #[arg(long, default_value_t = 0.5)]
+    #[arg(long, default_value_t = 1.0)]
     pub threads_rate_max: f32,
 
     /// Minimum allowed percentage of the powercap (0,1].
     #[arg(long, default_value_t = 0.1)]
     pub power_rate_min: f32,
     /// Maximum allowed percentage of the powercap (0,1].
-    #[arg(long, default_value_t = 1.0)]
+    #[arg(long, default_value_t = 0.5)]
     pub power_rate_max: f32,
 
     /// Genetic algorithm survival rate (0,1].
     #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
     /// Mutation rate (0,1]
-    #[arg(long, default_value_t = 0.30)]
+    #[arg(long, default_value_t = 0.35)]
     pub mutation_rate: f32,
     /// Mutation strength (0,1].
     #[arg(long, default_value_t = 0.005)]
@@ -69,7 +67,7 @@ impl GeneticController {
 
         Self {
             population,
-            last_avg_score: f32::MIN,
+            prev_median_score: None,
             sort_order: Direction::Decreasing,
             sample_index: 0,
             config,
@@ -83,7 +81,7 @@ impl Controller for GeneticController {
         self.sample_index = 0;
 
         let scores = self.config.score.score(samples);
-        let avg_score = scores.iter().sum::<f32>() / 2.0;
+        let median_score = filter_functions::median(scores.clone());
         sort_population_by_score(&mut self.population, scores);
 
         let population_size = self.population.len();
@@ -101,7 +99,7 @@ impl Controller for GeneticController {
         };
 
         let allow_immigration = if let Some(immigration_trigger) = self.config.immigration_trigger {
-            self.last_avg_score != f32::MIN && pct_diff(self.last_avg_score, avg_score) > immigration_trigger
+            self.prev_median_score.is_some_and(|prev| pct_change(prev, median_score) > immigration_trigger)
         } else {
             // Immigration trigger is not set; immigration is always enabled
             true
@@ -152,7 +150,7 @@ impl Controller for GeneticController {
             }
         }
 
-        self.last_avg_score = avg_score;
+        self.prev_median_score = Some(median_score);
     }
 
     fn next_demand(&mut self) -> (GlobalDemand, Demand) {
@@ -214,6 +212,6 @@ impl PartialOrd for Chromosome {
     }
 }
 
-fn pct_diff(a: f32, b: f32) -> f32 {
-    (a - b).abs() / ((a + b) * 0.5)
+fn pct_change(prev: f32, next: f32) -> f32 {
+    ((next / prev) - 1.0).abs()
 }
