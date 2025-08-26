@@ -81,8 +81,6 @@ impl Controller for GeneticController {
         self.sample_index = 0;
 
         let scores = self.config.score.score(samples);
-        let median_score = filter_functions::median(scores.clone());
-        sort_population_by_score(&mut self.population, scores);
 
         let population_size = self.population.len();
 
@@ -99,7 +97,15 @@ impl Controller for GeneticController {
         };
 
         let allow_immigration = if let Some(immigration_trigger) = self.config.immigration_trigger {
-            self.prev_median_score.is_some_and(|prev| pct_change(prev, median_score) > immigration_trigger)
+            let median_score = filter_functions::median(scores.clone());
+            if self.prev_median_score.is_some_and(|prev| pct_change(prev, median_score) > immigration_trigger) {
+                // Reset median after immigration occurs, ensuring we do not immigrate twice in a row
+                self.prev_median_score = None;
+                true
+            } else {
+                self.prev_median_score = Some(median_score);
+                false
+            }
         } else {
             // Immigration trigger is not set; immigration is always enabled
             true
@@ -115,10 +121,15 @@ impl Controller for GeneticController {
                 immigration_count += 1;
             }
 
-            (population_size - immigration_count).max(survival_count)
+            // If survival_rate + immigration_rate > 1.0, there is some overlap between the two.
+            // We decide to favor immigration over survival, meaning that fewer than survival_count chromosomes may survive.
+            // To favor survival instead, max by survival_count instead of 0.
+            (population_size - immigration_count).max(0)
         } else {
             population_size
         };
+
+        sort_population_by_score(&mut self.population, scores);
 
         // Replace chromosomes by children of the best performing chromosomes
         for i in survival_count..immigration_start {
@@ -149,8 +160,6 @@ impl Controller for GeneticController {
                 self.sort_order = Direction::Increasing;
             }
         }
-
-        self.prev_median_score = Some(median_score);
     }
 
     fn next_demand(&mut self) -> (GlobalDemand, Demand) {
