@@ -35,7 +35,7 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
     /// Mutation rate (0,1]
-    #[arg(long, default_value_t = 0.35)]
+    #[arg(long, default_value_t = 0.30)]
     pub mutation_rate: f32,
     /// Mutation strength (0,1].
     #[arg(long, default_value_t = 0.005)]
