@@ -11,10 +11,10 @@ release:
 	cargo build --release
 
 install: release
-	cp target/release/server $(LOCAL)/bin/mtdynamic
+	cp target/release/server $(LOCAL)/bin/ecodynamic
 
 uninstall:
-	$(RM) $(LOCAL)/bin/mtdynamic
+	$(RM) $(LOCAL)/bin/ecodynamic
 
 clean:
 	cargo clean
