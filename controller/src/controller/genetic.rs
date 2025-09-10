@@ -222,5 +222,5 @@ impl PartialOrd for Chromosome {
 }
 
 fn pct_change(prev: f32, next: f32) -> f32 {
-    ((next / prev) - 1.0).abs()
+    ((next / (prev + f32::EPSILON)) - 1.0).abs()
 }

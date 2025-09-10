@@ -53,8 +53,22 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {
-                let sample = Sample::from(buffer);
+                let mut sample = Sample::from(buffer);
                 debug_println!("Recv: {:?}", sample);
+
+                { // Subtract idle power draw from sample
+                    let sample_power = sample.energy / (sample.runtime + f32::EPSILON);
+                    let idle_power = *IDLE_POWER.read().unwrap();
+                    if sample_power < idle_power && config.idle_power.is_none() {
+                        // Power draw of the sample is less than automatically predetermined power draw, update idle power.
+                        // We don't want to update the idle power draw if it was manually specified by the user,
+                        // which is why we check whether config.idle_power does not have a value.
+                        *IDLE_POWER.write().unwrap() = sample_power;
+                    }
+
+                    sample.energy -= idle_power * sample.runtime;
+                    sample.energy = sample.energy.max(0.0);
+                }
 
                 let (samples, controller) = lbs.get_mut(&sample.region_uid).unwrap();
 
@@ -145,17 +159,15 @@ fn main() -> io::Result<()> {
         const N: usize = 60;
         println!("Measuring idle power draw ({N}s)");
 
-        let mut xs = [0f32; N];
-        for x in xs.iter_mut() {
+        let mut min_power = f32::MAX;
+        for _ in 0..N {
             rapl.reset();
             sleep(Duration::from_secs(1));
-            let joule_per_package = rapl.elapsed();
-            *x = joule_per_package.into_values().sum();
+            let w = rapl.elapsed().into_values().sum();
+            min_power = min_power.min(w);
         }
 
-        xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        // Take the tenth percentile, to exclude the most extreme outliers
-        *IDLE_POWER.write().unwrap() = xs[N / 10];
+        *IDLE_POWER.write().unwrap() = min_power;
     } else {
         println!("Ignoring idle power draw because RAPL is not available");
     }

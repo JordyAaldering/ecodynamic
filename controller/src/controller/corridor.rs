@@ -43,11 +43,11 @@ impl Controller for CorridorController {
         let tn = self.config.select.select(self.config.score.score(samples));
 
         // TODO: check if replacing num_threads with threads_pct here was sufficient, or if we need to update the formula
-        if self.t1 / tn < 0.5 * self.threads_pct {
+        if self.t1 / (tn + f32::EPSILON) < 0.5 * self.threads_pct {
             self.step_size = f32::max(THREADS_PCT_MIN, self.threads_pct / 2.0);
             self.step_dir = Direction::Decreasing;
         } else {
-            if self.t1 / tn > self.threads_pct {
+            if self.t1 / (tn + f32::EPSILON) > self.threads_pct {
                 self.t1 = tn * self.threads_pct;
             }
 
