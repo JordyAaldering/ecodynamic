@@ -175,9 +175,9 @@ impl Controller for GeneticController {
     }
 }
 
-fn sort_population_by_score<T>(population: &mut Vec<T>, scores: Vec<f32>) {
-    let mut permutation = permutation::sort_by(&scores, |a, b| a.partial_cmp(b).unwrap());
-    permutation.apply_slice_in_place(population);
+fn sort_population_by_score(population: &mut Vec<Chromosome>, scores: Vec<f32>) {
+    let mut zipped: Vec<_> = population.iter_mut().zip(scores).collect();
+    zipped.sort_unstable_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
 }
 
 #[derive(Clone, Debug, PartialEq)]

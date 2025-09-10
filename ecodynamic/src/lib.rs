@@ -12,7 +12,7 @@ use crate::sample::SampleInstant;
 
 static REGION_COUNTER: AtomicI32 = AtomicI32::new(0);
 
-pub struct MtdIterator<I: Iterator> {
+pub struct EcoIterator<I: Iterator> {
     inner: I,
     region_uid: i32,
     stream: Option<UnixStream>,
@@ -21,7 +21,7 @@ pub struct MtdIterator<I: Iterator> {
     after_fn: Option<fn(Sample)>,
 }
 
-impl<I: Iterator> MtdIterator<I> {
+impl<I: Iterator> EcoIterator<I> {
     pub fn new(inner: I) -> Self {
         Self {
             inner,
@@ -75,7 +75,7 @@ impl<I: Iterator> MtdIterator<I> {
     }
 }
 
-impl<I: Iterator> Iterator for MtdIterator<I> {
+impl<I: Iterator> Iterator for EcoIterator<I> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {

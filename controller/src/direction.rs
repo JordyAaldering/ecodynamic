@@ -1,10 +1,12 @@
+use std::ops;
+
 #[derive(Clone, Copy)]
 pub enum Direction {
     Increasing,
     Decreasing,
 }
 
-impl std::ops::Neg for Direction {
+impl ops::Neg for Direction {
     type Output = Self;
 
     fn neg(self) -> Self::Output {

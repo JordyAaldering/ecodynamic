@@ -34,7 +34,7 @@ fn main() {
     let x = Matrix::iota(500, 500);
     let y = Matrix::iota(500, 500);
 
-    ecodynamic::MtdIterator::new(0..)
+    ecodynamic::EcoIterator::new(0..)
         .before(|d| println!("Received demand: {:?}", d))
         .after(|s| println!("Sending sample: {:?}", s))
         .for_each(|_| {
