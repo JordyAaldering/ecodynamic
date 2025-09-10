@@ -53,21 +53,18 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {
-                let mut sample = Sample::from(buffer);
+                let sample = Sample::from(buffer);
                 debug_println!("Recv: {:?}", sample);
 
-                { // Subtract idle power draw from sample
+                // We don't want to update the idle power draw if it was manually specified by the user,
+                // which is why we check whether config.idle_power does not have a value.
+                if config.idle_power.is_none() {
                     let sample_power = sample.energy / (sample.runtime + f32::EPSILON);
-                    let idle_power = *IDLE_POWER.read().unwrap();
-                    if sample_power < idle_power && config.idle_power.is_none() {
-                        // Power draw of the sample is less than automatically predetermined power draw, update idle power.
-                        // We don't want to update the idle power draw if it was manually specified by the user,
-                        // which is why we check whether config.idle_power does not have a value.
+                    if sample_power < *IDLE_POWER.read().unwrap() {
+                        // Power draw of the sample is less than automatically predetermined power draw.
+                        println!("Idle power refined to {sample_power}W");
                         *IDLE_POWER.write().unwrap() = sample_power;
                     }
-
-                    sample.energy -= idle_power * sample.runtime;
-                    sample.energy = sample.energy.max(0.0);
                 }
 
                 let (samples, controller) = lbs.get_mut(&sample.region_uid).unwrap();
@@ -76,6 +73,15 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 if samples.len() >= config.letterbox_size {
                     let mut swap = Vec::with_capacity(config.letterbox_size);
                     mem::swap(samples, &mut swap);
+
+                    { // Subtract idle after-the-fact, to ensure at least these samples will use the same idle power draw value
+                        let idle_power = *IDLE_POWER.read().unwrap();
+                        for sample in &mut swap {
+                            sample.energy -= idle_power * sample.runtime;
+                            sample.energy = sample.energy.min(0.0);
+                        }
+                    }
+
                     controller.evolve(swap);
                 }
             }
@@ -168,6 +174,7 @@ fn main() -> io::Result<()> {
         }
 
         *IDLE_POWER.write().unwrap() = min_power;
+        println!("Idle power estimated at {min_power}W");
     } else {
         println!("Ignoring idle power draw because RAPL is not available");
     }
