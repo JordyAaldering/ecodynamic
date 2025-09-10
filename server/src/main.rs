@@ -3,7 +3,9 @@ mod config;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, Write};
-use std::sync::{LazyLock, Mutex};
+use std::sync::{LazyLock, Mutex, RwLock};
+use std::thread::sleep;
+use std::time::Duration;
 use std::{mem, process};
 use std::os::unix::net::{UnixListener, UnixStream};
 
@@ -21,6 +23,8 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     println!("RAPL interface: {:?}", rapl);
     rapl.map(Mutex::new)
 });
+
+static IDLE_POWER: RwLock<f32> = RwLock::new(0.0);
 
 fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
     let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
@@ -133,6 +137,27 @@ fn main() -> io::Result<()> {
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
         print!("Closing existing socket at {}", MTD_LETTERBOX_PATH);
         fs::remove_file(MTD_LETTERBOX_PATH)?;
+    }
+
+    if let Some(idle_power) = config.idle_power {
+        *IDLE_POWER.write().unwrap() = idle_power;
+    } else if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
+        const N: usize = 60;
+        println!("Measuring idle power draw ({N}s)");
+
+        let mut xs = [0f32; N];
+        for x in xs.iter_mut() {
+            rapl.reset();
+            sleep(Duration::from_secs(1));
+            let joule_per_package = rapl.elapsed();
+            *x = joule_per_package.into_values().sum();
+        }
+
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        // Take the tenth percentile, to exclude the most extreme outliers
+        *IDLE_POWER.write().unwrap() = xs[N / 10];
+    } else {
+        println!("Ignoring idle power draw because RAPL is not available");
     }
 
     // Create a listener
