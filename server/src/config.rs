@@ -12,6 +12,11 @@ pub struct Config {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
 
+    /// Idle power draw of the system. Leave empty to determine automatically, set to 0 to
+    /// ignore idle power, or set to a specific value if idle power is predetermined.
+    #[arg(short('w'), long)]
+    pub idle_power: Option<f32>,
+
     /// Run the resource controller for a single connection only.
     #[arg(long, action)]
     pub once: bool,

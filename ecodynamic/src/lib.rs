@@ -26,7 +26,7 @@ impl<I: Iterator> MtdIterator<I> {
         Self {
             inner,
             region_uid: REGION_COUNTER.fetch_add(1, Ordering::Relaxed),
-            stream: UnixStream::connect("/tmp/mtd_letterbox").ok(),
+            stream: Some(UnixStream::connect("/tmp/mtd_letterbox").unwrap()),
             sample_instant: None,
             before_fn: None,
             after_fn: None,
