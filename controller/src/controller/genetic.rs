@@ -17,39 +17,55 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = ScoreFunction::Energy)]
     pub score: ScoreFunction,
 
-    /// Minimum allowed percentage of the number of threads (0,1].
+    /// If the `Slider` scoring function is used, this value describes how important
+    /// energy consumption is in the optimisation process. The importance of runtime
+    /// is then 1 minus this value.
+    /// Range: [0,1]
+    #[arg(long, default_value_t = 0.5)]
+    pub energy_preference: f32,
+
+    /// Minimum allowed percentage of the number of threads.
+    /// Range: (0,1].
     #[arg(long, default_value_t = 0.1)]
     pub threads_rate_min: f32,
-    /// Maximum allowed percentage of the number of threads (0,1].
+    /// Maximum allowed percentage of the number of threads.
+    /// Range: (0,1].
     #[arg(long, default_value_t = 1.0)]
     pub threads_rate_max: f32,
 
-    /// Minimum allowed percentage of the powercap (0,1].
+    /// Minimum allowed percentage of the powercap.
+    /// Range: (0,1].
     #[arg(long, default_value_t = 0.1)]
     pub power_rate_min: f32,
-    /// Maximum allowed percentage of the powercap (0,1].
+    /// Maximum allowed percentage of the powercap.
+    /// Range: (0,1].
     #[arg(long, default_value_t = 0.5)]
     pub power_rate_max: f32,
 
-    /// Genetic algorithm survival rate (0,1].
+    /// Genetic algorithm survival rate.
+    /// Range: (0,1].
     #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
-    /// Mutation rate (0,1]
+
+    /// Mutation rate.
+    /// Range: (0,1]
     #[arg(long, default_value_t = 0.30)]
     pub mutation_rate: f32,
-    /// Mutation strength (0,1].
+    /// Mutation strength.
+    /// Range: (0,1].
     #[arg(long, default_value_t = 0.005)]
     pub mutation_strength: f32,
-    /// Immigration rate (0,1].
+
     /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
     /// avoid immigration to occur in every evolution step. Setting the value to less than
     /// 1 / population_size ensures this.
+    /// Range: (0,1]
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
-
-    /// Trigger immigration only when the score changes by a certain amount in (0,1].
+    /// Trigger immigration only when the score changes by a certain amount.
     /// This minimizes changes to the runtime when behaviour is relatively consistent,
     /// but allows to restart the search when a sudden change in behaviour occurs.
+    /// Range: (0,1]
     #[arg(long)]
     pub immigration_trigger: Option<f32>,
 }
@@ -77,17 +93,27 @@ impl GeneticController {
 
 impl Controller for GeneticController {
     fn evolve(&mut self, samples: Vec<Sample>) {
+        let GeneticControllerConfig {
+            score: score_fn,
+            energy_preference,
+            survival_rate,
+            mutation_rate,
+            immigration_rate,
+            immigration_trigger,
+            ..
+         } = self.config;
+
         // Reset sample index to prepare for the next call to `next_demand`
         self.sample_index = 0;
 
-        let scores = self.config.score.score(samples);
+        let scores = score_fn.score(samples, energy_preference);
 
         let population_size = self.population.len();
 
         // When survival rate is less than 1 / population_size, we use a random
         // chance based on the remainder to ensure survival can still occur.
         let survival_count = {
-            let survival_count = population_size as f32 * self.config.survival_rate;
+            let survival_count = population_size as f32 * survival_rate;
             let survival_remainder = survival_count.fract();
             let mut survival_count = survival_count.floor() as usize;
             if rand::random_bool(survival_remainder as f64) {
@@ -96,7 +122,7 @@ impl Controller for GeneticController {
             survival_count
         };
 
-        let allow_immigration = if let Some(immigration_trigger) = self.config.immigration_trigger {
+        let allow_immigration = if let Some(immigration_trigger) = immigration_trigger {
             let median_score = filter_functions::median(scores.clone());
             if self.prev_median_score.is_some_and(|prev| pct_change(prev, median_score) > immigration_trigger) {
                 // Reset median after immigration occurs, ensuring we do not immigrate twice in a row
@@ -114,7 +140,7 @@ impl Controller for GeneticController {
         let immigration_start = if allow_immigration {
             // When immigration rate is less than 1 / population_size, we use a random
             // chance based on the remainder to ensure immigration can still occur.
-            let immigration_count = population_size as f32 * self.config.immigration_rate;
+            let immigration_count = population_size as f32 * immigration_rate;
             let immigration_remainder = immigration_count.fract();
             let mut immigration_count = immigration_count.floor() as usize;
             if rand::random_bool(immigration_remainder as f64) {
@@ -136,7 +162,7 @@ impl Controller for GeneticController {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(&parent2);
-            if rand::random_bool(self.config.mutation_rate as f64) {
+            if rand::random_bool(mutation_rate as f64) {
                 child.mutate(&self.config);
             }
 

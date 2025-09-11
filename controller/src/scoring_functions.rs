@@ -15,16 +15,18 @@ pub enum ScoreFunction {
     E2DP,
     /// Pareto-optimum.
     Pareto,
+    /// Energy-runtime preference `energy^x * runtime^(1-x)`.
+    Slider,
 }
 
 impl ScoreFunction {
-    pub fn score(self, samples: Vec<Sample>) -> Vec<f32> {
+    pub fn score(self, samples: Vec<Sample>, x: f32) -> Vec<f32> {
         use ScoreFunction::*;
         match self {
-            Runtime => samples.into_iter().map(|x| x.runtime).collect(),
-            Energy => samples.into_iter().map(|x| x.energy).collect(),
-            EDP => samples.into_iter().map(|x| x.energy * x.runtime).collect(),
-            E2DP => samples.into_iter().map(|x| x.energy * x.energy * x.runtime).collect(),
+            Runtime => samples.into_iter().map(|s| s.runtime).collect(),
+            Energy => samples.into_iter().map(|s| s.energy).collect(),
+            EDP => samples.into_iter().map(|s| s.energy * s.runtime).collect(),
+            E2DP => samples.into_iter().map(|s| s.energy * s.energy * s.runtime).collect(),
             Pareto => {
                 let mut fronts = non_dominated_sort(&samples, &SampleDominanceOrd);
 
@@ -40,6 +42,8 @@ impl ScoreFunction {
 
                 scores
             }
+            Slider => samples.into_iter().map(|s|
+                s.energy.powf(x) * s.runtime.powf(1.0 - x)).collect(),
         }
     }
 }
@@ -53,6 +57,7 @@ impl fmt::Display for ScoreFunction {
             EDP => write!(f, "edp"),
             E2DP => write!(f, "e2dp"),
             Pareto => write!(f, "pareto"),
+            Slider => write!(f, "slider"),
         }
     }
 }

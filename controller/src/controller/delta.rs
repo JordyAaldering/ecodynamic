@@ -46,7 +46,7 @@ impl DeltaController {
 
 impl Controller for DeltaController {
     fn evolve(&mut self, samples: Vec<Sample>) {
-        let e_next = self.config.select.select(self.config.score.score(samples));
+        let e_next = self.config.select.select(self.config.score.score(samples, 0.5));
 
         if e_next > self.e_prev * 1.50 {
             self.step_size = 0.5;

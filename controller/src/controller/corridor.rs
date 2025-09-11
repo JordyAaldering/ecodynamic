@@ -40,7 +40,7 @@ impl CorridorController {
 
 impl Controller for CorridorController {
     fn evolve(&mut self, samples: Vec<Sample>) {
-        let tn = self.config.select.select(self.config.score.score(samples));
+        let tn = self.config.select.select(self.config.score.score(samples, 0.5));
 
         // TODO: check if replacing num_threads with threads_pct here was sufficient, or if we need to update the formula
         if self.t1 / (tn + f32::EPSILON) < 0.5 * self.threads_pct {
