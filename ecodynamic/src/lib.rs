@@ -6,7 +6,7 @@ use std::{
     sync::atomic::{AtomicI32, Ordering},
 };
 
-use controller::{Demand, Request, Sample};
+pub use controller::{Demand, Request, Sample};
 
 use crate::sample::SampleInstant;
 
