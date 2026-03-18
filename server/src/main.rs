@@ -1,18 +1,21 @@
 mod config;
 
-use std::collections::HashMap;
-use std::fs;
-use std::io::{self, Read, Write};
-use std::sync::{LazyLock, Mutex, RwLock};
-use std::thread::sleep;
-use std::time::Duration;
-use std::{mem, process};
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::{
+    collections::HashMap,
+    fs,
+    io::{self, Read, Write},
+    sync::{LazyLock, Mutex, RwLock},
+    thread::sleep,
+    time::Duration,
+    {mem, process},
+    os::unix::net::{UnixListener, UnixStream},
+};
 
 use clap::Parser;
-use config::Config;
 use controller::*;
 use rapl_energy::Rapl;
+
+use crate::config::Config;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
