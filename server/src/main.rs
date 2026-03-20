@@ -44,8 +44,10 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {
-                let sample = Sample::from(buffer);
+                let mut sample = Sample::from(buffer);
                 debug_println!("Recv: {:?}", sample);
+                sample.energy -= config.idle_power * sample.runtime;
+                sample.energy = sample.energy.max(f32::EPSILON);
 
                 let (samples, controller) = lbs.get_mut(&sample.region_uid).unwrap();
 
@@ -53,13 +55,6 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 if samples.len() >= config.letterbox_size {
                     let mut swap = Vec::with_capacity(config.letterbox_size);
                     mem::swap(samples, &mut swap);
-
-                    // Subtract idle
-                    for sample in &mut swap {
-                        sample.energy -= config.idle_power * sample.runtime;
-                        sample.energy = sample.energy.min(0.0);
-                    }
-
                     controller.evolve(swap);
                 }
             }
