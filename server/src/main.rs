@@ -1,15 +1,6 @@
 mod config;
 
-use std::{
-    collections::HashMap,
-    fs,
-    io::{self, Read, Write},
-    sync::{LazyLock, Mutex, RwLock},
-    thread::sleep,
-    time::Duration,
-    {mem, process},
-    os::unix::net::{UnixListener, UnixStream},
-};
+use std::{collections::HashMap, fs, io::{self, Read, Write}, mem, os::unix::net::{UnixListener, UnixStream}, process::{Command, exit}, sync::{LazyLock, Mutex, RwLock}, thread::sleep, time::Duration};
 
 use clap::Parser;
 use controller::*;
@@ -154,7 +145,7 @@ fn reset_default_power_limit() {
 
 fn main() -> io::Result<()> {
     let config = Config::parse();
-    println!("{:?}", config);
+    debug_println!("{:?}", config);
 
     // Remove any existing socket file
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
@@ -191,10 +182,13 @@ fn main() -> io::Result<()> {
         reset_default_power_limit();
         print!("Closing socket at {}", MTD_LETTERBOX_PATH);
         let _ = fs::remove_file(MTD_LETTERBOX_PATH);
-        process::exit(0);
+        exit(0);
     }).unwrap();
 
-    if config.once {
+    if let Some((prog, args)) = config.cmd.split_first() {
+        println!("Running controller for a single connection ({})", prog);
+        Command::new(prog).args(args).spawn().unwrap();
+
         let stream = listener.incoming().next().unwrap();
         match stream {
             Ok(stream) => handle_client(stream, config)?,

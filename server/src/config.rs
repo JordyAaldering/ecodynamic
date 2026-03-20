@@ -17,9 +17,9 @@ pub struct Config {
     #[arg(short('w'), long)]
     pub idle_power: Option<f32>,
 
-    /// Run the resource controller for a single connection only.
-    #[arg(long, action)]
-    pub once: bool,
+    /// If a specific command is provided, run the resource controller for that processo only.
+    #[arg(trailing_var_arg = true)]
+    pub cmd: Vec<String>,
 }
 
 #[derive(Clone, Debug, Subcommand)]

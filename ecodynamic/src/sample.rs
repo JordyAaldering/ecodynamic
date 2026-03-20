@@ -3,12 +3,12 @@ use std::time::Instant;
 use controller::Sample;
 use rapl_energy::Rapl;
 
-pub struct SampleInstant {
+pub struct SamplePair {
     pub time: Instant,
     pub rapl: Rapl,
 }
 
-impl SampleInstant {
+impl SamplePair {
     pub fn start() -> Self {
         Self {
             rapl: Rapl::now(false).unwrap(),

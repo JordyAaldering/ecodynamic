@@ -8,7 +8,7 @@ use std::{
 
 pub use controller::{Demand, Request, Sample};
 
-use crate::sample::SampleInstant;
+use crate::sample::SamplePair;
 
 static REGION_COUNTER: AtomicI32 = AtomicI32::new(0);
 
@@ -16,7 +16,7 @@ pub struct EcoIterator<I: Iterator> {
     inner: I,
     region_uid: i32,
     stream: Option<UnixStream>,
-    sample_instant: Option<SampleInstant>,
+    sample_instant: Option<SamplePair>,
     before_fn: Option<fn(Demand)>,
     after_fn: Option<fn(Sample)>,
 }
@@ -44,7 +44,7 @@ impl<I: Iterator> EcoIterator<I> {
     }
 
     /// Send a signal to the controller that we are at the start of a parallel region.
-    fn signal_start(&mut self) -> SampleInstant {
+    fn signal_start(&mut self) -> SamplePair {
         if let Some(stream) = &mut self.stream {
             stream.write_all(&Request {
                 region_uid: self.region_uid,
@@ -59,11 +59,11 @@ impl<I: Iterator> EcoIterator<I> {
             }
         }
 
-        SampleInstant::start()
+        SamplePair::start()
     }
 
     /// Signal the end of the region and send runtime and energy results.
-    fn signal_end(&mut self, instant: SampleInstant) {
+    fn signal_end(&mut self, instant: SamplePair) {
         let sample = instant.stop(self.region_uid);
         if let Some(stream) = &mut self.stream {
             stream.write_all(&sample.to_bytes()).unwrap();
