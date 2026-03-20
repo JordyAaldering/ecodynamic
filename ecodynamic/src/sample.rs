@@ -11,7 +11,7 @@ pub struct SamplePair {
 impl SamplePair {
     pub fn start() -> Self {
         Self {
-            rapl: Rapl::now(false).unwrap(),
+            rapl: Rapl::new(false).unwrap(),
             time: Instant::now(),
         }
     }

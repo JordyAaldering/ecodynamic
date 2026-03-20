@@ -14,33 +14,35 @@ pub struct GeneticController {
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
     /// Method for scoring the fitness of each chromosome.
-    #[arg(long, default_value_t = ScoreFunction::Energy)]
+    #[arg(long, default_value_t = ScoreFunction::Slider)]
     pub score: ScoreFunction,
 
     /// If the `Slider` scoring function is used, this value describes how important
     /// energy consumption is in the optimisation process. The importance of runtime
     /// is then 1 minus this value.
     /// Range: [0,1]
-    #[arg(long, default_value_t = 0.5)]
+    #[arg(long, default_value_t = 0.75)]
     pub energy_preference: f32,
 
     /// Minimum allowed percentage of the number of threads.
     /// Range: (0,1].
     #[arg(long, default_value_t = 0.1)]
-    pub threads_rate_min: f32,
+    pub threads_min: f32,
+
     /// Maximum allowed percentage of the number of threads.
     /// Range: (0,1].
     #[arg(long, default_value_t = 1.0)]
-    pub threads_rate_max: f32,
+    pub threads_max: f32,
 
     /// Minimum allowed percentage of the powercap.
     /// Range: (0,1].
     #[arg(long, default_value_t = 0.1)]
-    pub power_rate_min: f32,
+    pub power_min: f32,
+
     /// Maximum allowed percentage of the powercap.
     /// Range: (0,1].
     #[arg(long, default_value_t = 0.5)]
-    pub power_rate_max: f32,
+    pub power_max: f32,
 
     /// Genetic algorithm survival rate.
     /// Range: (0,1].
@@ -51,6 +53,7 @@ pub struct GeneticControllerConfig {
     /// Range: (0,1]
     #[arg(long, default_value_t = 0.30)]
     pub mutation_rate: f32,
+
     /// Mutation strength.
     /// Range: (0,1].
     #[arg(long, default_value_t = 0.005)]
@@ -62,6 +65,7 @@ pub struct GeneticControllerConfig {
     /// Range: (0,1]
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
+
     /// Trigger immigration only when the score changes by a certain amount.
     /// This minimizes changes to the runtime when behaviour is relatively consistent,
     /// but allows to restart the search when a sudden change in behaviour occurs.
@@ -76,8 +80,8 @@ impl GeneticController {
         // reduce duplication and increase the chances of finding an optimum immediately.
         // I.e. value = lower + i * (upper - lower) / length
         let population = (0..population_size).map(|i| {
-                let threads_pct = config.threads_rate_min + (i as f32 * (config.threads_rate_max - config.threads_rate_min) / (population_size - 1) as f32);
-                let power_pct = config.power_rate_min + (i as f32 * (config.power_rate_max - config.power_rate_min) / (population_size - 1) as f32);
+                let threads_pct = config.threads_min + (i as f32 * (config.threads_max - config.threads_min) / (population_size - 1) as f32);
+                let power_pct = config.power_min + (i as f32 * (config.power_max - config.power_min) / (population_size - 1) as f32);
                 Chromosome::new(threads_pct, power_pct)
             }).rev().collect();
 
@@ -219,8 +223,8 @@ impl Chromosome {
 
     /// Generate a random chromosome for immigration
     fn rand(config: &GeneticControllerConfig) -> Self {
-        let num_threads = rand::random_range(config.threads_rate_min..=config.threads_rate_max);
-        let power_limit_pct = rand::random_range(config.power_rate_min..=config.power_rate_max);
+        let num_threads = rand::random_range(config.threads_min..=config.threads_max);
+        let power_limit_pct = rand::random_range(config.power_min..=config.power_max);
         Self::new(num_threads, power_limit_pct)
     }
 
@@ -234,10 +238,10 @@ impl Chromosome {
     /// Add or subtract one thread
     fn mutate(&mut self, config: &GeneticControllerConfig) {
         self.threads_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
-        self.threads_pct = self.threads_pct.max(config.threads_rate_min).min(config.threads_rate_max);
+        self.threads_pct = self.threads_pct.max(config.threads_min).min(config.threads_max);
 
         self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
-        self.power_pct = self.power_pct.max(config.power_rate_min).min(config.power_rate_max);
+        self.power_pct = self.power_pct.max(config.power_min).min(config.power_max);
     }
 }
 

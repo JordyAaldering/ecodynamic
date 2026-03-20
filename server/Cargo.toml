@@ -7,4 +7,4 @@ edition = "2024"
 clap = { version = "4.6.0", features = ["derive"] }
 controller = { path = "../controller" }
 ctrlc = "3.5.2"
-rapl-energy = "0.1.25"
+rapl-energy = "0.2.1"

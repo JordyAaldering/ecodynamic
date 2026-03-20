@@ -1,6 +1,6 @@
 mod config;
 
-use std::{collections::HashMap, fs, io::{self, Read, Write}, mem, os::unix::net::{UnixListener, UnixStream}, process::{Command, exit}, sync::{LazyLock, Mutex, RwLock}, thread::sleep, time::Duration};
+use std::{collections::HashMap, fs, io::{self, Read, Write}, mem, os::unix::net::{UnixListener, UnixStream}, process::{Command, exit}, sync::{LazyLock, Mutex, RwLock}, thread};
 
 use clap::Parser;
 use controller::*;
@@ -13,12 +13,12 @@ macro_rules! debug_println {
 }
 
 static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
-    let rapl = Rapl::now(false);
+    let rapl = Rapl::new(false);
     println!("RAPL interface: {:?}", rapl);
     rapl.map(Mutex::new)
 });
 
-static IDLE_POWER: RwLock<f32> = RwLock::new(0.0);
+static IDLE_POWER: RwLock<f32> = RwLock::new(f32::MAX);
 
 fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
     let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
@@ -26,7 +26,6 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
     let mut buffer = [0u8; Sample::SIZE];
 
     loop {
-        // Try to read from the stream
         match stream.read(&mut buffer) {
             Ok(Request::SIZE) => {
                 let buf: [u8; Request::SIZE] = buffer[0..Request::SIZE].try_into().unwrap();
@@ -50,8 +49,7 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 let sample = Sample::from(buffer);
                 debug_println!("Recv: {:?}", sample);
 
-                // We don't want to update the idle power draw if it was manually specified by the user,
-                // which is why we check whether config.idle_power does not have a value.
+                // Only refine idle power if it was not explicitly set
                 if config.idle_power.is_none() {
                     let sample_power = sample.energy / (sample.runtime + f32::EPSILON);
                     if sample_power < *IDLE_POWER.read().unwrap() {
@@ -79,25 +77,43 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                     controller.evolve(swap);
                 }
             }
+            Err(e) => {
+                println!("Client disconnected");
+                return Err(e);
+            }
             Ok(0) => {
                 println!("Client disconnected");
-                break;
+                return Ok(());
             }
             Ok(n) => {
                 eprintln!("Invalid message size: {}", n);
-                break;
+                continue;
             }
-            Err(e) => {
-                eprintln!("Client disconnected: {}", e);
-                break;
+        }
+    }
+}
+
+fn set_power_limit(power_limit_pct: f32) {
+    if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
+        for package in &mut rapl.packages {
+            // In some cases power_limit_uw is 0, use the long-term power limit as a fallback
+            let long_term = package.constraints.iter()
+                .find(|c| c.name.as_ref().is_some_and(|s| s == "long_term"))
+                .map(|c| c.max_power_uw.expect("long_term constraint must have max_power_uw"));
+
+            for constraint in &mut package.constraints {
+                if let Some(max_power_uw) = constraint.max_power_uw.or(long_term) {
+                    let limit = (max_power_uw as f32 * power_limit_pct) as u64;
+                    if let Err(e) = constraint.set_power_limit_uw(limit) {
+                        eprintln!("Failed to set power limit for {}: {}", constraint.name.as_deref().unwrap_or("unknown"), e);
+                    }
+                } else {
+                    eprintln!("No max_power_uw found for constraint {}", constraint.name.as_deref().unwrap_or("unknown"));
+                }
             }
         }
     }
 
-    Ok(())
-}
-
-fn set_power_limit(power_limit_pct: f32) {
     if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
         for package in &mut rapl.packages {
             // For some reason power_limit_uw is 0 for the short-term power limit, so we reuse the long-term limit.
@@ -109,8 +125,7 @@ fn set_power_limit(power_limit_pct: f32) {
                 }
 
                 if let Some(constriant) = package.constraints.get_mut(1) {
-                    let e = constriant.set_power_limit_uw(limit);
-                    if let Err(e) = e {
+                    if let Err(e) = constriant.set_power_limit_uw(limit) {
                         eprintln!("{}", e);
                     }
                 }
@@ -123,65 +138,23 @@ fn set_power_limit(power_limit_pct: f32) {
 
 fn reset_default_power_limit() {
     if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
-        for package in &mut rapl.packages {
-            if let Some(max_power_uw) = package.constraints.get(0).and_then(|c| c.max_power_uw) {
-                let e = package.constraints.get_mut(0).unwrap().set_power_limit_uw(max_power_uw);
-                if let Err(e) = e {
-                    eprintln!("{}", e);
-                }
-
-                if let Some(constriant) = package.constraints.get_mut(1) {
-                    let e = constriant.set_power_limit_uw(max_power_uw);
-                    if let Err(e) = e {
-                        eprintln!("{}", e);
-                    }
-                }
-            } else {
-                eprintln!("No max_power_uw found for constraint")
-            }
+        if let Err(e) = rapl.reset_power_limits(false) {
+            eprintln!("Failed to reset power limits: {}", e)
         }
     }
 }
 
-fn main() -> io::Result<()> {
+fn main() {
     let config = Config::parse();
-    debug_println!("{:?}", config);
-
-    // Remove any existing socket file
-    if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
-        print!("Closing existing socket at {}", MTD_LETTERBOX_PATH);
-        fs::remove_file(MTD_LETTERBOX_PATH)?;
-    }
-
     if let Some(idle_power) = config.idle_power {
         *IDLE_POWER.write().unwrap() = idle_power;
-    } else if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
-        const N: usize = 60;
-        println!("Measuring idle power draw ({N}s)");
-
-        let mut min_power = f32::MAX;
-        for _ in 0..N {
-            rapl.reset();
-            sleep(Duration::from_secs(1));
-            let w = rapl.elapsed().into_values().sum();
-            min_power = min_power.min(w);
-        }
-
-        *IDLE_POWER.write().unwrap() = min_power;
-        println!("Idle power estimated at {min_power}W");
-    } else {
-        println!("Ignoring idle power draw because RAPL is not available");
     }
 
-    // Create a listener
-    let listener = UnixListener::bind(MTD_LETTERBOX_PATH)?;
-    println!("Server listening on {}", MTD_LETTERBOX_PATH);
+    let listener = open_socket();
 
     // Ensure the socket is closed when a control-C occurs
-    ctrlc::set_handler(move || {
-        reset_default_power_limit();
-        print!("Closing socket at {}", MTD_LETTERBOX_PATH);
-        let _ = fs::remove_file(MTD_LETTERBOX_PATH);
+    ctrlc::set_handler(|| {
+        close_socket();
         exit(0);
     }).unwrap();
 
@@ -191,7 +164,7 @@ fn main() -> io::Result<()> {
 
         let stream = listener.incoming().next().unwrap();
         match stream {
-            Ok(stream) => handle_client(stream, config)?,
+            Ok(stream) => handle_client(stream, config).unwrap(),
             Err(e) => eprintln!("Connection failed: {}", e),
         }
     } else {
@@ -199,8 +172,8 @@ fn main() -> io::Result<()> {
             match stream {
                 Ok(stream) => {
                     let config_clone = config.clone();
-                    std::thread::spawn(move || {
-                        handle_client(stream, config_clone)
+                    thread::spawn(move || {
+                        handle_client(stream, config_clone).unwrap()
                     });
                 }
                 Err(e) => eprintln!("Connection failed: {}", e),
@@ -208,9 +181,21 @@ fn main() -> io::Result<()> {
         }
     }
 
-    reset_default_power_limit();
-    println!("Closing socket at {}", MTD_LETTERBOX_PATH);
-    fs::remove_file(MTD_LETTERBOX_PATH)?;
+    close_socket();
+}
 
-    Ok(())
+fn open_socket() -> UnixListener {
+    if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
+        println!("Closing previous socket: {}", MTD_LETTERBOX_PATH);
+        fs::remove_file(MTD_LETTERBOX_PATH).expect("Could not close socket");
+    }
+
+    println!("Creating socket: {}", MTD_LETTERBOX_PATH);
+    UnixListener::bind(MTD_LETTERBOX_PATH).expect("Could not create socket")
+}
+
+fn close_socket() {
+    reset_default_power_limit();
+    println!("Closing socket: {}", MTD_LETTERBOX_PATH);
+    fs::remove_file(MTD_LETTERBOX_PATH).expect("Could not close socket");
 }
