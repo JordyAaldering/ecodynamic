@@ -1,4 +1,4 @@
-use crate::{GlobalDemand, Demand, Sample};
+use crate::{GlobalDemand, LocalDemand, Sample};
 
 use super::Controller;
 
@@ -15,9 +15,9 @@ impl FixedController {
 impl Controller for FixedController {
     fn evolve(&mut self, _: Vec<Sample>) { }
 
-    fn next_demand(&mut self) -> (GlobalDemand, Demand) {
+    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
         let global = GlobalDemand::default();
-        let local = Demand { threads_pct: self.threads_pct };
+        let local = LocalDemand { threads_pct: self.threads_pct };
         (global, local)
     }
 }
