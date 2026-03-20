@@ -1,12 +1,12 @@
 mod config;
 
-use std::{collections::HashMap, fs, io::{self, Read, Write}, mem, os::unix::net::{UnixListener, UnixStream}, process::{Command, exit}, sync::{LazyLock, Mutex, RwLock}, thread};
+use std::{collections::HashMap, fs, io::{self, Read, Write}, mem, os::unix::net::{UnixListener, UnixStream}, process::{Command, exit}, sync::{LazyLock, Mutex}, thread};
 
 use clap::Parser;
 use controller::*;
 use rapl_energy::Rapl;
 
-use crate::config::Config;
+use crate::config::Args;
 
 macro_rules! debug_println {
     ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
@@ -18,9 +18,7 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     rapl.map(Mutex::new)
 });
 
-static IDLE_POWER: RwLock<f32> = RwLock::new(f32::MAX);
-
-fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
+fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
 
     let mut buffer = [0u8; Sample::SIZE];
@@ -49,16 +47,6 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                 let sample = Sample::from(buffer);
                 debug_println!("Recv: {:?}", sample);
 
-                // Only refine idle power if it was not explicitly set
-                if config.idle_power.is_none() {
-                    let sample_power = sample.energy / (sample.runtime + f32::EPSILON);
-                    if sample_power < *IDLE_POWER.read().unwrap() {
-                        // Power draw of the sample is less than automatically predetermined power draw.
-                        println!("Idle power refined to {sample_power}W");
-                        *IDLE_POWER.write().unwrap() = sample_power;
-                    }
-                }
-
                 let (samples, controller) = lbs.get_mut(&sample.region_uid).unwrap();
 
                 samples.push(sample);
@@ -66,12 +54,10 @@ fn handle_client(mut stream: UnixStream, config: Config) -> io::Result<()> {
                     let mut swap = Vec::with_capacity(config.letterbox_size);
                     mem::swap(samples, &mut swap);
 
-                    { // Subtract idle after-the-fact, to ensure at least these samples will use the same idle power draw value
-                        let idle_power = *IDLE_POWER.read().unwrap();
-                        for sample in &mut swap {
-                            sample.energy -= idle_power * sample.runtime;
-                            sample.energy = sample.energy.min(0.0);
-                        }
+                    // Subtract idle
+                    for sample in &mut swap {
+                        sample.energy -= config.idle_power * sample.runtime;
+                        sample.energy = sample.energy.min(0.0);
                     }
 
                     controller.evolve(swap);
@@ -145,10 +131,7 @@ fn reset_default_power_limit() {
 }
 
 fn main() {
-    let config = Config::parse();
-    if let Some(idle_power) = config.idle_power {
-        *IDLE_POWER.write().unwrap() = idle_power;
-    }
+    let config = Args::parse();
 
     let listener = open_socket();
 
@@ -158,9 +141,9 @@ fn main() {
         exit(0);
     }).unwrap();
 
-    if let Some((prog, args)) = config.cmd.split_first() {
-        println!("Running controller for a single connection ({})", prog);
-        Command::new(prog).args(args).spawn().unwrap();
+    if let Some(prog) = &config.cmd {
+        println!("Running controller only for: {}", prog);
+        Command::new(prog).spawn().unwrap();
 
         let stream = listener.incoming().next().unwrap();
         match stream {

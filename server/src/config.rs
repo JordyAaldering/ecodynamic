@@ -2,24 +2,24 @@ use clap::{Parser, Subcommand};
 use controller::*;
 
 #[derive(Clone, Debug, Parser)]
-#[command(version, about, long_about = None)]
-pub struct Config {
-    /// Controller type.
-    #[command(subcommand)]
-    pub controller: ControllerType,
-
+pub struct Args {
     /// Size of the letterbox.
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
 
-    /// Idle power draw of the system. Leave empty to determine automatically, set to 0 to
-    /// ignore idle power, or set to a specific value if idle power is predetermined.
-    #[arg(short('w'), long)]
-    pub idle_power: Option<f32>,
+    /// Idle power draw of the processor.
+    #[arg(short('w'), long, default_value_t = 0.0)]
+    pub idle_power: f32,
 
-    /// If a specific command is provided, run the resource controller for that processo only.
-    #[arg(trailing_var_arg = true)]
-    pub cmd: Vec<String>,
+    /// If a specific command is provided, run the resource controller for that process only.
+    ///
+    /// This must be a single command, without arguments, due to the way argument parsing works.
+    #[arg(short('c'), long)]
+    pub cmd: Option<String>,
+
+    /// Controller type.
+    #[command(subcommand)]
+    pub controller: ControllerType,
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -36,7 +36,7 @@ pub enum ControllerType {
     Fixed,
 }
 
-impl Config {
+impl Args {
     pub fn build(&self) -> Box<dyn Controller> {
         use ControllerType::*;
         match &self.controller {
