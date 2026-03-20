@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 #[derive(Copy, Clone, Debug)]
 #[derive(clap::ValueEnum)]
 pub enum FilterFunction {
@@ -29,12 +31,12 @@ fn average(xs: Vec<f32>) -> f32 {
 }
 
 pub fn median(mut xs: Vec<f32>) -> f32 {
-    xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sort(&mut xs);
     xs[xs.len() / 2]
 }
 
 fn frequency_dist(mut xs: Vec<f32>, num_ranges: usize) -> f32 {
-    xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sort(&mut xs);
 
     let min = xs[0];
     let max = xs[xs.len() - 1];
@@ -54,4 +56,21 @@ fn frequency_dist(mut xs: Vec<f32>, num_ranges: usize) -> f32 {
 
     let biggest_dist = dist.into_iter().max_by_key(Vec::len).unwrap();
     biggest_dist[0]
+}
+
+fn sort(xs: &mut Vec<f32>) {
+    xs.sort_unstable_by(|a, b| {
+        match a.partial_cmp(b) {
+            Some(order) => order,
+            None => {
+                if a.is_nan() && b.is_nan() {
+                    Ordering::Equal
+                } else if a.is_nan() {
+                    Ordering::Greater
+                } else {
+                    Ordering::Less
+                }
+            }
+        }
+    });
 }
