@@ -1,6 +1,6 @@
 mod config;
 
-use std::{collections::HashMap, fs, io::{self, Read, Write}, mem, os::unix::net::{UnixListener, UnixStream}, process::{Command, exit}, sync::{LazyLock, Mutex}, thread};
+use std::{collections::HashMap, fs, io::{self, Read, Write}, os::unix::net::{UnixListener, UnixStream}, process::{Command, exit}, sync::{LazyLock, Mutex}, thread};
 
 use clap::Parser;
 use controller::*;
@@ -19,7 +19,7 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
 });
 
 fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
-    let mut lbs: HashMap<i32, (Vec<Sample>, Box<dyn Controller>)> = HashMap::new();
+    let mut lbs: HashMap<i32, Box<dyn Controller>> = HashMap::new();
 
     let mut buffer = [0u8; Sample::SIZE];
 
@@ -31,12 +31,12 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 debug_println!("Read: {:?}", region_uid);
 
                 // Update letterbox
-                let (_, controller) = lbs.entry(region_uid)
-                    .or_insert_with(|| (Vec::with_capacity(config.letterbox_size), config.build()));
+                let controller = lbs.entry(region_uid)
+                    .or_insert_with(|| config.build_controller());
 
-                let (global_demand, local_demand) = controller.next_demand();
+                let (global_demand, local_demand) = controller.get_demand();
 
-                set_power_limit(global_demand.power_limit_pct);
+                set_power_limit(global_demand.powercap_pct);
 
                 // Write to stream
                 debug_println!("Send: {:?}", local_demand);
@@ -49,14 +49,8 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 sample.energy -= config.idle_power * sample.runtime;
                 sample.energy = sample.energy.max(f32::EPSILON);
 
-                let (samples, controller) = lbs.get_mut(&sample.region_uid).unwrap();
-
-                samples.push(sample);
-                if samples.len() >= config.letterbox_size {
-                    let mut swap = Vec::with_capacity(config.letterbox_size);
-                    mem::swap(samples, &mut swap);
-                    controller.evolve(swap);
-                }
+                let controller = lbs.get_mut(&sample.region_uid).unwrap();
+                controller.push_sample(sample);
             }
             Err(e) => {
                 println!("Client disconnected");

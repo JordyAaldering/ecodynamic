@@ -1,18 +1,21 @@
 use clap::Parser;
 
-use crate::*;
+use crate::{Controller, GlobalDemand, LocalDemand, Sample, direction::Direction, filter_functions, scoring_functions::ScoreFunction};
 
 pub struct GeneticController {
+    samples: Vec<Sample>,
     population: Vec<Chromosome>,
     prev_median_score: Option<f32>,
     sort_order: Direction,
-    sample_index: usize,
     config: GeneticControllerConfig,
 }
 
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
+    #[arg(short('s'), long, default_value_t = 20)]
+    pub population_size: usize,
+
     /// Method for scoring the fitness of each chromosome.
     #[arg(long, default_value_t = ScoreFunction::Slider)]
     pub score: ScoreFunction,
@@ -75,28 +78,50 @@ pub struct GeneticControllerConfig {
 }
 
 impl GeneticController {
-    pub fn new(population_size: usize, config: GeneticControllerConfig) -> Self {
+    pub fn new(config: GeneticControllerConfig) -> Self {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
         // I.e. value = lower + i * (upper - lower) / length
-        let population = (0..population_size).map(|i| {
-                let threads_pct = config.threads_min + (i as f32 * (config.threads_max - config.threads_min) / (population_size - 1) as f32);
-                let power_pct = config.power_min + (i as f32 * (config.power_max - config.power_min) / (population_size - 1) as f32);
+        let population = (0..config.population_size).map(|i| {
+                let threads_pct = config.threads_min + (i as f32 * (config.threads_max - config.threads_min) / (config.population_size - 1) as f32);
+                let power_pct = config.power_min + (i as f32 * (config.power_max - config.power_min) / (config.population_size - 1) as f32);
                 Chromosome::new(threads_pct, power_pct)
             }).rev().collect();
 
         Self {
+            samples: Vec::with_capacity(config.population_size),
             population,
             prev_median_score: None,
             sort_order: Direction::Decreasing,
-            sample_index: 0,
             config,
         }
     }
 }
 
 impl Controller for GeneticController {
-    fn evolve(&mut self, samples: Vec<Sample>) {
+    /// Use the number of samples to determine the current index into the population.
+    /// The population is reset every `population_size` iterations.
+    /// In between, we want every chromosome to be applied once.
+    fn get_demand(&self) -> (GlobalDemand, LocalDemand) {
+        debug_assert!(self.samples.len() < self.population.len());
+        let chromosome = &self.population[self.samples.len()];
+        let global = GlobalDemand { powercap_pct: chromosome.power_pct };
+        let local = LocalDemand { threads_pct: chromosome.threads_pct };
+        (global, local)
+    }
+
+    fn push_sample(&mut self, sample: Sample) {
+        self.samples.push(sample);
+
+        if self.samples.len() >= self.config.population_size {
+            self.evolve();
+            self.samples.clear();
+        }
+    }
+}
+
+impl GeneticController {
+    fn evolve(&mut self) {
         let GeneticControllerConfig {
             score: score_fn,
             energy_preference,
@@ -105,12 +130,9 @@ impl Controller for GeneticController {
             immigration_rate,
             immigration_trigger,
             ..
-         } = self.config;
+        } = self.config;
 
-        // Reset sample index to prepare for the next call to `next_demand`
-        self.sample_index = 0;
-
-        let scores = score_fn.score(samples, energy_preference);
+        let scores = score_fn.score(&self.samples, energy_preference);
 
         let population_size = self.population.len();
 
@@ -190,18 +212,6 @@ impl Controller for GeneticController {
                 self.sort_order = Direction::Increasing;
             }
         }
-    }
-
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
-        // Use the number of samples to determine the current index into the population.
-        // The population is reset every `population_size` iterations.
-        // In between, we want every chromosome to be applied once.
-        let chromosome = &self.population[self.sample_index];
-        self.sample_index += 1;
-
-        let global = GlobalDemand { power_limit_pct: chromosome.power_pct };
-        let local = LocalDemand { threads_pct: chromosome.threads_pct };
-        (global, local)
     }
 }
 

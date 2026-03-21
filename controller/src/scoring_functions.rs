@@ -20,15 +20,15 @@ pub enum ScoreFunction {
 }
 
 impl ScoreFunction {
-    pub fn score(self, samples: Vec<Sample>, x: f32) -> Vec<f32> {
+    pub fn score(self, samples: &Vec<Sample>, x: f32) -> Vec<f32> {
         use ScoreFunction::*;
         match self {
-            Runtime => samples.into_iter().map(|s| s.runtime).collect(),
-            Energy => samples.into_iter().map(|s| s.energy).collect(),
-            EDP => samples.into_iter().map(|s| s.energy * s.runtime).collect(),
-            E2DP => samples.into_iter().map(|s| s.energy * s.energy * s.runtime).collect(),
+            Runtime => samples.iter().map(|s| s.runtime).collect(),
+            Energy => samples.iter().map(|s| s.energy).collect(),
+            EDP => samples.iter().map(|s| s.energy * s.runtime).collect(),
+            E2DP => samples.iter().map(|s| s.energy * s.energy * s.runtime).collect(),
             Pareto => {
-                let mut fronts = non_dominated_sort(&samples, &SampleDominanceOrd);
+                let mut fronts = non_dominated_sort(samples, &SampleDominanceOrd);
 
                 let mut scores = vec![-1.0; samples.len()];
                 let mut dominated_count = 1.0;
@@ -41,9 +41,12 @@ impl ScoreFunction {
                 }
 
                 scores
-            }
-            Slider => samples.into_iter().map(|s|
-                s.energy.powf(x) * s.runtime.powf(1.0 - x)).collect(),
+            },
+            Slider => {
+                samples.iter().map(|s| {
+                    s.energy.powf(x) * s.runtime.powf(1.0 - x)
+                }).collect()
+            },
         }
     }
 }

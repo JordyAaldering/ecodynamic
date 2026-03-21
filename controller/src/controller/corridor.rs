@@ -1,12 +1,11 @@
 use clap::Parser;
 
-use crate::{Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction, FilterFunction};
-
-use super::Controller;
+use crate::{Controller, Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction, FilterFunction};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
 pub struct CorridorController {
+    samples: Vec<Sample>,
     threads_pct: f32,
     step_size: f32,
     step_dir: Direction,
@@ -18,6 +17,9 @@ pub struct CorridorController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct CorridorControllerConfig {
+    #[arg(short('s'), long, default_value_t = 20)]
+    pub letterbox_size: usize,
+
     #[arg(long)]
     pub score: ScoreFunction,
 
@@ -28,6 +30,7 @@ pub struct CorridorControllerConfig {
 impl CorridorController {
     pub fn new(config: CorridorControllerConfig) -> Self {
         Self {
+            samples: Vec::with_capacity(config.letterbox_size),
             threads_pct: 1.0,
             step_size: 1.0, // Will immediately be halved in the first iteration
             step_dir: Direction::Decreasing,
@@ -39,8 +42,25 @@ impl CorridorController {
 }
 
 impl Controller for CorridorController {
-    fn evolve(&mut self, samples: Vec<Sample>) {
-        let tn = self.config.select.select(self.config.score.score(samples, 0.5));
+    fn get_demand(&self) -> (GlobalDemand, LocalDemand) {
+        let global = GlobalDemand { powercap_pct: 1.0 };
+        let local = LocalDemand { threads_pct: self.threads_pct };
+        (global, local)
+    }
+
+    fn push_sample(&mut self, sample: Sample) {
+        self.samples.push(sample);
+
+        if self.samples.len() >= self.config.letterbox_size {
+            self.evolve();
+            self.samples.clear();
+        }
+    }
+}
+
+impl CorridorController {
+    fn evolve(&mut self) {
+        let tn = self.config.select.select(self.config.score.score(&self.samples, 0.5));
 
         // TODO: check if replacing num_threads with threads_pct here was sufficient, or if we need to update the formula
         if self.t1 / (tn + f32::EPSILON) < 0.5 * self.threads_pct {
@@ -61,11 +81,5 @@ impl Controller for CorridorController {
         self.t_prev = tn;
         self.threads_pct += Into::<f32>::into(self.step_dir) * self.step_size;
         self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
-    }
-
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
-        let global = GlobalDemand::default();
-        let local = LocalDemand { threads_pct: self.threads_pct };
-        (global, local)
     }
 }

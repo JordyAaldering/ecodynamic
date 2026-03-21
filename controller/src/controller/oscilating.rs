@@ -19,17 +19,18 @@ impl OscilatingController {
 }
 
 impl Controller for OscilatingController {
-    fn evolve(&mut self, _: Vec<Sample>) {
+    fn get_demand(&self) -> (GlobalDemand, LocalDemand) {
+        let global = GlobalDemand { powercap_pct: 1.0 };
+        let local = LocalDemand { threads_pct: self.threads_pct };
+        (global, local)
+    }
+
+    /// Ignores the sample, always evolve to the next step
+    fn push_sample(&mut self, _: Sample) {
         self.threads_pct += self.direction;
         if self.threads_pct <= THREADS_PCT_MIN || self.threads_pct >= 1.0 {
             self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
             self.direction = -self.direction;
         }
-    }
-
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
-        let global = GlobalDemand::default();
-        let local = LocalDemand { threads_pct: self.threads_pct };
-        (global, local)
     }
 }

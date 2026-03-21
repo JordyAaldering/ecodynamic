@@ -1,23 +1,25 @@
-use crate::{GlobalDemand, LocalDemand, Sample};
-
-use super::Controller;
+use crate::{Controller, GlobalDemand, LocalDemand, Sample};
 
 pub struct FixedController {
+    powercap_pct: f32,
     threads_pct: f32,
 }
 
 impl FixedController {
     pub fn new() -> Self {
-        Self { threads_pct: 1.0 }
+        Self {
+            powercap_pct: 1.0,
+            threads_pct: 1.0,
+        }
     }
 }
 
 impl Controller for FixedController {
-    fn evolve(&mut self, _: Vec<Sample>) { }
-
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
-        let global = GlobalDemand::default();
+    fn get_demand(&self) -> (GlobalDemand, LocalDemand) {
+        let global = GlobalDemand { powercap_pct: self.powercap_pct };
         let local = LocalDemand { threads_pct: self.threads_pct };
         (global, local)
     }
+
+    fn push_sample(&mut self, _: Sample) { }
 }

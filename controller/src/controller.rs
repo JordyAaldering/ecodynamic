@@ -13,7 +13,14 @@ pub use oscilating::*;
 use crate::{GlobalDemand, LocalDemand, Sample};
 
 pub trait Controller {
-    fn evolve(&mut self, samples: Vec<Sample>);
+    /// Gets the demand (e.g. power limit or thread count) for the current runtime conditions.
+    ///
+    /// Note that for the very first iteration, this will be called before any samples have been collected.
+    fn get_demand(&self) -> (GlobalDemand, LocalDemand);
 
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand);
+    /// A new sample was received.
+    ///
+    /// Either this directly results in an 'evolution' of the controller, or the sample is
+    /// stored until enough samples have been collected to perform an evolution step.
+    fn push_sample(&mut self, sample: Sample);
 }

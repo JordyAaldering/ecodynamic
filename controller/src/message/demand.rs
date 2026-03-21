@@ -1,10 +1,10 @@
 use std::mem;
 
 /// System-wide demands that have to be set by this controller.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct GlobalDemand {
     /// Maximum allowed CPU power as a fraction beteen (0,1].
-    pub power_limit_pct: f32,
+    pub powercap_pct: f32,
 }
 
 /// Application-specific demands that have to be set by the controlled application.

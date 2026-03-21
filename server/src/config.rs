@@ -3,10 +3,6 @@ use controller::*;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
-    /// Size of the letterbox.
-    #[arg(short('s'), long, default_value_t = 20)]
-    pub letterbox_size: usize,
-
     /// Idle power draw of the processor.
     #[arg(short('w'), long, default_value_t = 0.0)]
     pub idle_power: f32,
@@ -37,10 +33,10 @@ pub enum ControllerType {
 }
 
 impl Args {
-    pub fn build(&self) -> Box<dyn Controller> {
+    pub fn build_controller(&self) -> Box<dyn Controller> {
         use ControllerType::*;
         match &self.controller {
-            Genetic(config) => Box::new(GeneticController::new(self.letterbox_size, config.clone())),
+            Genetic(config) => Box::new(GeneticController::new(config.clone())),
             Corridor(config) => Box::new(CorridorController::new(config.clone())),
             Delta(config) => Box::new(DeltaController::new(config.clone())),
             Oscilating => Box::new(OscilatingController::new()),

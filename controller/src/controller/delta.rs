@@ -1,12 +1,11 @@
 use clap::Parser;
 
-use crate::{Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction, FilterFunction};
-
-use super::Controller;
+use crate::{Controller, Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction, FilterFunction};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
 pub struct DeltaController {
+    samples: Vec<Sample>,
     threads_pct: f32,
     step_size: f32,
     step_dir: Direction,
@@ -17,6 +16,9 @@ pub struct DeltaController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct DeltaControllerConfig {
+    #[arg(short('s'), long, default_value_t = 20)]
+    pub letterbox_size: usize,
+
     #[arg(long)]
     pub score: ScoreFunction,
 
@@ -27,6 +29,7 @@ pub struct DeltaControllerConfig {
 impl DeltaController {
     pub fn new(config: DeltaControllerConfig) -> Self {
         Self {
+            samples: Vec::with_capacity(config.letterbox_size),
             threads_pct: 1.0,
             step_size: 0.5,
             step_dir: Direction::Decreasing,
@@ -34,19 +37,28 @@ impl DeltaController {
             config,
         }
     }
-
-    fn reset_direction(&mut self) {
-        self.step_dir = if self.threads_pct < (1.0 + THREADS_PCT_MIN) / 2.0 {
-            Direction::Increasing
-        } else {
-            Direction::Decreasing
-        };
-    }
 }
 
 impl Controller for DeltaController {
-    fn evolve(&mut self, samples: Vec<Sample>) {
-        let e_next = self.config.select.select(self.config.score.score(samples, 0.5));
+    fn get_demand(&self) -> (GlobalDemand, LocalDemand) {
+        let global = GlobalDemand { powercap_pct: 1.0 };
+        let local = LocalDemand { threads_pct: self.threads_pct };
+        (global, local)
+    }
+
+    fn push_sample(&mut self, sample: Sample) {
+        self.samples.push(sample);
+
+        if self.samples.len() >= self.config.letterbox_size {
+            self.evolve();
+            self.samples.clear();
+        }
+    }
+}
+
+impl DeltaController {
+    fn evolve(&mut self) {
+        let e_next = self.config.select.select(self.config.score.score(&self.samples, 0.5));
 
         if e_next > self.e_prev * 1.50 {
             self.step_size = 0.5;
@@ -70,9 +82,11 @@ impl Controller for DeltaController {
         self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
     }
 
-    fn next_demand(&mut self) -> (GlobalDemand, LocalDemand) {
-        let global = GlobalDemand::default();
-        let local = LocalDemand { threads_pct: self.threads_pct };
-        (global, local)
+    fn reset_direction(&mut self) {
+        self.step_dir = if self.threads_pct < (1.0 + THREADS_PCT_MIN) / 2.0 {
+            Direction::Increasing
+        } else {
+            Direction::Decreasing
+        };
     }
 }
