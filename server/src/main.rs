@@ -120,6 +120,8 @@ fn reset_default_power_limit() {
 }
 
 fn main() {
+    env_logger::init();
+
     let config = Args::parse();
 
     let listener = open_socket();
