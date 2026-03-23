@@ -49,15 +49,15 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 controller.push_sample(sample);
             }
             Err(e) => {
-                println!("Client disconnected");
+                log::info!("Client disconnected");
                 return Err(e);
             }
             Ok(0) => {
-                println!("Client disconnected");
+                log::info!("Client disconnected");
                 return Ok(());
             }
             Ok(n) => {
-                eprintln!("Invalid message size: {}", n);
+                log::error!("Invalid message size: {}", n);
                 continue;
             }
         }
@@ -76,10 +76,10 @@ fn set_power_limit(power_limit_pct: f32) {
                 if let Some(max_power_uw) = constraint.max_power_uw.or(long_term) {
                     let limit = (max_power_uw as f32 * power_limit_pct) as u64;
                     if let Err(e) = constraint.set_power_limit_uw(limit) {
-                        eprintln!("Failed to set power limit for {}: {}", constraint.name.as_deref().unwrap_or("unknown"), e);
+                        log::error!("Failed to set power limit for {}: {}", constraint.name.as_deref().unwrap_or("unknown"), e);
                     }
                 } else {
-                    eprintln!("No max_power_uw found for constraint {}", constraint.name.as_deref().unwrap_or("unknown"));
+                    log::error!("No max_power_uw found for constraint {}", constraint.name.as_deref().unwrap_or("unknown"));
                 }
             }
         }
@@ -92,16 +92,16 @@ fn set_power_limit(power_limit_pct: f32) {
                 let limit = (max_power_uw as f32 * power_limit_pct) as u64;
                 let e = package.constraints.get_mut(0).unwrap().set_power_limit_uw(limit);
                 if let Err(e) = e {
-                    eprintln!("{}", e);
+                    log::error!("{}", e);
                 }
 
                 if let Some(constriant) = package.constraints.get_mut(1) {
                     if let Err(e) = constriant.set_power_limit_uw(limit) {
-                        eprintln!("{}", e);
+                        log::error!("{}", e);
                     }
                 }
             } else {
-                eprintln!("No max_power_uw found for constraint")
+                log::error!("No max_power_uw found for constraint")
             }
         }
     }
@@ -110,7 +110,7 @@ fn set_power_limit(power_limit_pct: f32) {
 fn reset_default_power_limit() {
     if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
         if let Err(e) = rapl.reset_power_limits(false) {
-            eprintln!("Failed to reset power limits: {}", e)
+            log::error!("Failed to reset power limits: {}", e)
         }
     }
 }
@@ -132,7 +132,7 @@ fn main() {
         let stream = listener.incoming().next().unwrap();
         match stream {
             Ok(stream) => handle_client(stream, config).unwrap(),
-            Err(e) => eprintln!("Connection failed: {}", e),
+            Err(e) => log::error!("Connection failed: {}", e),
         }
     } else {
         for stream in listener.incoming() {
@@ -143,7 +143,7 @@ fn main() {
                         handle_client(stream, config_clone).unwrap()
                     });
                 }
-                Err(e) => eprintln!("Connection failed: {}", e),
+                Err(e) => log::error!("Connection failed: {}", e),
             }
         }
     }
@@ -153,16 +153,16 @@ fn main() {
 
 fn open_socket() -> UnixListener {
     if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
-        println!("Closing previous socket: {}", MTD_LETTERBOX_PATH);
+        log::warn!("Closing previous socket: {}", MTD_LETTERBOX_PATH);
         fs::remove_file(MTD_LETTERBOX_PATH).expect("Could not close socket");
     }
 
-    println!("Creating socket: {}", MTD_LETTERBOX_PATH);
+    log::info!("Creating socket: {}", MTD_LETTERBOX_PATH);
     UnixListener::bind(MTD_LETTERBOX_PATH).expect("Could not create socket")
 }
 
 fn close_socket() {
     reset_default_power_limit();
-    println!("Closing socket: {}", MTD_LETTERBOX_PATH);
+    log::info!("Closing socket: {}", MTD_LETTERBOX_PATH);
     fs::remove_file(MTD_LETTERBOX_PATH).expect("Could not close socket");
 }
