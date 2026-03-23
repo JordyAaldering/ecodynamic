@@ -67,23 +67,26 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
 fn set_power_limit(power_limit_pct: f32) {
     if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
         for package in &mut rapl.packages {
-            // In some cases power_limit_uw is 0, use the long-term power limit as a fallback
-            let long_term = package.constraints.iter()
-                .find(|c| c.name.as_ref().is_some_and(|s| s == "long_term"))
-                .map(|c| c.max_power_uw.expect("long_term constraint must have max_power_uw"));
+            let long_term = &mut package.constraints[0];
+            let max_power_uw = long_term.max_power_uw.expect("long_term constraint must have max_power_uw");
+            let limit = (max_power_uw as f32 * power_limit_pct) as u64;
 
-            for constraint in &mut package.constraints {
-                if let Some(max_power_uw) = constraint.max_power_uw.or(long_term) {
-                    let limit = (max_power_uw as f32 * power_limit_pct) as u64;
-                    log::trace!("Setting power limit for {} to {}uW ({}% of max)",
-                        constraint.name.as_deref().unwrap_or("unknown"), limit, power_limit_pct * 100.0);
-                    if let Err(e) = constraint.set_power_limit_uw(limit) {
-                        log::error!("Failed to set power limit for {}: {}",
-                            constraint.name.as_deref().unwrap_or("unknown"), e);
-                    }
-                } else {
-                    log::error!("No max_power_uw found for constraint {}",
-                        constraint.name.as_deref().unwrap_or("unknown"));
+            log::trace!("Setting power limit for {} to {}uW ({}% of max)",
+                long_term.name.as_deref().unwrap_or("<unknown>"), limit, power_limit_pct * 100.0);
+            if let Err(e) = long_term.set_power_limit_uw(limit) {
+                log::error!("Failed to set power limit for {}: {}",
+                    long_term.name.as_deref().unwrap_or("<unknown>"), e);
+            }
+
+            if let Some(short_term) = package.constraints.get_mut(1) {
+                let max_power_uw = short_term.max_power_uw.map_or(max_power_uw, |c| if c > 0 { c } else { max_power_uw });
+                let limit = (max_power_uw as f32 * power_limit_pct) as u64;
+
+                log::trace!("Setting power limit for {} to {}uW ({}% of max)",
+                    short_term.name.as_deref().unwrap_or("<unknown>"), limit, power_limit_pct * 100.0);
+                if let Err(e) = short_term.set_power_limit_uw(limit) {
+                    log::error!("Failed to set power limit for {}: {}",
+                        short_term.name.as_deref().unwrap_or("<unknown>"), e);
                 }
             }
         }
