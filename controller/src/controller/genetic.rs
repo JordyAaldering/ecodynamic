@@ -220,8 +220,12 @@ impl GeneticController {
 }
 
 fn sort_population_by_score(population: &mut Vec<Chromosome>, scores: Vec<f32>) {
-    let mut zipped: Vec<_> = population.iter_mut().zip(scores).collect();
-    zipped.sort_unstable_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
+    // let mut zipped: Vec<_> = population.iter_mut().zip(scores).collect();
+    // zipped.sort_unstable_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
+
+    let mut combined: Vec<_> = population.drain(..).zip(scores).collect();
+    combined.sort_unstable_by(|(_, a), (_, b)| a.total_cmp(b));
+    *population = combined.into_iter().map(|(c, _)| c).collect();
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -27,12 +27,11 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 log::trace!("GET: {:?}", region_uid);
 
                 // Update letterbox
-                let controller = lbs.entry(region_uid)
-                    .or_insert_with(|| config.build_controller());
+                let (global_demand, local_demand) = lbs.entry(region_uid)
+                    .or_insert_with(|| config.build_controller())
+                    .get_demand();
 
-                let (global_demand, local_demand) = controller.get_demand();
                 log::trace!("PUT: {:?} {:?}", global_demand, local_demand);
-
                 set_power_limit(global_demand.powercap_pct);
                 let buf: [u8; LocalDemand::SIZE] = local_demand.to_bytes();
                 stream.write_all(&buf)?;
