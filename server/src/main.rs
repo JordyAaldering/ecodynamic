@@ -35,7 +35,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 set_power_limit(global_demand.powercap_pct);
 
                 // Write to stream
-                log::trace!("Send: {:?}", local_demand);
+                log::trace!("Send: {:?} {:?}", global_demand, local_demand);
                 let buf: [u8; LocalDemand::SIZE] = local_demand.to_bytes();
                 stream.write_all(&buf)?;
             }
@@ -75,11 +75,15 @@ fn set_power_limit(power_limit_pct: f32) {
             for constraint in &mut package.constraints {
                 if let Some(max_power_uw) = constraint.max_power_uw.or(long_term) {
                     let limit = (max_power_uw as f32 * power_limit_pct) as u64;
+                    log::trace!("Setting power limit for {} to {}uW ({}% of max)",
+                        constraint.name.as_deref().unwrap_or("unknown"), limit, power_limit_pct * 100.0);
                     if let Err(e) = constraint.set_power_limit_uw(limit) {
-                        log::error!("Failed to set power limit for {}: {}", constraint.name.as_deref().unwrap_or("unknown"), e);
+                        log::error!("Failed to set power limit for {}: {}",
+                            constraint.name.as_deref().unwrap_or("unknown"), e);
                     }
                 } else {
-                    log::error!("No max_power_uw found for constraint {}", constraint.name.as_deref().unwrap_or("unknown"));
+                    log::error!("No max_power_uw found for constraint {}",
+                        constraint.name.as_deref().unwrap_or("unknown"));
                 }
             }
         }
