@@ -24,7 +24,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
             Ok(Request::SIZE) => {
                 let buf: [u8; Request::SIZE] = buffer[0..Request::SIZE].try_into().unwrap();
                 let Request { region_uid, .. } = Request::from(buf);
-                log::info!("Read: {:?}", region_uid);
+                log::trace!("Read: {:?}", region_uid);
 
                 // Update letterbox
                 let controller = lbs.entry(region_uid)
@@ -35,13 +35,13 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 set_power_limit(global_demand.powercap_pct);
 
                 // Write to stream
-                log::info!("Send: {:?}", local_demand);
+                log::trace!("Send: {:?}", local_demand);
                 let buf: [u8; LocalDemand::SIZE] = local_demand.to_bytes();
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {
                 let mut sample = Sample::from(buffer);
-                log::info!("Recv: {:?}", sample);
+                log::trace!("Recv: {:?}", sample);
                 sample.energy -= config.idle_power * sample.runtime;
                 sample.energy = sample.energy.max(f32::EPSILON);
 

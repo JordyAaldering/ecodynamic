@@ -8,7 +8,7 @@ pub struct Args {
     pub once: bool,
 
     /// Idle power draw of the processor.
-    #[arg(short('w'), long, default_value_t = 0.0)]
+    #[arg(short('w'), long("idle"), default_value_t = 0.0)]
     pub idle_power: f32,
 
     /// Controller type.
