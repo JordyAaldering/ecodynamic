@@ -1,6 +1,6 @@
 mod config;
 
-use std::{collections::HashMap, fs, io::{self, Read, Write}, os::unix::net::{UnixListener, UnixStream}, process::{Command, exit}, sync::{LazyLock, Mutex}, thread};
+use std::{collections::HashMap, fs, io::{self, Read, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex}, thread};
 
 use clap::Parser;
 use controller::*;
@@ -8,13 +8,9 @@ use rapl_energy::Rapl;
 
 use crate::config::Args;
 
-macro_rules! debug_println {
-    ($($arg:tt)*) => (#[cfg(debug_assertions)] println!($($arg)*));
-}
-
 static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     let rapl = Rapl::new(false);
-    println!("RAPL interface: {:?}", rapl);
+    log::trace!("RAPL interface: {:?}", rapl);
     rapl.map(Mutex::new)
 });
 
@@ -28,7 +24,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
             Ok(Request::SIZE) => {
                 let buf: [u8; Request::SIZE] = buffer[0..Request::SIZE].try_into().unwrap();
                 let Request { region_uid, .. } = Request::from(buf);
-                debug_println!("Read: {:?}", region_uid);
+                log::info!("Read: {:?}", region_uid);
 
                 // Update letterbox
                 let controller = lbs.entry(region_uid)
@@ -39,13 +35,13 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 set_power_limit(global_demand.powercap_pct);
 
                 // Write to stream
-                debug_println!("Send: {:?}", local_demand);
+                log::info!("Send: {:?}", local_demand);
                 let buf: [u8; LocalDemand::SIZE] = local_demand.to_bytes();
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {
                 let mut sample = Sample::from(buffer);
-                debug_println!("Recv: {:?}", sample);
+                log::info!("Recv: {:?}", sample);
                 sample.energy -= config.idle_power * sample.runtime;
                 sample.energy = sample.energy.max(f32::EPSILON);
 
@@ -129,13 +125,10 @@ fn main() {
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(|| {
         close_socket();
-        exit(0);
+        process::exit(0);
     }).unwrap();
 
-    if let Some(prog) = &config.cmd {
-        println!("Running controller only for: {}", prog);
-        Command::new(prog).spawn().unwrap();
-
+    if config.once {
         let stream = listener.incoming().next().unwrap();
         match stream {
             Ok(stream) => handle_client(stream, config).unwrap(),

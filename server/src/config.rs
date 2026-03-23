@@ -3,15 +3,13 @@ use controller::*;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
+    /// Exit after handling a single client.
+    #[arg(long, action)]
+    pub once: bool,
+
     /// Idle power draw of the processor.
     #[arg(short('w'), long, default_value_t = 0.0)]
     pub idle_power: f32,
-
-    /// If a specific command is provided, run the resource controller for that process only.
-    ///
-    /// This must be a single command, without arguments, due to the way argument parsing works.
-    #[arg(short('c'), long)]
-    pub cmd: Option<String>,
 
     /// Controller type.
     #[command(subcommand)]
