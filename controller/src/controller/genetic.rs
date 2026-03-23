@@ -88,6 +88,8 @@ impl GeneticController {
                 Chromosome::new(threads_pct, power_pct)
             }).rev().collect();
 
+        log::trace!("Init: {:?}", population);
+
         Self {
             samples: Vec::with_capacity(config.population_size),
             population,
@@ -212,6 +214,8 @@ impl GeneticController {
                 self.sort_order = Direction::Increasing;
             }
         }
+
+        log::trace!("Evolve: {:?}", self.population);
     }
 }
 
