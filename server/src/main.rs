@@ -24,26 +24,24 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
             Ok(Request::SIZE) => {
                 let buf: [u8; Request::SIZE] = buffer[0..Request::SIZE].try_into().unwrap();
                 let Request { region_uid, .. } = Request::from(buf);
-                log::trace!("Read: {:?}", region_uid);
+                log::trace!("GET: {:?}", region_uid);
 
                 // Update letterbox
                 let controller = lbs.entry(region_uid)
                     .or_insert_with(|| config.build_controller());
 
                 let (global_demand, local_demand) = controller.get_demand();
+                log::trace!("PUT: {:?} {:?}", global_demand, local_demand);
 
                 set_power_limit(global_demand.powercap_pct);
-
-                // Write to stream
-                log::trace!("Send: {:?} {:?}", global_demand, local_demand);
                 let buf: [u8; LocalDemand::SIZE] = local_demand.to_bytes();
                 stream.write_all(&buf)?;
             }
             Ok(Sample::SIZE) => {
                 let mut sample = Sample::from(buffer);
-                log::trace!("Recv: {:?}", sample);
                 sample.energy -= config.idle_power * sample.runtime;
                 sample.energy = sample.energy.max(f32::EPSILON);
+                log::trace!("POST: {:?}", sample);
 
                 let controller = lbs.get_mut(&sample.region_uid).unwrap();
                 controller.push_sample(sample);
@@ -96,7 +94,7 @@ fn set_power_limit(power_limit_pct: f32) {
 fn reset_default_power_limit() {
     if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
         if let Err(e) = rapl.reset_power_limits(false) {
-            log::error!("Failed to reset power limits: {}", e)
+            log::error!("Failed to reset power limits: {}", e);
         }
     }
 }
@@ -105,6 +103,7 @@ fn main() {
     env_logger::init();
 
     let config = Args::parse();
+    log::trace!("Config: {:?}", config);
 
     let listener = open_socket();
 
