@@ -13,7 +13,7 @@ pub struct GeneticController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
-    #[arg(short('s'), long, default_value_t = 20)]
+    #[arg(short('s'), long, default_value_t = 30)]
     pub population_size: usize,
 
     /// Method for scoring the fitness of each chromosome.
@@ -44,7 +44,7 @@ pub struct GeneticControllerConfig {
 
     /// Maximum allowed percentage of the powercap.
     /// Range: (0,1].
-    #[arg(long, default_value_t = 0.5)]
+    #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
 
     /// Genetic algorithm survival rate.
