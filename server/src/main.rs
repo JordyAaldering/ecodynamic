@@ -16,7 +16,7 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
 
 fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, Box<dyn Controller>> = HashMap::new();
-
+    let mut last_demand = LocalDemand { threads_pct: 1.0 };
     let mut buffer = [0u8; Sample::SIZE];
 
     loop {
@@ -26,24 +26,40 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 let Request { region_uid, .. } = Request::from(buf);
                 log::trace!("GET: {:?}", region_uid);
 
-                // Update letterbox
-                let (global_demand, local_demand) = lbs.entry(region_uid)
-                    .or_insert_with(|| config.build_controller())
-                    .get_demand();
+                if let Some(controller) = lbs.get_mut(&region_uid) {
+                    let (global_demand, local_demand) = controller.get_demand();
 
-                log::trace!("PUT: {:?} {:?}", global_demand, local_demand);
-                set_power_limit(global_demand.powercap_pct);
-                let buf: [u8; LocalDemand::SIZE] = local_demand.to_bytes();
-                stream.write_all(&buf)?;
+                    log::trace!("PUT: {:?} {:?}", global_demand, local_demand);
+                    set_power_limit(global_demand.powercap_pct);
+                    let buf = local_demand.to_bytes();
+                    stream.write_all(&buf)?;
+                    last_demand = local_demand;
+                } else {
+                    // Use the last-used configuration in an attempt to minimise configuration changes
+                    // Note that changes may still occur, if multiple clients are connected.
+                    log::trace!("PUT: {:?}", last_demand);
+                    let buf = last_demand.to_bytes();
+                    stream.write_all(&buf)?;
+                }
             }
             Ok(Sample::SIZE) => {
                 let mut sample = Sample::from(buffer);
+
+                if sample.runtime < 0.01 && !lbs.contains_key(&sample.region_uid) {
+                    // Ignore samples without a controller, where runtime is too short for accurate energy measurements
+                    // In these cases, the overhead of adjusting the configuration outweighs the potential benefits
+                    continue;
+                }
+
+                // Subtract idle power draw
                 sample.energy -= config.idle_power * sample.runtime;
                 sample.energy = sample.energy.max(f32::EPSILON);
                 log::trace!("POST: {:?}", sample);
 
-                let controller = lbs.get_mut(&sample.region_uid).unwrap();
-                controller.push_sample(sample);
+                // Push sample to the controller, which can cause it to `evolve'
+                lbs.entry(sample.region_uid)
+                    .or_insert_with(|| config.build_controller())
+                    .push_sample(sample);
             }
             Err(e) => {
                 log::info!("Client disconnected");
