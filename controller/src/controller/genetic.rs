@@ -1,11 +1,11 @@
 use clap::Parser;
 
-use crate::{Controller, GlobalDemand, LocalDemand, Sample, direction::Direction, filter_functions, scoring_functions::ScoreFunction};
+use crate::{Controller, GlobalDemand, LocalDemand, Sample, direction::Direction, scoring_functions::ScoreFunction};
 
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
-    prev_median_score: Option<f32>,
+    prev_best_score: Option<f32>,
     sort_order: Direction,
     config: GeneticControllerConfig,
 }
@@ -93,7 +93,7 @@ impl GeneticController {
         Self {
             samples: Vec::with_capacity(config.population_size),
             population,
-            prev_median_score: None,
+            prev_best_score: None,
             sort_order: Direction::Decreasing,
             config,
         }
@@ -150,22 +150,23 @@ impl GeneticController {
             survival_count
         };
 
-        let allow_immigration = if let Some(immigration_trigger) = immigration_trigger {
-            let median_score = filter_functions::median(scores.clone());
-            if self.prev_median_score.is_some_and(|prev| pct_change(prev, median_score) > immigration_trigger) {
-                // Reset median after immigration occurs, ensuring we do not immigrate twice in a row
-                self.prev_median_score = None;
+        let do_immigration = if let Some(immigration_trigger) = immigration_trigger {
+            let best_score = *scores.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+            if self.prev_best_score.is_some_and(|prev| pct_change(prev, best_score) > immigration_trigger) {
+                // Reset score after immigration occurs, ensuring we do not immigrate twice in a row
+                self.prev_best_score = None;
                 true
             } else {
-                self.prev_median_score = Some(median_score);
+                self.prev_best_score = Some(self.prev_best_score.map_or(best_score, |prev| prev.min(best_score)));
                 false
             }
         } else {
             // Immigration trigger is not set; immigration is always enabled
+            // (By default, there will still be no immigration because the immigration rate is 0)
             true
         };
 
-        let immigration_start = if allow_immigration {
+        let immigration_start = if do_immigration {
             // When immigration rate is less than 1 / population_size, we use a random
             // chance based on the remainder to ensure immigration can still occur.
             let immigration_count = population_size as f32 * immigration_rate;
