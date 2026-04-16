@@ -54,7 +54,7 @@ impl<I: Iterator> EcoIterator<I> {
         if let (Some(stream), Some(reader)) = (&mut self.stream, &mut self.reader) {
             write_json_line(stream, &Request {
                 region_uid: self.region_uid,
-                problem_size: 0,
+                problem_size: None,
             }).unwrap();
 
             if let Some(before_fn) = self.before_fn {

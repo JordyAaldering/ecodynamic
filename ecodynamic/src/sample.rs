@@ -23,7 +23,7 @@ impl SamplePair {
             region_uid,
             runtime: runtime.as_secs_f32(),
             energy: energy.values().sum(),
-            usertime: 0.0,
+            usertime: None,
         }
     }
 }
