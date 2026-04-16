@@ -31,13 +31,14 @@ impl Matrix {
 }
 
 fn main() {
-    let x = Matrix::iota(500, 500);
-    let y = Matrix::iota(500, 500);
+    let x = Matrix::iota(400, 400);
+    let y = Matrix::iota(400, 400);
 
-    ecodynamic::EcoIterator::new(0..)
+    ecodynamic::EcoIterator::new(1.., ecodynamic::Capabilities { max_threads: Some(std::thread::available_parallelism().map_or(1, |n| n.get())) })
         .before(|d| println!("Received demand: {:?}", d))
         .after(|s| println!("Sending sample: {:?}", s))
-        .for_each(|_| {
+        .for_each(|i| {
+            println!("Iteration {}", i);
             black_box(x.mul(&y));
         });
 }

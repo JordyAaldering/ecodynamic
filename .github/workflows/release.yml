@@ -22,6 +22,5 @@ jobs:
       with:
         release_name: Release
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: target/release/{letterbox.h,server}
-        file_glob: true
+        file: target/release/server
         overwrite: true

@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include "letterbox.h"
+#define MTD_LETTERBOX_PATH "/tmp/mtd_letterbox"
 
 int open_letterbox(void) {
     // Create Unix domain socket
@@ -32,45 +33,24 @@ int open_letterbox(void) {
     return sockfd;
 }
 
-struct Demand read_letterbox(int sockfd, uintptr_t fptr) {
-    if (sockfd < 0) {
-        // Initialize the socket
-
-    }
-
+void read_letterbox(FILE *sock_file, int32_t region_uid) {
     // Signal to the controller which region we are about to start
-    struct Request request;
-    request.region_uid = (int32_t)fptr;
-    request.problem_size = 0;
-    if (write(sockfd, &request, sizeof(struct Request)) == -1) {
-        close(sockfd);
-        perror("write");
-        exit(EXIT_FAILURE);
-    }
+    fprintf(sock_file, "{\"region_uid\":%d,\"problem_size\":0}\n", region_uid);
+    fflush(sock_file);
 
     // Read the demand of this region from the controller
-    struct Demand demand;
-    if (read(sockfd, &demand, sizeof(struct Demand)) == -1) {
-        close(sockfd);
-        perror("read");
+    char buf[256];
+    if (fgets(buf, sizeof(buf), sock_file) == NULL) {
+        perror("fgets");
         exit(EXIT_FAILURE);
     }
-
-    return demand;
+    printf("Received demand: %s", buf);
 }
 
-void update_letterbox(int sockfd, uintptr_t fptr) {
+void update_letterbox(FILE *sock_file, int32_t region_uid) {
     // Send runtime metrics to controller
-    struct Sample sample;
-    sample.region_uid = (int32_t)fptr;
-    sample.runtime = 1.234;
-    sample.usertime = 2.345;
-    sample.energy = 3.456;
-    if (write (sockfd, &sample, sizeof(struct Sample)) == -1) {
-        close(sockfd);
-        perror("write");
-        exit(EXIT_FAILURE);
-    }
+    fprintf(sock_file, "{\"region_uid\":%d,\"runtime\":1.234,\"usertime\":2.345,\"energy\":3.456}\n", region_uid);
+    fflush(sock_file);
 }
 
 /* Some function we are controlling. */
@@ -80,14 +60,22 @@ void foo(void) {
 
 int main() {
     int sockfd = open_letterbox();
+    FILE *sock_file = fdopen(sockfd, "r+");
+    if (sock_file == NULL) {
+        perror("fdopen");
+        exit(EXIT_FAILURE);
+    }
+
+    // Broadcast capabilities on connect
+    fprintf(sock_file, "{\"max_threads\":4}\n");
+    fflush(sock_file);
 
     while (1) {
-        struct Demand demand = read_letterbox(sockfd, (uintptr_t)foo);
-        printf("Received demand: %f\n", demand.threads_pct);
+        read_letterbox(sock_file, 42);
 
         foo();
 
         printf("Sending runtime metrics\n");
-        update_letterbox(sockfd, (uintptr_t)foo);
+        update_letterbox(sock_file, 42);
     }
 }
