@@ -16,15 +16,16 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
 
 fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, Box<dyn Controller>> = HashMap::new();
-    let mut last_demand = LocalDemand { threads_pct: 1.0 };
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut line = String::new();
 
     // First message must be a Capabilities broadcast from the client
     reader.read_line(&mut line)?;
-    let capabilities: Capabilities = serde_json::from_str(line.trim_end())
+    let caps: Capabilities = serde_json::from_str(line.trim_end())
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
-    log::debug!("Client capabilities: {:?}", capabilities);
+    log::debug!("Client capabilities: {:?}", caps);
+
+    let mut last_demand = Demand { powercap_pct: 1.0, num_threads: caps.max_threads.unwrap_or(1) };
 
     loop {
         line.clear();
@@ -35,23 +36,11 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
             }
             Ok(_) => {
                 log::trace!("Received message: `{}`", line.trim_end());
-                if let Ok(request) = serde_json::from_str::<Request>(&line) {
-                    log::trace!("GET: {:?}", request.region_uid);
+                // Note that we must check for <Sample> first, because otherwise the message may be seen as a <Request>,
+                // which happens when the request only contains the region, in which case the extra fields get ignored.
+                if let Ok(mut sample) = serde_json::from_str::<Sample>(&line) {
+                    log::trace!("POST: {:?}", sample);
 
-                    if let Some(controller) = lbs.get_mut(&request.region_uid) {
-                        let (global_demand, local_demand) = controller.get_demand();
-
-                        log::trace!("PUT: {:?} {:?}", global_demand, local_demand);
-                        set_power_limit(global_demand.powercap_pct);
-                        write_json_line(&mut stream, &local_demand)?;
-                        last_demand = local_demand;
-                    } else {
-                        // Use the last-used configuration in an attempt to minimise configuration changes
-                        // Note that changes may still occur, if multiple clients are connected.
-                        log::trace!("PUT: {:?}", last_demand);
-                        write_json_line(&mut stream, &last_demand)?;
-                    }
-                } else if let Ok(mut sample) = serde_json::from_str::<Sample>(&line) {
                     if sample.runtime < 0.01 && !lbs.contains_key(&sample.region_uid) {
                         // Ignore samples without a controller, where runtime is too short for accurate energy measurements
                         // In these cases, the overhead of adjusting the configuration outweighs the potential benefits
@@ -65,8 +54,24 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
 
                     // Push sample to the controller, which can cause it to `evolve'
                     lbs.entry(sample.region_uid)
-                        .or_insert_with(|| config.build_controller())
+                        .or_insert_with(|| config.build_controller(&caps))
                         .push_sample(sample);
+                } else if let Ok(request) = serde_json::from_str::<Request>(&line) {
+                    log::trace!("GET: {:?}", request.region_uid);
+
+                    if let Some(controller) = lbs.get_mut(&request.region_uid) {
+                        let demand = controller.get_demand();
+
+                        log::trace!("PUT: {:?}", demand);
+                        set_power_limit(demand.powercap_pct);
+                        write_json_line(&mut stream, &demand)?;
+                        last_demand = demand;
+                    } else {
+                        // Use the last-used configuration in an attempt to minimise configuration changes
+                        // Note that changes may still occur, if multiple clients are connected.
+                        log::trace!("PUT: default {:?}", last_demand);
+                        write_json_line(&mut stream, &last_demand)?;
+                    }
                 } else {
                     return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Invalid JSON message: {line}")))
                 }

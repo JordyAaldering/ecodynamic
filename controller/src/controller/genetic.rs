@@ -1,12 +1,13 @@
 use clap::Parser;
 
-use crate::{Controller, GlobalDemand, LocalDemand, Sample, direction::Direction, scoring_functions::ScoreFunction};
+use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, scoring_functions::ScoreFunction};
 
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
     prev_best_score: Option<f32>,
     sort_order: Direction,
+    max_threads: u16,
     config: GeneticControllerConfig,
 }
 
@@ -27,15 +28,9 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.75)]
     pub energy_preference: f32,
 
-    /// Minimum allowed percentage of the number of threads.
-    /// Range: (0,1].
-    #[arg(long, default_value_t = 0.1)]
-    pub threads_min: f32,
-
-    /// Maximum allowed percentage of the number of threads.
-    /// Range: (0,1].
-    #[arg(long, default_value_t = 1.0)]
-    pub threads_max: f32,
+    /// Whether dynamic thread adjustment is enabled.
+    #[arg(long)]
+    pub do_thread_control: bool,
 
     /// Minimum allowed percentage of the powercap.
     /// Range: (0,1].
@@ -78,12 +73,16 @@ pub struct GeneticControllerConfig {
 }
 
 impl GeneticController {
-    pub fn new(config: GeneticControllerConfig) -> Self {
+    pub fn new(config: GeneticControllerConfig, caps: &Capabilities) -> Self {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
         // I.e. value = lower + i * (upper - lower) / length
         let population = (0..config.population_size).map(|i| {
-                let threads_pct = config.threads_min + (i as f32 * (config.threads_max - config.threads_min) / (config.population_size - 1) as f32);
+                let threads_pct = if config.do_thread_control {
+                    0.1 + (i as f32 * (1.0 - 0.1) / (config.population_size - 1) as f32)
+                } else {
+                    1.0
+                };
                 let power_pct = config.power_min + (i as f32 * (config.power_max - config.power_min) / (config.population_size - 1) as f32);
                 Chromosome::new(threads_pct, power_pct)
             }).rev().collect();
@@ -95,6 +94,7 @@ impl GeneticController {
             population,
             prev_best_score: None,
             sort_order: Direction::Decreasing,
+            max_threads: caps.max_threads.unwrap_or(1),
             config,
         }
     }
@@ -104,12 +104,13 @@ impl Controller for GeneticController {
     /// Use the number of samples to determine the current index into the population.
     /// The population is reset every `population_size` iterations.
     /// In between, we want every chromosome to be applied once.
-    fn get_demand(&self) -> (GlobalDemand, LocalDemand) {
+    fn get_demand(&self) -> Demand {
         debug_assert!(self.samples.len() < self.population.len());
         let chromosome = &self.population[self.samples.len()];
-        let global = GlobalDemand { powercap_pct: chromosome.power_pct };
-        let local = LocalDemand { threads_pct: chromosome.threads_pct };
-        (global, local)
+        Demand {
+            powercap_pct: chromosome.power_pct,
+            num_threads: ((chromosome.threads_pct * self.max_threads as f32).round() as u16).max(1),
+        }
     }
 
     fn push_sample(&mut self, sample: Sample) {
@@ -239,7 +240,7 @@ impl Chromosome {
 
     /// Generate a random chromosome for immigration
     fn rand(config: &GeneticControllerConfig) -> Self {
-        let num_threads = rand::random_range(config.threads_min..=config.threads_max);
+        let num_threads = rand::random_range(0.1..=1.0);
         let power_limit_pct = rand::random_range(config.power_min..=config.power_max);
         Self::new(num_threads, power_limit_pct)
     }
@@ -254,7 +255,7 @@ impl Chromosome {
     /// Add or subtract one thread
     fn mutate(&mut self, config: &GeneticControllerConfig) {
         self.threads_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
-        self.threads_pct = self.threads_pct.max(config.threads_min).min(config.threads_max);
+        self.threads_pct = self.threads_pct.max(0.1).min(1.0);
 
         self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
         self.power_pct = self.power_pct.max(config.power_min).min(config.power_max);

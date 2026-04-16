@@ -1,12 +1,13 @@
 use clap::Parser;
 
-use crate::{Controller, Direction, GlobalDemand, LocalDemand, Sample, ScoreFunction, FilterFunction};
+use crate::{Capabilities, Controller, Direction, FilterFunction, Demand, Sample, ScoreFunction};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
 pub struct DeltaController {
     samples: Vec<Sample>,
     threads_pct: f32,
+    max_threads: u16,
     step_size: f32,
     step_dir: Direction,
     e_prev: f32,
@@ -27,10 +28,11 @@ pub struct DeltaControllerConfig {
 }
 
 impl DeltaController {
-    pub fn new(config: DeltaControllerConfig) -> Self {
+    pub fn new(config: DeltaControllerConfig, caps: &Capabilities) -> Self {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
             threads_pct: 1.0,
+            max_threads: caps.max_threads.unwrap_or(1),
             step_size: 0.5,
             step_dir: Direction::Decreasing,
             e_prev: 0.0,
@@ -40,10 +42,11 @@ impl DeltaController {
 }
 
 impl Controller for DeltaController {
-    fn get_demand(&self) -> (GlobalDemand, LocalDemand) {
-        let global = GlobalDemand { powercap_pct: 1.0 };
-        let local = LocalDemand { threads_pct: self.threads_pct };
-        (global, local)
+    fn get_demand(&self) -> Demand {
+        Demand {
+            num_threads: ((self.threads_pct * self.max_threads as f32).round() as u16).max(1),
+            powercap_pct: 1.0,
+        }
     }
 
     fn push_sample(&mut self, sample: Sample) {

@@ -34,7 +34,8 @@ fn main() {
     let x = Matrix::iota(400, 400);
     let y = Matrix::iota(400, 400);
 
-    ecodynamic::EcoIterator::new(1.., ecodynamic::Capabilities { max_threads: Some(std::thread::available_parallelism().map_or(1, |n| n.get())) })
+    let caps = ecodynamic::Capabilities { max_threads: Some(4) };
+    ecodynamic::EcoIterator::new(1.., caps)
         .before(|d| println!("Received demand: {:?}", d))
         .after(|s| println!("Sending sample: {:?}", s))
         .for_each(|i| {
