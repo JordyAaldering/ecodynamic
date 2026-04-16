@@ -171,17 +171,17 @@ fn main() {
 }
 
 fn open_socket() -> UnixListener {
-    if fs::metadata(MTD_LETTERBOX_PATH).is_ok() {
-        log::warn!("Closing previous socket: {}", MTD_LETTERBOX_PATH);
-        fs::remove_file(MTD_LETTERBOX_PATH).expect("Could not close socket");
+    if fs::metadata(LETTERBOX_PATH).is_ok() {
+        log::warn!("Closing previous socket: {}", LETTERBOX_PATH);
+        fs::remove_file(LETTERBOX_PATH).expect("Could not close socket");
     }
 
-    log::info!("Creating socket: {}", MTD_LETTERBOX_PATH);
-    UnixListener::bind(MTD_LETTERBOX_PATH).expect("Could not create socket")
+    log::info!("Creating socket: {}", LETTERBOX_PATH);
+    UnixListener::bind(LETTERBOX_PATH).expect("Could not create socket")
 }
 
 fn close_socket() {
     reset_default_power_limit();
-    log::info!("Closing socket: {}", MTD_LETTERBOX_PATH);
-    fs::remove_file(MTD_LETTERBOX_PATH).expect("Could not close socket");
+    log::info!("Closing socket: {}", LETTERBOX_PATH);
+    fs::remove_file(LETTERBOX_PATH).expect("Could not close socket");
 }

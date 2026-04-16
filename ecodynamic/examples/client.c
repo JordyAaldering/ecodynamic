@@ -7,9 +7,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define MTD_LETTERBOX_PATH "/tmp/mtd_letterbox"
+#define LETTERBOX_PATH "/tmp/mtd_letterbox"
 
-int parse_threads_pct(const char *json, uint16_t *value) {
+static int parse_num_threads(const char *json, uint16_t *value) {
     const char *key = "\"num_threads\":";
     const char *pos = strstr(json, key);
     char *end = NULL;
@@ -40,7 +40,7 @@ int open_letterbox(void) {
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, MTD_LETTERBOX_PATH, sizeof(addr.sun_path) - 1);
+    strncpy(addr.sun_path, LETTERBOX_PATH, sizeof(addr.sun_path) - 1);
 
     // Connect to server
     if (connect(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) == -1) {
@@ -66,7 +66,7 @@ void read_letterbox(FILE *sock_file, int32_t region_uid) {
     }
 
     uint16_t num_threads;
-    if (parse_threads_pct(buf, &num_threads)) {
+    if (parse_num_threads(buf, &num_threads)) {
         printf("num_threads: %u\n", num_threads);
     } else {
         printf("num_threads not found in demand\n");

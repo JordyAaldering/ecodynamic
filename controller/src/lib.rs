@@ -10,4 +10,4 @@ use direction::Direction;
 use filter_functions::FilterFunction;
 use scoring_functions::ScoreFunction;
 
-pub const MTD_LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
+pub const LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
