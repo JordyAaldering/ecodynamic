@@ -9,8 +9,8 @@
 
 #define MTD_LETTERBOX_PATH "/tmp/mtd_letterbox"
 
-int parse_threads_pct(const char *json, float *value) {
-    const char *key = "\"threads_pct\":";
+int parse_threads_pct(const char *json, uint16_t *value) {
+    const char *key = "\"num_threads\":";
     const char *pos = strstr(json, key);
     char *end = NULL;
 
@@ -55,7 +55,7 @@ int open_letterbox(void) {
 
 void read_letterbox(FILE *sock_file, int32_t region_uid) {
     // Signal to the controller which region we are about to start
-    fprintf(sock_file, "{\"region_uid\":%d,\"problem_size\":0}\n", region_uid);
+    fprintf(sock_file, "{\"region_uid\":%d}\n", region_uid);
     fflush(sock_file);
 
     // Read the demand of this region from the controller
@@ -65,11 +65,11 @@ void read_letterbox(FILE *sock_file, int32_t region_uid) {
         exit(EXIT_FAILURE);
     }
 
-    float threads_pct;
-    if (parse_threads_pct(buf, &threads_pct)) {
-        printf("threads_pct: %.3f\n", threads_pct);
+    uint16_t num_threads;
+    if (parse_threads_pct(buf, &num_threads)) {
+        printf("num_threads: %u\n", num_threads);
     } else {
-        printf("threads_pct not found in demand\n");
+        printf("num_threads not found in demand\n");
     }
 
     printf("Received demand: %s", buf);

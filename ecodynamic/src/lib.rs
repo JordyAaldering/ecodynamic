@@ -6,7 +6,7 @@ use std::{
     sync::atomic::{AtomicI32, Ordering},
 };
 
-pub use controller::{Capabilities, LocalDemand, Request, Sample};
+pub use controller::{Capabilities, Demand, Request, Sample};
 
 use crate::sample::SamplePair;
 
@@ -18,7 +18,7 @@ pub struct EcoIterator<I: Iterator> {
     stream: Option<UnixStream>,
     reader: Option<BufReader<UnixStream>>,
     sample_instant: Option<SamplePair>,
-    before_fn: Option<fn(LocalDemand)>,
+    before_fn: Option<fn(Demand)>,
     after_fn: Option<fn(Sample)>,
 }
 
@@ -39,7 +39,7 @@ impl<I: Iterator> EcoIterator<I> {
         }
     }
 
-    pub fn before(mut self, f: fn(LocalDemand)) -> Self {
+    pub fn before(mut self, f: fn(Demand)) -> Self {
         self.before_fn = Some(f);
         self
     }
@@ -60,7 +60,7 @@ impl<I: Iterator> EcoIterator<I> {
             if let Some(before_fn) = self.before_fn {
                 before_fn(read_json_line(reader).unwrap());
             } else {
-                let _: LocalDemand = read_json_line(reader).unwrap();
+                let _: Demand = read_json_line(reader).unwrap();
             }
         }
 

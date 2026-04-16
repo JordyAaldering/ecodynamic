@@ -31,14 +31,14 @@ pub enum ControllerType {
 }
 
 impl Args {
-    pub fn build_controller(&self) -> Box<dyn Controller> {
+    pub fn build_controller(&self, caps: &Capabilities) -> Box<dyn Controller> {
         use ControllerType::*;
         match &self.controller {
-            Genetic(config) => Box::new(GeneticController::new(config.clone())),
-            Corridor(config) => Box::new(CorridorController::new(config.clone())),
-            Delta(config) => Box::new(DeltaController::new(config.clone())),
-            Oscilating => Box::new(OscilatingController::new()),
-            Fixed => Box::new(FixedController::new()),
+            Genetic(config) => Box::new(GeneticController::new(config.clone(), caps)),
+            Corridor(config) => Box::new(CorridorController::new(config.clone(), caps)),
+            Delta(config) => Box::new(DeltaController::new(config.clone(), caps)),
+            Oscilating => Box::new(OscilatingController::new(caps)),
+            Fixed => Box::new(FixedController::new(caps)),
         }
     }
 }

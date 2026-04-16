@@ -10,13 +10,13 @@ pub use fixed::*;
 pub use genetic::*;
 pub use oscilating::*;
 
-use crate::{GlobalDemand, LocalDemand, Sample};
+use crate::{Demand, Sample};
 
 pub trait Controller {
     /// Gets the demand (e.g. power limit or thread count) for the current runtime conditions.
     ///
     /// Note that for the very first iteration, this will be called before any samples have been collected.
-    fn get_demand(&self) -> (GlobalDemand, LocalDemand);
+    fn get_demand(&self) -> Demand;
 
     /// A new sample was received.
     ///
