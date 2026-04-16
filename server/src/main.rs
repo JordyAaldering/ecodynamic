@@ -1,6 +1,6 @@
 mod config;
 
-use std::{collections::HashMap, fs, io::{self, Read, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex}, thread};
+use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex}, thread};
 
 use clap::Parser;
 use controller::*;
@@ -17,69 +17,81 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
 fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, Box<dyn Controller>> = HashMap::new();
     let mut last_demand = LocalDemand { threads_pct: 1.0 };
-    let mut buffer = [0u8; Sample::SIZE];
+    let mut reader = BufReader::new(stream.try_clone()?);
+    let mut line = String::new();
+
+    // First message must be a Capabilities broadcast from the client
+    reader.read_line(&mut line)?;
+    let capabilities: Capabilities = serde_json::from_str(line.trim_end())
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
+    log::debug!("Client capabilities: {:?}", capabilities);
 
     loop {
-        match stream.read(&mut buffer) {
-            Ok(Request::SIZE) => {
-                let buf: [u8; Request::SIZE] = buffer[0..Request::SIZE].try_into().unwrap();
-                let Request { region_uid, .. } = Request::from(buf);
-                log::trace!("GET: {:?}", region_uid);
-
-                if let Some(controller) = lbs.get_mut(&region_uid) {
-                    let (global_demand, local_demand) = controller.get_demand();
-
-                    log::trace!("PUT: {:?} {:?}", global_demand, local_demand);
-                    set_power_limit(global_demand.powercap_pct);
-                    let buf = local_demand.to_bytes();
-                    stream.write_all(&buf)?;
-                    last_demand = local_demand;
-                } else {
-                    // Use the last-used configuration in an attempt to minimise configuration changes
-                    // Note that changes may still occur, if multiple clients are connected.
-                    log::trace!("PUT: {:?}", last_demand);
-                    let buf = last_demand.to_bytes();
-                    stream.write_all(&buf)?;
-                }
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) => {
+                log::info!("Client disconnected");
+                return Ok(());
             }
-            Ok(Sample::SIZE) => {
-                let mut sample = Sample::from(buffer);
+            Ok(_) => {
+                log::trace!("Received message: `{}`", line.trim_end());
+                if let Ok(request) = serde_json::from_str::<Request>(&line) {
+                    log::trace!("GET: {:?}", request.region_uid);
 
-                if sample.runtime < 0.01 && !lbs.contains_key(&sample.region_uid) {
-                    // Ignore samples without a controller, where runtime is too short for accurate energy measurements
-                    // In these cases, the overhead of adjusting the configuration outweighs the potential benefits
-                    continue;
+                    if let Some(controller) = lbs.get_mut(&request.region_uid) {
+                        let (global_demand, local_demand) = controller.get_demand();
+
+                        log::trace!("PUT: {:?} {:?}", global_demand, local_demand);
+                        set_power_limit(global_demand.powercap_pct);
+                        write_json_line(&mut stream, &local_demand)?;
+                        last_demand = local_demand;
+                    } else {
+                        // Use the last-used configuration in an attempt to minimise configuration changes
+                        // Note that changes may still occur, if multiple clients are connected.
+                        log::trace!("PUT: {:?}", last_demand);
+                        write_json_line(&mut stream, &last_demand)?;
+                    }
+                } else if let Ok(mut sample) = serde_json::from_str::<Sample>(&line) {
+                    if sample.runtime < 0.01 && !lbs.contains_key(&sample.region_uid) {
+                        // Ignore samples without a controller, where runtime is too short for accurate energy measurements
+                        // In these cases, the overhead of adjusting the configuration outweighs the potential benefits
+                        continue;
+                    }
+
+                    // Subtract idle power draw
+                    sample.energy -= config.idle_power * sample.runtime;
+                    sample.energy = sample.energy.max(f32::EPSILON);
+                    log::trace!("POST: {:?}", sample);
+
+                    // Push sample to the controller, which can cause it to `evolve'
+                    lbs.entry(sample.region_uid)
+                        .or_insert_with(|| config.build_controller())
+                        .push_sample(sample);
+                } else {
+                    return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Invalid JSON message: {line}")))
                 }
-
-                // Subtract idle power draw
-                sample.energy -= config.idle_power * sample.runtime;
-                sample.energy = sample.energy.max(f32::EPSILON);
-                log::trace!("POST: {:?}", sample);
-
-                // Push sample to the controller, which can cause it to `evolve'
-                lbs.entry(sample.region_uid)
-                    .or_insert_with(|| config.build_controller())
-                    .push_sample(sample);
             }
             Err(e) => {
                 log::info!("Client disconnected");
                 return Err(e);
             }
-            Ok(0) => {
-                log::info!("Client disconnected");
-                return Ok(());
-            }
-            Ok(n) => {
-                log::error!("Invalid message size: {}", n);
-                continue;
-            }
         }
     }
+}
+
+fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) -> io::Result<()> {
+    serde_json::to_writer(&mut *stream, message).map_err(io::Error::other)?;
+    stream.write_all(b"\n")
 }
 
 fn set_power_limit(power_limit_pct: f32) {
     if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
         for package in &mut rapl.packages {
+            if package.constraints.is_empty() {
+                log::warn!("Skipping package {} without power constraints", package.name);
+                continue;
+            }
+
             let long_term = &mut package.constraints[0];
             let max_power_uw = long_term.max_power_uw.expect("long_term constraint must have max_power_uw");
             let limit = (max_power_uw as f32 * power_limit_pct) as u64;
@@ -107,9 +119,11 @@ fn set_power_limit(power_limit_pct: f32) {
 }
 
 fn reset_default_power_limit() {
-    if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
-        if let Err(e) = rapl.reset_power_limits(false) {
-            log::error!("Failed to reset power limits: {}", e);
+    if let Some(x) = RAPL.as_ref() {
+        if let Ok(mut rapl) = x.lock() {
+            if let Err(e) = rapl.reset_power_limits(false) {
+                log::error!("Failed to reset power limits: {}", e);
+            }
         }
     }
 }

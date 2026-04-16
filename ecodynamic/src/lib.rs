@@ -1,12 +1,12 @@
 mod sample;
 
 use std::{
-    io::{Read, Write},
+    io::{BufRead, BufReader, Write},
     os::unix::net::UnixStream,
     sync::atomic::{AtomicI32, Ordering},
 };
 
-pub use controller::{LocalDemand, Request, Sample};
+pub use controller::{Capabilities, LocalDemand, Request, Sample};
 
 use crate::sample::SamplePair;
 
@@ -16,17 +16,23 @@ pub struct EcoIterator<I: Iterator> {
     inner: I,
     region_uid: i32,
     stream: Option<UnixStream>,
+    reader: Option<BufReader<UnixStream>>,
     sample_instant: Option<SamplePair>,
     before_fn: Option<fn(LocalDemand)>,
     after_fn: Option<fn(Sample)>,
 }
 
 impl<I: Iterator> EcoIterator<I> {
-    pub fn new(inner: I) -> Self {
+    pub fn new(inner: I, capabilities: Capabilities) -> Self {
+        let mut stream = UnixStream::connect("/tmp/mtd_letterbox").unwrap();
+        write_json_line(&mut stream, &capabilities).unwrap();
+        let reader = BufReader::new(stream.try_clone().unwrap());
+
         Self {
             inner,
             region_uid: REGION_COUNTER.fetch_add(1, Ordering::Relaxed),
-            stream: Some(UnixStream::connect("/tmp/mtd_letterbox").unwrap()),
+            stream: Some(stream),
+            reader: Some(reader),
             sample_instant: None,
             before_fn: None,
             after_fn: None,
@@ -45,17 +51,16 @@ impl<I: Iterator> EcoIterator<I> {
 
     /// Send a signal to the controller that we are at the start of a parallel region.
     fn signal_start(&mut self) -> SamplePair {
-        if let Some(stream) = &mut self.stream {
-            stream.write_all(&Request {
+        if let (Some(stream), Some(reader)) = (&mut self.stream, &mut self.reader) {
+            write_json_line(stream, &Request {
                 region_uid: self.region_uid,
                 problem_size: 0,
-            }.to_bytes()).unwrap();
+            }).unwrap();
 
-            let mut buf = [0u8; LocalDemand::SIZE];
-            stream.read_exact(&mut buf).unwrap();
             if let Some(before_fn) = self.before_fn {
-                let demand = LocalDemand::from(buf);
-                before_fn(demand);
+                before_fn(read_json_line(reader).unwrap());
+            } else {
+                let _: LocalDemand = read_json_line(reader).unwrap();
             }
         }
 
@@ -66,7 +71,7 @@ impl<I: Iterator> EcoIterator<I> {
     fn signal_end(&mut self, instant: SamplePair) {
         let sample = instant.stop(self.region_uid);
         if let Some(stream) = &mut self.stream {
-            stream.write_all(&sample.to_bytes()).unwrap();
+            write_json_line(stream, &sample).unwrap();
         }
 
         if let Some(after_fn) = self.after_fn {
@@ -97,4 +102,22 @@ impl<I: Iterator> Iterator for EcoIterator<I> {
 
         item
     }
+}
+
+fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) -> std::io::Result<()> {
+    serde_json::to_writer(&mut *stream, message).map_err(std::io::Error::other)?;
+    stream.write_all(b"\n")
+}
+
+fn read_json_line<T: serde::de::DeserializeOwned>(reader: &mut BufReader<UnixStream>) -> std::io::Result<T> {
+    let mut line = String::new();
+    let read = reader.read_line(&mut line)?;
+    if read == 0 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::UnexpectedEof,
+            "socket closed while reading JSON message",
+        ));
+    }
+
+    serde_json::from_str(line.trim_end()).map_err(std::io::Error::other)
 }
