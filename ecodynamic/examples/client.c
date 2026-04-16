@@ -2,11 +2,31 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
 #define MTD_LETTERBOX_PATH "/tmp/mtd_letterbox"
+
+int parse_threads_pct(const char *json, float *value) {
+    const char *key = "\"threads_pct\":";
+    const char *pos = strstr(json, key);
+    char *end = NULL;
+
+    if (pos == NULL) {
+        return 0;
+    }
+
+    pos += strlen(key);
+    // Skip potential whitespace in between the key and the value
+    while (*pos != '\0' && isspace((unsigned char)*pos)) {
+        pos++;
+    }
+
+    *value = strtof(pos, &end);
+    return end != pos;
+}
 
 int open_letterbox(void) {
     // Create Unix domain socket
@@ -44,6 +64,14 @@ void read_letterbox(FILE *sock_file, int32_t region_uid) {
         perror("fgets");
         exit(EXIT_FAILURE);
     }
+
+    float threads_pct;
+    if (parse_threads_pct(buf, &threads_pct)) {
+        printf("threads_pct: %.3f\n", threads_pct);
+    } else {
+        printf("threads_pct not found in demand\n");
+    }
+
     printf("Received demand: %s", buf);
 }
 
