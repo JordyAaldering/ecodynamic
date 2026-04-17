@@ -15,7 +15,7 @@ pub struct GeneticController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
-    #[arg(short('s'), long, default_value_t = 30)]
+    #[arg(short('s'), long, default_value_t = 40)]
     pub population_size: usize,
 
     /// Method for scoring the fitness of each chromosome.
@@ -357,10 +357,18 @@ impl Chromosome {
     }
 
     fn crossover(&self, other: &Self) -> Self {
+        let prev_score = if f32::abs(self.threads_pct + other.threads_pct) <= 0.1
+                && f32::abs(self.power_pct - other.power_pct) <= 0.1
+                && let Some(x) = self.prev_score
+                && let Some(y) = other.prev_score {
+            Some((x + y) * 0.5)
+        } else {
+            None
+        };
         Self {
             threads_pct: (self.threads_pct + other.threads_pct) * 0.5,
             power_pct: (self.power_pct + other.power_pct) * 0.5,
-            prev_score: self.prev_score.and_then(|x| other.prev_score.map(|y| (x + y) * 0.5)),
+            prev_score,
         }
     }
 
