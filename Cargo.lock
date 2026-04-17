@@ -177,7 +177,6 @@ dependencies = [
  "cbindgen",
  "clap",
  "log",
- "non-dominated-sort",
  "rand",
  "serde",
 ]
@@ -213,12 +212,6 @@ dependencies = [
  "libc",
  "objc2",
 ]
-
-[[package]]
-name = "dominance-ord"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dd45ca02161491b6d86974d44aec71a877450fc495d0b809a0ed1e7eb43ee30"
 
 [[package]]
 name = "ecodynamic"
@@ -410,15 +403,6 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "libc",
-]
-
-[[package]]
-name = "non-dominated-sort"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc4de93a05386d1e59116dc4f0ee3e94dd10bff66ffd8b2746dc4c183e45c2b2"
-dependencies = [
- "dominance-ord",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Direction, FilterFunction, Demand, Sample, ScoreFunction};
+use crate::{Capabilities, Controller, Demand, Direction, FilterFunction, Sample, get_scores};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
@@ -21,8 +21,12 @@ pub struct CorridorControllerConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
 
-    #[arg(long)]
-    pub score: ScoreFunction,
+    /// Describes the importance of optimising for energy efficiency over runtime performance.
+    /// A value of 1 means that only energy efficiency is optimised for, while a value of 0 means that only runtime performance is optimised for.
+    ///
+    /// Range: [0,1]
+    #[arg(long, default_value_t = 0.9)]
+    pub energy_preference: f32,
 
     #[arg(long)]
     pub select: FilterFunction,
@@ -63,7 +67,7 @@ impl Controller for CorridorController {
 
 impl CorridorController {
     fn evolve(&mut self) {
-        let tn = self.config.select.select(self.config.score.score(&self.samples, 0.5));
+        let tn = self.config.select.select(get_scores(&self.samples, self.config.energy_preference));
 
         // TODO: check if replacing num_threads with threads_pct here was sufficient, or if we need to update the formula
         if self.t1 / (tn + f32::EPSILON) < 0.5 * self.threads_pct {

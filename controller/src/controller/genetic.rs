@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, scoring_functions::ScoreFunction};
+use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, get_scores};
 
 pub struct GeneticController {
     samples: Vec<Sample>,
@@ -17,15 +17,11 @@ pub struct GeneticControllerConfig {
     #[arg(short('s'), long, default_value_t = 40)]
     pub population_size: usize,
 
-    /// Method for scoring the fitness of each chromosome.
-    #[arg(long, default_value_t = ScoreFunction::Slider)]
-    pub score: ScoreFunction,
-
-    /// If the `Slider` scoring function is used, this value describes how important
-    /// energy consumption is in the optimisation process. The importance of runtime
-    /// is then 1 minus this value.
+    /// Describes the importance of optimising for energy efficiency over runtime performance.
+    /// A value of 1 means that only energy efficiency is optimised for, while a value of 0 means that only runtime performance is optimised for.
+    ///
     /// Range: [0,1]
-    #[arg(long, default_value_t = 0.75)]
+    #[arg(long, default_value_t = 0.9)]
     pub energy_preference: f32,
 
     /// Whether dynamic thread adjustment is enabled.
@@ -44,12 +40,12 @@ pub struct GeneticControllerConfig {
 
     /// Genetic algorithm survival rate.
     /// Range: (0,1].
-    #[arg(long, default_value_t = 0.15)]
+    #[arg(long, default_value_t = 0.1)]
     pub survival_rate: f32,
 
     /// Mutation rate.
     /// Range: (0,1]
-    #[arg(long, default_value_t = 0.30)]
+    #[arg(long, default_value_t = 0.2)]
     pub mutation_rate: f32,
 
     /// Mutation strength.
@@ -65,7 +61,7 @@ pub struct GeneticControllerConfig {
     pub immigration_rate: Option<f32>,
 
     /// Minimum median relative score change required to trigger immigration.
-    #[arg(long, default_value_t = 0.05)]
+    #[arg(long, default_value_t = 0.1)]
     pub immigration_change_threshold: f32,
 
     /// Minimum robust z-like score required to trigger immigration.
@@ -77,7 +73,7 @@ pub struct GeneticControllerConfig {
     pub immigration_min_matched_scores: usize,
 
     /// Maximum allowed per-parameter change when reusing a previous score.
-    #[arg(long, default_value_t = 0.02)]
+    #[arg(long, default_value_t = 0.025)]
     pub immigration_similarity_threshold: f32,
 
     /// Number of generations to wait before allowing immigration to trigger again.
@@ -144,7 +140,6 @@ impl Controller for GeneticController {
 impl GeneticController {
     fn evolve(&mut self) {
         let GeneticControllerConfig {
-            score: score_fn,
             energy_preference,
             survival_rate,
             mutation_rate,
@@ -156,7 +151,7 @@ impl GeneticController {
             ..
         } = self.config;
 
-        let scores = score_fn.score(&self.samples, energy_preference);
+        let scores = get_scores(&self.samples, energy_preference);
         let change_detected = update_prev_scores_and_check_for_shift(
             &mut self.population,
             &scores,

@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Direction, FilterFunction, Demand, Sample, ScoreFunction};
+use crate::{Capabilities, Controller, Demand, Direction, FilterFunction, Sample, get_scores};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
@@ -20,8 +20,12 @@ pub struct DeltaControllerConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
 
-    #[arg(long)]
-    pub score: ScoreFunction,
+    /// Describes the importance of optimising for energy efficiency over runtime performance.
+    /// A value of 1 means that only energy efficiency is optimised for, while a value of 0 means that only runtime performance is optimised for.
+    ///
+    /// Range: [0,1]
+    #[arg(long, default_value_t = 0.9)]
+    pub energy_preference: f32,
 
     #[arg(long)]
     pub select: FilterFunction,
@@ -61,7 +65,7 @@ impl Controller for DeltaController {
 
 impl DeltaController {
     fn evolve(&mut self) {
-        let e_next = self.config.select.select(self.config.score.score(&self.samples, 0.5));
+        let e_next = self.config.select.select(get_scores(&self.samples, self.config.energy_preference));
 
         if e_next > self.e_prev * 1.50 {
             self.step_size = 0.5;
