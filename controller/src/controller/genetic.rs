@@ -79,7 +79,7 @@ pub struct GeneticControllerConfig {
     pub immigration_ewma_consecutive_breaches: usize,
 
     /// Number of generations to wait before allowing immigration to trigger again.
-    #[arg(long, default_value_t = 3)]
+    #[arg(long, default_value_t = 5)]
     pub immigration_cooldown_generations: usize,
 }
 
