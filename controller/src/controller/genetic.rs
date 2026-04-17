@@ -62,8 +62,8 @@ pub struct GeneticControllerConfig {
     /// avoid immigration to occur in every evolution step. Setting the value to less than
     /// 1 / population_size ensures this.
     /// Range: (0,1]
-    #[arg(long, default_value_t = 0.0)]
-    pub immigration_rate: f32,
+    #[arg(long)]
+    pub immigration_rate: Option<f32>,
 
     /// EWMA smoothing factor for immigration trigger detection.
     /// Range: (0,1].
@@ -173,33 +173,37 @@ impl GeneticController {
             survival_count
         };
 
-        let do_immigration = if self.immigration_cooldown > 0 {
-            self.immigration_cooldown -= 1;
-            false
-        } else {
-            let change_detected = change_signal.is_some_and(|signal| self.immigration_detector.update(signal));
-            if change_detected {
-                self.immigration_cooldown = immigration_cooldown_generations;
-                true
-            } else {
+        let immigration_start = if let Some(immigration_rate) = immigration_rate {
+            let do_immigration = if self.immigration_cooldown > 0 {
+                self.immigration_cooldown -= 1;
                 false
-            }
-        };
+            } else {
+                let change_detected = change_signal.is_some_and(|signal| self.immigration_detector.update(signal));
+                if change_detected {
+                    self.immigration_cooldown = immigration_cooldown_generations;
+                    true
+                } else {
+                    false
+                }
+            };
 
-        let immigration_start = if do_immigration {
-            // When immigration rate is less than 1 / population_size, we use a random
-            // chance based on the remainder to ensure immigration can still occur.
-            let immigration_count = population_size as f32 * immigration_rate;
-            let immigration_remainder = immigration_count.fract();
-            let mut immigration_count = immigration_count.floor() as usize;
-            if rand::random_bool(immigration_remainder as f64) {
-                immigration_count += 1;
-            }
+            if do_immigration {
+                // When immigration rate is less than 1 / population_size, we use a random
+                // chance based on the remainder to ensure immigration can still occur.
+                let immigration_count = population_size as f32 * immigration_rate;
+                let immigration_remainder = immigration_count.fract();
+                let mut immigration_count = immigration_count.floor() as usize;
+                if rand::random_bool(immigration_remainder as f64) {
+                    immigration_count += 1;
+                }
 
-            // If survival_rate + immigration_rate > 1.0, there is some overlap between the two.
-            // We decide to favor immigration over survival, meaning that fewer than survival_count chromosomes may survive.
-            // To favor survival instead, max by survival_count instead of 0.
-            (population_size - immigration_count).max(0)
+                // If survival_rate + immigration_rate > 1.0, there is some overlap between the two.
+                // We decide to favor immigration over survival, meaning that fewer than survival_count chromosomes may survive.
+                // To favor survival instead, max by survival_count instead of 0.
+                (population_size - immigration_count).max(0)
+            } else {
+                population_size
+            }
         } else {
             population_size
         };
