@@ -219,7 +219,7 @@ impl GeneticController {
         for i in survival_count..immigration_start {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
-            let mut child = parent1.crossover(parent2);
+            let mut child = parent1.crossover(parent2, &self.config);
             if rand::random_bool(mutation_rate as f64) {
                 child.mutate(&self.config);
             }
@@ -351,11 +351,20 @@ impl Chromosome {
         Self::new(num_threads, power_limit_pct)
     }
 
-    fn crossover(&self, other: &Self) -> Self {
+    fn crossover(&self, other: &Self, config: &GeneticControllerConfig) -> Self {
+        let prev_score = if self.is_similar_to(other, config.immigration_similarity_threshold) {
+            match (self.prev_score, other.prev_score) {
+                (Some(left), Some(right)) => Some((left + right) * 0.5),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
         Self {
             threads_pct: (self.threads_pct + other.threads_pct) * 0.5,
             power_pct: (self.power_pct + other.power_pct) * 0.5,
-            prev_score: None,
+            prev_score,
         }
     }
 
@@ -374,6 +383,11 @@ impl Chromosome {
             || (self.power_pct - prev_power_pct).abs() > config.immigration_similarity_threshold {
             self.prev_score = None;
         }
+    }
+
+    fn is_similar_to(&self, other: &Self, similarity_threshold: f32) -> bool {
+        (self.threads_pct - other.threads_pct).abs() <= similarity_threshold
+            && (self.power_pct - other.power_pct).abs() <= similarity_threshold
     }
 }
 
