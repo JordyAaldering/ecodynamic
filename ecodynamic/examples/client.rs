@@ -34,7 +34,7 @@ fn main() {
     let x = Matrix::iota(400, 400);
     let y = Matrix::iota(400, 400);
 
-    let caps = ecodynamic::Capabilities { max_threads: Some(4) };
+    let caps = ecodynamic::Capabilities { max_threads: Some(4), ..Default::default() };
     ecodynamic::EcoIterator::new(1.., caps)
         .before(|d| println!("Received demand: {:?}", d))
         .after(|s| println!("Sending sample: {:?}", s))

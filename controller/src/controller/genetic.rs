@@ -360,7 +360,7 @@ impl Chromosome {
         Self {
             threads_pct: (self.threads_pct + other.threads_pct) * 0.5,
             power_pct: (self.power_pct + other.power_pct) * 0.5,
-            prev_score: None,
+            prev_score: self.prev_score.and_then(|x| other.prev_score.map(|y| (x + y) * 0.5)),
         }
     }
 
