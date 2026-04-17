@@ -5,7 +5,9 @@ use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, scor
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
-    prev_best_score: Option<f32>,
+    immigration_detector: PageHinkley,
+    immigration_change_detected: bool,
+    immigration_cooldown: usize,
     sort_order: Direction,
     max_threads: u16,
     config: GeneticControllerConfig,
@@ -64,12 +66,22 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
 
-    /// Trigger immigration only when the score changes by a certain amount.
-    /// This minimizes changes to the runtime when behaviour is relatively consistent,
-    /// but allows to restart the search when a sudden change in behaviour occurs.
-    /// Range: (0,1]
+    /// Trigger immigration only when changes are detected.
+    /// If not set, immigration is always enabled (subject to immigration rate).
     #[arg(long)]
     pub immigration_trigger: Option<f32>,
+
+    /// Page-Hinkley tolerance parameter used for immigration trigger detection.
+    #[arg(long, default_value_t = 0.005)]
+    pub immigration_ph_delta: f32,
+
+    /// Page-Hinkley threshold used for immigration trigger detection.
+    #[arg(long, default_value_t = 0.05)]
+    pub immigration_ph_lambda: f32,
+
+    /// Number of generations to wait before allowing immigration to trigger again.
+    #[arg(long, default_value_t = 3)]
+    pub immigration_cooldown_generations: usize,
 }
 
 impl GeneticController {
@@ -77,22 +89,32 @@ impl GeneticController {
         // Instead of randomly initialized values, use an even spread over valid thread-counts to
         // reduce duplication and increase the chances of finding an optimum immediately.
         // I.e. value = lower + i * (upper - lower) / length
-        let population = (0..config.population_size).map(|i| {
+        let population = (0..config.population_size)
+            .map(|i| {
                 let threads_pct = if config.do_thread_control {
                     0.1 + (i as f32 * (1.0 - 0.1) / (config.population_size - 1) as f32)
                 } else {
                     1.0
                 };
-                let power_pct = config.power_min + (i as f32 * (config.power_max - config.power_min) / (config.population_size - 1) as f32);
+                let power_pct = config.power_min
+                    + (i as f32 * (config.power_max - config.power_min)
+                        / (config.population_size - 1) as f32);
                 Chromosome::new(threads_pct, power_pct)
-            }).rev().collect();
+            })
+            .rev()
+            .collect();
 
         log::trace!("Init: {:?}", population);
 
         Self {
             samples: Vec::with_capacity(config.population_size),
             population,
-            prev_best_score: None,
+            immigration_detector: PageHinkley::new(
+                config.immigration_ph_delta,
+                config.immigration_ph_lambda,
+            ),
+            immigration_change_detected: false,
+            immigration_cooldown: 0,
             sort_order: Direction::Decreasing,
             max_threads: caps.max_threads.unwrap_or(1),
             config,
@@ -114,6 +136,18 @@ impl Controller for GeneticController {
     }
 
     fn push_sample(&mut self, sample: Sample) {
+        if self.config.immigration_trigger.is_some() {
+            let signal = score_single_sample(
+                self.config.score,
+                &sample,
+                self.config.energy_preference,
+            );
+            if self.immigration_detector.update(signal) {
+                self.immigration_change_detected = true;
+                self.immigration_detector.reset();
+            }
+        }
+
         self.samples.push(sample);
 
         if self.samples.len() >= self.config.population_size {
@@ -132,6 +166,7 @@ impl GeneticController {
             mutation_rate,
             immigration_rate,
             immigration_trigger,
+            immigration_cooldown_generations,
             ..
         } = self.config;
 
@@ -151,14 +186,16 @@ impl GeneticController {
             survival_count
         };
 
-        let do_immigration = if let Some(immigration_trigger) = immigration_trigger {
-            let best_score = *scores.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-            if self.prev_best_score.is_some_and(|prev| pct_change(prev, best_score) > immigration_trigger) {
-                // Reset score after immigration occurs, ensuring we do not immigrate twice in a row
-                self.prev_best_score = None;
+        let do_immigration = if immigration_trigger.is_some() {
+            if self.immigration_cooldown > 0 {
+                self.immigration_cooldown -= 1;
+                self.immigration_change_detected = false;
+                false
+            } else if self.immigration_change_detected {
+                self.immigration_cooldown = immigration_cooldown_generations;
+                self.immigration_change_detected = false;
                 true
             } else {
-                self.prev_best_score = Some(self.prev_best_score.map_or(best_score, |prev| prev.min(best_score)));
                 false
             }
         } else {
@@ -191,7 +228,7 @@ impl GeneticController {
         for i in survival_count..immigration_start {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
-            let mut child = parent1.crossover(&parent2);
+            let mut child = parent1.crossover(parent2);
             if rand::random_bool(mutation_rate as f64) {
                 child.mutate(&self.config);
             }
@@ -208,11 +245,11 @@ impl GeneticController {
         // and we oscilate between an increasing and decreasing order.
         match self.sort_order {
             Direction::Increasing => {
-                self.population.sort_by(|a, b| a.partial_cmp(&b).unwrap());
+                self.population.sort_by(|a, b| a.partial_cmp(b).unwrap());
                 self.sort_order = Direction::Decreasing;
-            },
+            }
             Direction::Decreasing => {
-                self.population.sort_by(|a, b| b.partial_cmp(&a).unwrap());
+                self.population.sort_by(|a, b| b.partial_cmp(a).unwrap());
                 self.sort_order = Direction::Increasing;
             }
         }
@@ -225,6 +262,74 @@ fn sort_population_by_score(population: &mut Vec<Chromosome>, scores: Vec<f32>) 
     let mut combined: Vec<_> = population.drain(..).zip(scores).collect();
     combined.sort_unstable_by(|(_, a), (_, b)| a.total_cmp(b));
     *population = combined.into_iter().map(|(c, _)| c).collect();
+}
+
+fn score_single_sample(score_fn: ScoreFunction, sample: &Sample, energy_preference: f32) -> f32 {
+    match score_fn {
+        ScoreFunction::Runtime => sample.runtime,
+        ScoreFunction::Energy => sample.energy,
+        ScoreFunction::EDP => sample.energy * sample.runtime,
+        ScoreFunction::E2DP => sample.energy * sample.energy * sample.runtime,
+        ScoreFunction::Slider => sample.energy.powf(energy_preference)
+            * sample.runtime.powf(1.0 - energy_preference),
+        // Pareto ranking needs a full population. For online drift detection we use
+        // the scalar slider score as a low-overhead proxy.
+        ScoreFunction::Pareto => sample.energy.powf(energy_preference)
+            * sample.runtime.powf(1.0 - energy_preference),
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PageHinkley {
+    delta: f32,
+    lambda: f32,
+    n: usize,
+    mean: f32,
+    cumulative_sum_pos: f32,
+    min_cumulative_sum_pos: f32,
+    cumulative_sum_neg: f32,
+    max_cumulative_sum_neg: f32,
+}
+
+impl PageHinkley {
+    fn new(delta: f32, lambda: f32) -> Self {
+        Self {
+            delta,
+            lambda,
+            n: 0,
+            mean: 0.0,
+            cumulative_sum_pos: 0.0,
+            min_cumulative_sum_pos: 0.0,
+            cumulative_sum_neg: 0.0,
+            max_cumulative_sum_neg: 0.0,
+        }
+    }
+
+    fn update(&mut self, x: f32) -> bool {
+        self.n += 1;
+        let inv_n = 1.0 / self.n as f32;
+        self.mean += (x - self.mean) * inv_n;
+
+        // Two-sided Page-Hinkley to detect both upward and downward shifts.
+        self.cumulative_sum_pos += x - self.mean - self.delta;
+        self.min_cumulative_sum_pos = self.min_cumulative_sum_pos.min(self.cumulative_sum_pos);
+
+        self.cumulative_sum_neg += x - self.mean + self.delta;
+        self.max_cumulative_sum_neg = self.max_cumulative_sum_neg.max(self.cumulative_sum_neg);
+
+        let positive_shift = (self.cumulative_sum_pos - self.min_cumulative_sum_pos) > self.lambda;
+        let negative_shift = (self.max_cumulative_sum_neg - self.cumulative_sum_neg) > self.lambda;
+        positive_shift || negative_shift
+    }
+
+    fn reset(&mut self) {
+        self.n = 0;
+        self.mean = 0.0;
+        self.cumulative_sum_pos = 0.0;
+        self.min_cumulative_sum_pos = 0.0;
+        self.cumulative_sum_neg = 0.0;
+        self.max_cumulative_sum_neg = 0.0;
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -266,8 +371,4 @@ impl PartialOrd for Chromosome {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.power_pct.partial_cmp(&other.power_pct)
     }
-}
-
-fn pct_change(prev: f32, next: f32) -> f32 {
-    ((next / (prev + f32::EPSILON)) - 1.0).abs()
 }
