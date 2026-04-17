@@ -5,8 +5,7 @@ use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, scor
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
-    immigration_detector: PageHinkley,
-    immigration_change_detected: bool,
+    immigration_detector: EwmaDetector,
     immigration_cooldown: usize,
     sort_order: Direction,
     max_threads: u16,
@@ -66,18 +65,18 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.0)]
     pub immigration_rate: f32,
 
-    /// Trigger immigration only when changes are detected.
-    /// If not set, immigration is always enabled (subject to immigration rate).
-    #[arg(long)]
-    pub immigration_trigger: Option<f32>,
+    /// EWMA smoothing factor for immigration trigger detection.
+    /// Range: (0,1].
+    #[arg(long, default_value_t = 0.2)]
+    pub immigration_ewma_alpha: f32,
 
-    /// Page-Hinkley tolerance parameter used for immigration trigger detection.
-    #[arg(long, default_value_t = 0.005)]
-    pub immigration_ph_delta: f32,
+    /// EWMA z-score threshold for immigration trigger detection.
+    #[arg(long, default_value_t = 3.0)]
+    pub immigration_ewma_z_threshold: f32,
 
-    /// Page-Hinkley threshold used for immigration trigger detection.
-    #[arg(long, default_value_t = 0.05)]
-    pub immigration_ph_lambda: f32,
+    /// Number of consecutive EWMA threshold breaches needed to trigger immigration.
+    #[arg(long, default_value_t = 1)]
+    pub immigration_ewma_consecutive_breaches: usize,
 
     /// Number of generations to wait before allowing immigration to trigger again.
     #[arg(long, default_value_t = 3)]
@@ -109,11 +108,11 @@ impl GeneticController {
         Self {
             samples: Vec::with_capacity(config.population_size),
             population,
-            immigration_detector: PageHinkley::new(
-                config.immigration_ph_delta,
-                config.immigration_ph_lambda,
+            immigration_detector: EwmaDetector::new(
+                config.immigration_ewma_alpha,
+                config.immigration_ewma_z_threshold,
+                config.immigration_ewma_consecutive_breaches,
             ),
-            immigration_change_detected: false,
             immigration_cooldown: 0,
             sort_order: Direction::Decreasing,
             max_threads: caps.max_threads.unwrap_or(1),
@@ -136,18 +135,6 @@ impl Controller for GeneticController {
     }
 
     fn push_sample(&mut self, sample: Sample) {
-        if self.config.immigration_trigger.is_some() {
-            let signal = score_single_sample(
-                self.config.score,
-                &sample,
-                self.config.energy_preference,
-            );
-            if self.immigration_detector.update(signal) {
-                self.immigration_change_detected = true;
-                self.immigration_detector.reset();
-            }
-        }
-
         self.samples.push(sample);
 
         if self.samples.len() >= self.config.population_size {
@@ -165,12 +152,12 @@ impl GeneticController {
             survival_rate,
             mutation_rate,
             immigration_rate,
-            immigration_trigger,
             immigration_cooldown_generations,
             ..
         } = self.config;
 
         let scores = score_fn.score(&self.samples, energy_preference);
+        let change_signal = update_prev_scores_and_get_change_signal(&mut self.population, &scores);
 
         let population_size = self.population.len();
 
@@ -186,22 +173,17 @@ impl GeneticController {
             survival_count
         };
 
-        let do_immigration = if immigration_trigger.is_some() {
-            if self.immigration_cooldown > 0 {
-                self.immigration_cooldown -= 1;
-                self.immigration_change_detected = false;
-                false
-            } else if self.immigration_change_detected {
+        let do_immigration = if self.immigration_cooldown > 0 {
+            self.immigration_cooldown -= 1;
+            false
+        } else {
+            let change_detected = change_signal.is_some_and(|signal| self.immigration_detector.update(signal));
+            if change_detected {
                 self.immigration_cooldown = immigration_cooldown_generations;
-                self.immigration_change_detected = false;
                 true
             } else {
                 false
             }
-        } else {
-            // Immigration trigger is not set; immigration is always enabled
-            // (By default, there will still be no immigration because the immigration rate is 0)
-            true
         };
 
         let immigration_start = if do_immigration {
@@ -264,71 +246,86 @@ fn sort_population_by_score(population: &mut Vec<Chromosome>, scores: Vec<f32>) 
     *population = combined.into_iter().map(|(c, _)| c).collect();
 }
 
-fn score_single_sample(score_fn: ScoreFunction, sample: &Sample, energy_preference: f32) -> f32 {
-    match score_fn {
-        ScoreFunction::Runtime => sample.runtime,
-        ScoreFunction::Energy => sample.energy,
-        ScoreFunction::EDP => sample.energy * sample.runtime,
-        ScoreFunction::E2DP => sample.energy * sample.energy * sample.runtime,
-        ScoreFunction::Slider => sample.energy.powf(energy_preference)
-            * sample.runtime.powf(1.0 - energy_preference),
-        // Pareto ranking needs a full population. For online drift detection we use
-        // the scalar slider score as a low-overhead proxy.
-        ScoreFunction::Pareto => sample.energy.powf(energy_preference)
-            * sample.runtime.powf(1.0 - energy_preference),
+fn update_prev_scores_and_get_change_signal(population: &mut [Chromosome], scores: &[f32]) -> Option<f32> {
+    debug_assert_eq!(population.len(), scores.len());
+
+    let mut deltas = Vec::with_capacity(scores.len());
+
+    for (chromosome, &score) in population.iter_mut().zip(scores.iter()) {
+        if let Some(prev_score) = chromosome.prev_score {
+            // Use a relative change metric to normalize across regions with different absolute scales.
+            let ratio = score / (prev_score + f32::EPSILON);
+            deltas.push((ratio - 1.0).abs());
+        }
+        chromosome.prev_score = Some(score);
+    }
+
+    median(&mut deltas)
+}
+
+fn median(values: &mut Vec<f32>) -> Option<f32> {
+    if values.is_empty() {
+        return None;
+    }
+
+    values.sort_unstable_by(|a, b| a.total_cmp(b));
+    let mid = values.len() / 2;
+    if values.len() % 2 == 0 {
+        Some((values[mid - 1] + values[mid]) * 0.5)
+    } else {
+        Some(values[mid])
     }
 }
 
 #[derive(Clone, Debug)]
-struct PageHinkley {
-    delta: f32,
-    lambda: f32,
-    n: usize,
+struct EwmaDetector {
+    alpha: f32,
+    z_threshold: f32,
+    min_consecutive_breaches: usize,
+    consecutive_breaches: usize,
     mean: f32,
-    cumulative_sum_pos: f32,
-    min_cumulative_sum_pos: f32,
-    cumulative_sum_neg: f32,
-    max_cumulative_sum_neg: f32,
+    variance: f32,
+    initialized: bool,
 }
 
-impl PageHinkley {
-    fn new(delta: f32, lambda: f32) -> Self {
+impl EwmaDetector {
+    fn new(alpha: f32, z_threshold: f32, min_consecutive_breaches: usize) -> Self {
         Self {
-            delta,
-            lambda,
-            n: 0,
+            alpha,
+            z_threshold,
+            min_consecutive_breaches,
+            consecutive_breaches: 0,
             mean: 0.0,
-            cumulative_sum_pos: 0.0,
-            min_cumulative_sum_pos: 0.0,
-            cumulative_sum_neg: 0.0,
-            max_cumulative_sum_neg: 0.0,
+            variance: 0.0,
+            initialized: false,
         }
     }
 
     fn update(&mut self, x: f32) -> bool {
-        self.n += 1;
-        let inv_n = 1.0 / self.n as f32;
-        self.mean += (x - self.mean) * inv_n;
+        if !self.initialized {
+            self.mean = x;
+            self.variance = 0.0;
+            self.initialized = true;
+            self.consecutive_breaches = 0;
+            return false;
+        }
 
-        // Two-sided Page-Hinkley to detect both upward and downward shifts.
-        self.cumulative_sum_pos += x - self.mean - self.delta;
-        self.min_cumulative_sum_pos = self.min_cumulative_sum_pos.min(self.cumulative_sum_pos);
+        let prev_mean = self.mean;
+        let prev_variance = self.variance;
+        let std = prev_variance.max(f32::EPSILON).sqrt();
+        let z = ((x - prev_mean) / std).abs();
 
-        self.cumulative_sum_neg += x - self.mean + self.delta;
-        self.max_cumulative_sum_neg = self.max_cumulative_sum_neg.max(self.cumulative_sum_neg);
+        if z > self.z_threshold {
+            self.consecutive_breaches += 1;
+        } else {
+            self.consecutive_breaches = 0;
+        }
 
-        let positive_shift = (self.cumulative_sum_pos - self.min_cumulative_sum_pos) > self.lambda;
-        let negative_shift = (self.max_cumulative_sum_neg - self.cumulative_sum_neg) > self.lambda;
-        positive_shift || negative_shift
-    }
+        self.mean = self.alpha * x + (1.0 - self.alpha) * prev_mean;
+        let residual = x - prev_mean;
+        self.variance = self.alpha * residual * residual + (1.0 - self.alpha) * prev_variance;
 
-    fn reset(&mut self) {
-        self.n = 0;
-        self.mean = 0.0;
-        self.cumulative_sum_pos = 0.0;
-        self.min_cumulative_sum_pos = 0.0;
-        self.cumulative_sum_neg = 0.0;
-        self.max_cumulative_sum_neg = 0.0;
+        self.consecutive_breaches >= self.min_consecutive_breaches
     }
 }
 
@@ -336,11 +333,16 @@ impl PageHinkley {
 pub struct Chromosome {
     threads_pct: f32,
     power_pct: f32,
+    prev_score: Option<f32>,
 }
 
 impl Chromosome {
     fn new(threads_pct: f32, power_pct: f32) -> Self {
-        Self { threads_pct, power_pct }
+        Self {
+            threads_pct,
+            power_pct,
+            prev_score: None,
+        }
     }
 
     /// Generate a random chromosome for immigration
@@ -354,6 +356,7 @@ impl Chromosome {
         Self {
             threads_pct: (self.threads_pct + other.threads_pct) * 0.5,
             power_pct: (self.power_pct + other.power_pct) * 0.5,
+            prev_score: None,
         }
     }
 
