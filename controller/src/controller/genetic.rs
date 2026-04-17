@@ -5,7 +5,6 @@ use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, scor
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
-    immigration_detector: EwmaDetector,
     immigration_cooldown: usize,
     sort_order: Direction,
     max_threads: u16,
@@ -65,18 +64,21 @@ pub struct GeneticControllerConfig {
     #[arg(long)]
     pub immigration_rate: Option<f32>,
 
-    /// EWMA smoothing factor for immigration trigger detection.
-    /// Range: (0,1].
-    #[arg(long, default_value_t = 0.2)]
-    pub immigration_ewma_alpha: f32,
+    /// Minimum median relative score change required to trigger immigration.
+    #[arg(long, default_value_t = 0.05)]
+    pub immigration_change_threshold: f32,
 
-    /// EWMA z-score threshold for immigration trigger detection.
+    /// Minimum robust z-like score required to trigger immigration.
     #[arg(long, default_value_t = 3.0)]
-    pub immigration_ewma_z_threshold: f32,
+    pub immigration_robustness_threshold: f32,
 
-    /// Number of consecutive EWMA threshold breaches needed to trigger immigration.
-    #[arg(long, default_value_t = 1)]
-    pub immigration_ewma_consecutive_breaches: usize,
+    /// Minimum number of comparable chromosomes needed before trigger detection is active.
+    #[arg(long, default_value_t = 4)]
+    pub immigration_min_matched_scores: usize,
+
+    /// Maximum allowed per-parameter change when reusing a previous score.
+    #[arg(long, default_value_t = 0.02)]
+    pub immigration_similarity_threshold: f32,
 
     /// Number of generations to wait before allowing immigration to trigger again.
     #[arg(long, default_value_t = 5)]
@@ -108,11 +110,6 @@ impl GeneticController {
         Self {
             samples: Vec::with_capacity(config.population_size),
             population,
-            immigration_detector: EwmaDetector::new(
-                config.immigration_ewma_alpha,
-                config.immigration_ewma_z_threshold,
-                config.immigration_ewma_consecutive_breaches,
-            ),
             immigration_cooldown: 0,
             sort_order: Direction::Decreasing,
             max_threads: caps.max_threads.unwrap_or(1),
@@ -152,12 +149,21 @@ impl GeneticController {
             survival_rate,
             mutation_rate,
             immigration_rate,
+            immigration_change_threshold,
             immigration_cooldown_generations,
+            immigration_min_matched_scores,
+            immigration_robustness_threshold,
             ..
         } = self.config;
 
         let scores = score_fn.score(&self.samples, energy_preference);
-        let change_signal = update_prev_scores_and_get_change_signal(&mut self.population, &scores);
+        let change_detected = update_prev_scores_and_check_for_shift(
+            &mut self.population,
+            &scores,
+            immigration_change_threshold,
+            immigration_robustness_threshold,
+            immigration_min_matched_scores,
+        );
 
         let population_size = self.population.len();
 
@@ -178,7 +184,6 @@ impl GeneticController {
                 self.immigration_cooldown -= 1;
                 false
             } else {
-                let change_detected = change_signal.is_some_and(|signal| self.immigration_detector.update(signal));
                 if change_detected {
                     self.immigration_cooldown = immigration_cooldown_generations;
                     true
@@ -250,7 +255,41 @@ fn sort_population_by_score(population: &mut Vec<Chromosome>, scores: Vec<f32>) 
     *population = combined.into_iter().map(|(c, _)| c).collect();
 }
 
-fn update_prev_scores_and_get_change_signal(population: &mut [Chromosome], scores: &[f32]) -> Option<f32> {
+/// Detect whether program behaviour appears to have shifted between the previous
+/// and current generation.
+///
+/// We only compare chromosomes that still have a `prev_score`, which means they
+/// are considered similar enough to their earlier version that the score
+/// comparison is meaningful. Freshly immigrated chromosomes and crossover
+/// children do not carry history, and mutations clear history once the parameter
+/// change is large enough. This avoids confusing workload changes with score
+/// differences caused by evaluating completely different configurations.
+///
+/// For each comparable chromosome, we compute the absolute relative change
+/// between the old and new score. We then summarize those paired changes with
+/// the median, because energy and runtime measurements can be noisy and a single
+/// outlier should not force immigration on its own. The median must exceed a
+/// minimum change threshold before we consider the shift meaningful.
+///
+/// We additionally compute the median absolute deviation (MAD) around that
+/// median change. This gives a cheap robust measure of how consistent the shift
+/// is across the comparable chromosomes. Immigration is only triggered when the
+/// median change is both large enough in absolute terms and large relative to
+/// that spread.
+///
+/// This design intentionally uses only the previous and current generation. The
+/// goal is to answer a local question: did the workload appear to change since
+/// the last time these comparable configurations were observed? That keeps the
+/// logic simple, avoids detector state that must be carried across many
+/// generations, and fits the genetic algorithm better than treating all samples
+/// as one continuous stationary process.
+fn update_prev_scores_and_check_for_shift(
+    population: &mut [Chromosome],
+    scores: &[f32],
+    change_threshold: f32,
+    robustness_threshold: f32,
+    min_matched_scores: usize,
+) -> bool {
     debug_assert_eq!(population.len(), scores.len());
 
     let mut deltas = Vec::with_capacity(scores.len());
@@ -264,72 +303,28 @@ fn update_prev_scores_and_get_change_signal(population: &mut [Chromosome], score
         chromosome.prev_score = Some(score);
     }
 
-    median(&mut deltas)
-}
-
-fn median(values: &mut Vec<f32>) -> Option<f32> {
-    if values.is_empty() {
-        return None;
+    if deltas.len() < min_matched_scores {
+        return false;
     }
 
+    let median_delta = median(&mut deltas);
+    if median_delta < change_threshold {
+        return false;
+    }
+
+    let mut deviations: Vec<_> = deltas.into_iter().map(|delta| (delta - median_delta).abs()).collect();
+    let mad = median(&mut deviations);
+    median_delta / (mad + f32::EPSILON) >= robustness_threshold
+}
+
+fn median(values: &mut Vec<f32>) -> f32 {
+    debug_assert!(!values.is_empty());
     values.sort_unstable_by(|a, b| a.total_cmp(b));
     let mid = values.len() / 2;
     if values.len() % 2 == 0 {
-        Some((values[mid - 1] + values[mid]) * 0.5)
+        (values[mid - 1] + values[mid]) * 0.5
     } else {
-        Some(values[mid])
-    }
-}
-
-#[derive(Clone, Debug)]
-struct EwmaDetector {
-    alpha: f32,
-    z_threshold: f32,
-    min_consecutive_breaches: usize,
-    consecutive_breaches: usize,
-    mean: f32,
-    variance: f32,
-    initialized: bool,
-}
-
-impl EwmaDetector {
-    fn new(alpha: f32, z_threshold: f32, min_consecutive_breaches: usize) -> Self {
-        Self {
-            alpha,
-            z_threshold,
-            min_consecutive_breaches,
-            consecutive_breaches: 0,
-            mean: 0.0,
-            variance: 0.0,
-            initialized: false,
-        }
-    }
-
-    fn update(&mut self, x: f32) -> bool {
-        if !self.initialized {
-            self.mean = x;
-            self.variance = 0.0;
-            self.initialized = true;
-            self.consecutive_breaches = 0;
-            return false;
-        }
-
-        let prev_mean = self.mean;
-        let prev_variance = self.variance;
-        let std = prev_variance.max(f32::EPSILON).sqrt();
-        let z = ((x - prev_mean) / std).abs();
-
-        if z > self.z_threshold {
-            self.consecutive_breaches += 1;
-        } else {
-            self.consecutive_breaches = 0;
-        }
-
-        self.mean = self.alpha * x + (1.0 - self.alpha) * prev_mean;
-        let residual = x - prev_mean;
-        self.variance = self.alpha * residual * residual + (1.0 - self.alpha) * prev_variance;
-
-        self.consecutive_breaches >= self.min_consecutive_breaches
+        values[mid]
     }
 }
 
@@ -357,28 +352,28 @@ impl Chromosome {
     }
 
     fn crossover(&self, other: &Self) -> Self {
-        let prev_score = if f32::abs(self.threads_pct + other.threads_pct) <= 0.1
-                && f32::abs(self.power_pct - other.power_pct) <= 0.1
-                && let Some(x) = self.prev_score
-                && let Some(y) = other.prev_score {
-            Some((x + y) * 0.5)
-        } else {
-            None
-        };
         Self {
             threads_pct: (self.threads_pct + other.threads_pct) * 0.5,
             power_pct: (self.power_pct + other.power_pct) * 0.5,
-            prev_score,
+            prev_score: None,
         }
     }
 
     /// Add or subtract one thread
     fn mutate(&mut self, config: &GeneticControllerConfig) {
+        let prev_threads_pct = self.threads_pct;
+        let prev_power_pct = self.power_pct;
+
         self.threads_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
         self.threads_pct = self.threads_pct.max(0.1).min(1.0);
 
         self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
         self.power_pct = self.power_pct.max(config.power_min).min(config.power_max);
+
+        if (self.threads_pct - prev_threads_pct).abs() > config.immigration_similarity_threshold
+            || (self.power_pct - prev_power_pct).abs() > config.immigration_similarity_threshold {
+            self.prev_score = None;
+        }
     }
 }
 
