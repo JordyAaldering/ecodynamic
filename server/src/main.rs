@@ -1,12 +1,58 @@
-mod config;
+use std::{
+    collections::HashMap,
+    fs,
+    io::{self, BufRead, BufReader, Write},
+    os::unix::net::{UnixListener, UnixStream},
+    process,
+    sync::{LazyLock, Mutex},
+    thread,
+};
 
-use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex}, thread};
-
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use controller::*;
 use rapl_energy::Rapl;
 
-use crate::config::Args;
+#[derive(Clone, Debug, Parser)]
+pub struct Args {
+    /// Exit after handling a single client.
+    #[arg(long, action)]
+    pub once: bool,
+
+    /// Idle power draw of the processor.
+    #[arg(short('w'), long("idle"), default_value_t = 0.0)]
+    pub idle_power: f32,
+
+    /// Controller type.
+    #[command(subcommand)]
+    pub controller: ControllerType,
+}
+
+#[derive(Clone, Debug, Subcommand)]
+pub enum ControllerType {
+    /// Genetic algorithm approach.
+    Genetic(GeneticControllerConfig),
+    /// Algorithm based on a performance corridor.
+    Corridor(CorridorControllerConfig),
+    /// Algorithm based on deltas between runs.
+    Delta(DeltaControllerConfig),
+    /// Continuously oscilates between the zero-capabilities and the given capabilities.
+    Oscilating,
+    /// Always returns the given capabilities.
+    Fixed,
+}
+
+impl Args {
+    pub fn build_controller(&self, caps: &Capabilities) -> Box<dyn Controller> {
+        use ControllerType::*;
+        match &self.controller {
+            Genetic(config) => Box::new(GeneticController::new(config.clone(), caps)),
+            Corridor(config) => Box::new(CorridorController::new(config.clone(), caps)),
+            Delta(config) => Box::new(DeltaController::new(config.clone(), caps)),
+            Oscilating => Box::new(OscilatingController::new(caps)),
+            Fixed => Box::new(FixedController::new(caps)),
+        }
+    }
+}
 
 static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     let rapl = Rapl::new(false);

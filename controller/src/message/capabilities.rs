@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default)]
+#[derive(Deserialize, Serialize)]
 pub struct Capabilities {
     /// Minimum number of threads that the application can use.
     /// If `None`, defaults to 1.

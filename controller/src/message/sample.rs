@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
+#[derive(Deserialize, Serialize)]
 pub struct Sample {
     /// A unique identifier of the parallel region we are controlling.
     pub region_uid: i32,

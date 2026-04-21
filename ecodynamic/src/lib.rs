@@ -1,14 +1,12 @@
-mod sample;
-
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::{self, BufRead, BufReader, Write},
     os::unix::net::UnixStream,
     sync::atomic::{AtomicI32, Ordering},
+    time::Instant,
 };
 
-pub use controller::{Capabilities, Demand, Request, Sample};
-
-use crate::sample::SamplePair;
+pub use controller::*;
+use rapl_energy::Rapl;
 
 static REGION_COUNTER: AtomicI32 = AtomicI32::new(0);
 
@@ -17,7 +15,7 @@ pub struct EcoIterator<I: Iterator> {
     region_uid: i32,
     stream: Option<UnixStream>,
     reader: Option<BufReader<UnixStream>>,
-    sample_instant: Option<SamplePair>,
+    measure_start: Option<(Instant, Rapl)>,
     before_fn: Option<fn(Demand)>,
     after_fn: Option<fn(Sample)>,
 }
@@ -33,7 +31,7 @@ impl<I: Iterator> EcoIterator<I> {
             region_uid: REGION_COUNTER.fetch_add(1, Ordering::Relaxed),
             stream: Some(stream),
             reader: Some(reader),
-            sample_instant: None,
+            measure_start: None,
             before_fn: None,
             after_fn: None,
         }
@@ -50,7 +48,7 @@ impl<I: Iterator> EcoIterator<I> {
     }
 
     /// Send a signal to the controller that we are at the start of a parallel region.
-    fn signal_start(&mut self) -> SamplePair {
+    fn signal_start(&mut self) -> (Instant, Rapl) {
         if let (Some(stream), Some(reader)) = (&mut self.stream, &mut self.reader) {
             write_json_line(stream, &Request {
                 region_uid: self.region_uid,
@@ -64,12 +62,22 @@ impl<I: Iterator> EcoIterator<I> {
             }
         }
 
-        SamplePair::start()
+        let rapl = Rapl::new(false).unwrap();
+        let now = Instant::now();
+        (now, rapl)
     }
 
     /// Signal the end of the region and send runtime and energy results.
-    fn signal_end(&mut self, instant: SamplePair) {
-        let sample = instant.stop(self.region_uid);
+    fn signal_end(&mut self, time: Instant, rapl: Rapl) {
+        let runtime = time.elapsed();
+        let energy = rapl.elapsed();
+        let sample = Sample {
+            region_uid: self.region_uid,
+            runtime: runtime.as_secs_f32(),
+            energy: energy.values().sum(),
+            usertime: None,
+        };
+
         if let Some(stream) = &mut self.stream {
             write_json_line(stream, &sample).unwrap();
         }
@@ -87,14 +95,14 @@ impl<I: Iterator> Iterator for EcoIterator<I> {
         let item = self.inner.next();
 
         if item.is_some() {
-            if let Some(instant) = self.sample_instant.take() {
+            if let Some((time, rapl)) = self.measure_start.take() {
                 // Send results of the previous region
-                self.signal_end(instant);
+                self.signal_end(time, rapl);
             } else {
                 // First element; do nothing
             }
 
-            self.sample_instant = Some(self.signal_start());
+            self.measure_start = Some(self.signal_start());
         } else if let Some(stream) = &mut self.stream {
             // Last element; close connection
             stream.shutdown(std::net::Shutdown::Both).unwrap();
@@ -104,20 +112,20 @@ impl<I: Iterator> Iterator for EcoIterator<I> {
     }
 }
 
-fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) -> std::io::Result<()> {
-    serde_json::to_writer(&mut *stream, message).map_err(std::io::Error::other)?;
+fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) -> io::Result<()> {
+    serde_json::to_writer(&mut *stream, message).map_err(io::Error::other)?;
     stream.write_all(b"\n")
 }
 
-fn read_json_line<T: serde::de::DeserializeOwned>(reader: &mut BufReader<UnixStream>) -> std::io::Result<T> {
+fn read_json_line<T: serde::de::DeserializeOwned>(reader: &mut BufReader<UnixStream>) -> io::Result<T> {
     let mut line = String::new();
     let read = reader.read_line(&mut line)?;
     if read == 0 {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::UnexpectedEof,
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
             "socket closed while reading JSON message",
         ));
     }
 
-    serde_json::from_str(line.trim_end()).map_err(std::io::Error::other)
+    serde_json::from_str(line.trim_end()).map_err(io::Error::other)
 }

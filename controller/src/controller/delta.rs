@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Direction, FilterFunction, Sample, get_scores};
+use crate::{Capabilities, Controller, Demand, FilterFunction, Sample, get_scores};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
@@ -9,7 +9,7 @@ pub struct DeltaController {
     threads_pct: f32,
     max_threads: u16,
     step_size: f32,
-    step_dir: Direction,
+    step_ascending: bool,
     e_prev: f32,
     config: DeltaControllerConfig,
 }
@@ -38,7 +38,7 @@ impl DeltaController {
             threads_pct: 1.0,
             max_threads: caps.max_threads.unwrap_or(1),
             step_size: 0.5,
-            step_dir: Direction::Decreasing,
+            step_ascending: false,
             e_prev: 0.0,
             config,
         }
@@ -72,7 +72,7 @@ impl DeltaController {
             self.reset_direction();
         } else {
             if e_next > self.e_prev {
-                self.step_dir = -self.step_dir;
+                self.step_ascending = !self.step_ascending;
             }
 
             // TODO: this needs to be updated for step_size in range (0,1] instead of range [1,max_threads]
@@ -85,15 +85,15 @@ impl DeltaController {
         }
 
         self.e_prev = e_next;
-        self.threads_pct += Into::<f32>::into(self.step_dir) * self.step_size;
+        self.threads_pct += if self.step_ascending { self.step_size } else { -self.step_size };
         self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
     }
 
     fn reset_direction(&mut self) {
-        self.step_dir = if self.threads_pct < (1.0 + THREADS_PCT_MIN) / 2.0 {
-            Direction::Increasing
+        self.step_ascending = if self.threads_pct < (1.0 + THREADS_PCT_MIN) / 2.0 {
+            true
         } else {
-            Direction::Decreasing
+            false
         };
     }
 }

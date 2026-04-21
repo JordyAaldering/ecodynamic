@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Direction, FilterFunction, Sample, get_scores};
+use crate::{Capabilities, Controller, Demand, FilterFunction, Sample, get_scores};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
@@ -9,7 +9,7 @@ pub struct CorridorController {
     threads_pct: f32,
     max_threads: u16,
     step_size: f32,
-    step_dir: Direction,
+    step_ascending: bool,
     t_prev: f32,
     t1: f32,
     config: CorridorControllerConfig,
@@ -39,7 +39,7 @@ impl CorridorController {
             threads_pct: 1.0,
             max_threads: caps.max_threads.unwrap_or(1),
             step_size: 1.0, // Will immediately be halved in the first iteration
-            step_dir: Direction::Decreasing,
+            step_ascending: false,
             t_prev: f32::MAX,
             t1: f32::MAX,
             config,
@@ -72,21 +72,21 @@ impl CorridorController {
         // TODO: check if replacing num_threads with threads_pct here was sufficient, or if we need to update the formula
         if self.t1 / (tn + f32::EPSILON) < 0.5 * self.threads_pct {
             self.step_size = f32::max(THREADS_PCT_MIN, self.threads_pct / 2.0);
-            self.step_dir = Direction::Decreasing;
+            self.step_ascending = false;
         } else {
             if self.t1 / (tn + f32::EPSILON) > self.threads_pct {
                 self.t1 = tn * self.threads_pct;
             }
 
             if tn > self.t_prev {
-                self.step_dir = -self.step_dir;
+                self.step_ascending = !self.step_ascending;
             }
 
             self.step_size = f32::max(THREADS_PCT_MIN, self.threads_pct / 2.0);
         }
 
         self.t_prev = tn;
-        self.threads_pct += Into::<f32>::into(self.step_dir) * self.step_size;
+        self.threads_pct += if self.step_ascending { self.step_size } else { -self.step_size };
         self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
     }
 }

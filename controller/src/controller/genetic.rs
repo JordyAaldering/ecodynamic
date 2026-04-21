@@ -1,12 +1,12 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, get_scores};
+use crate::{Capabilities, Controller, Demand, Sample, get_scores};
 
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
     immigration_cooldown: usize,
-    sort_order: Direction,
+    sort_ascending: bool,
     max_threads: u16,
     config: GeneticControllerConfig,
 }
@@ -107,7 +107,7 @@ impl GeneticController {
             samples: Vec::with_capacity(config.population_size),
             population,
             immigration_cooldown: 0,
-            sort_order: Direction::Decreasing,
+            sort_ascending: false,
             max_threads: caps.max_threads.unwrap_or(1),
             config,
         }
@@ -229,17 +229,12 @@ impl GeneticController {
 
         // To minimise changes in the runtime we sort by the recommended power limit
         // and we oscilate between an increasing and decreasing order.
-        match self.sort_order {
-            Direction::Increasing => {
-                self.population.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                self.sort_order = Direction::Decreasing;
-            }
-            Direction::Decreasing => {
-                self.population.sort_by(|a, b| b.partial_cmp(a).unwrap());
-                self.sort_order = Direction::Increasing;
-            }
+        if self.sort_ascending {
+            self.population.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        } else {
+            self.population.sort_by(|a, b| b.partial_cmp(a).unwrap());
         }
-
+        self.sort_ascending = !self.sort_ascending;
         log::trace!("Evolve: {:?}", self.population);
     }
 }
@@ -251,7 +246,10 @@ fn sort_population_by_score(population: &mut Vec<Chromosome>, scores: Vec<f32>) 
 }
 
 /// Detect whether program behaviour appears to have shifted between the previous
-/// and current generation.
+/// and current generation. The approach is grounded in robust statistics: the
+/// median and MAD replace mean and standard deviation, and the ratio `median_delta / MAD`
+/// is a robust signal-to-noise measure equivalent to the modified z-score. The paired-comparison
+/// structure is the non-parametric analogue of a paired t-test.
 ///
 /// We only compare chromosomes that still have a `prev_score`, which means they
 /// are considered similar enough to their earlier version that the score
