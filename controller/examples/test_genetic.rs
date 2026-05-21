@@ -31,25 +31,39 @@ pub struct Args {
 #[derive(Clone, Copy, Debug)]
 enum EnergyCurve {
 	Linear {
-        energy_at_min_power: f32,
-        energy_at_max_power: f32,
-    },
+		energy_at_min_power: f32,
+		energy_at_max_power: f32,
+	},
+	Quadratic {
+		t_optimum: f32,
+		energy_at_optimum: f32,
+	},
 }
 
 #[derive(Clone, Copy, Debug)]
 enum RuntimeCurve {
 	Linear {
-        runtime_at_min_power: f32,
-        runtime_at_max_power: f32,
-    },
+		runtime_at_min_power: f32,
+		runtime_at_max_power: f32,
+	},
+	Quadratic {
+		t_optimum: f32,
+		runtime_at_optimum: f32,
+	},
 }
 
 impl EnergyCurve {
 	fn eval(self, t: f32, cv: f32) -> f32 {
+        debug_assert!(t >= 0.0 && t <= 1.0);
         use EnergyCurve::*;
 		match self {
 			Linear { energy_at_min_power, energy_at_max_power } => {
 				let energy = lerp(energy_at_min_power, energy_at_max_power, t);
+				debug_assert!(energy >= 0.0);
+				sample_normal_value(energy, cv)
+			}
+			Quadratic { t_optimum, energy_at_optimum } => {
+				let energy = quadratic_value(t_optimum, energy_at_optimum, t);
                 debug_assert!(energy >= 0.0);
 				sample_normal_value(energy, cv)
 			}
@@ -59,10 +73,16 @@ impl EnergyCurve {
 
 impl RuntimeCurve {
 	fn eval(self, t: f32, cv: f32) -> f32 {
+        debug_assert!(t >= 0.0 && t <= 1.0);
         use RuntimeCurve::*;
 		match self {
 			Linear { runtime_at_min_power, runtime_at_max_power } => {
 				let runtime = lerp(runtime_at_min_power, runtime_at_max_power, t);
+				debug_assert!(runtime >= 0.0);
+				sample_normal_value(runtime, cv)
+			}
+			Quadratic { t_optimum, runtime_at_optimum } => {
+				let runtime = quadratic_value(t_optimum, runtime_at_optimum, t);
                 debug_assert!(runtime >= 0.0);
 				sample_normal_value(runtime, cv)
 			}
@@ -77,8 +97,8 @@ fn main() {
         config,
     } = Args::parse();
 
-	let runtime_curve = RuntimeCurve::Linear { runtime_at_min_power: 50.0, runtime_at_max_power: 20.0 };
-	let energy_curve = EnergyCurve::Linear { energy_at_min_power: 60.0, energy_at_max_power: 90.0 };
+	let runtime_curve = RuntimeCurve::Quadratic { runtime_at_optimum: 20.0, t_optimum: 0.25 };
+	let energy_curve = EnergyCurve::Quadratic { energy_at_optimum: 60.0, t_optimum: 0.75 };
 	let convergence_score_threshold = derive_score_error_threshold(
 		config.energy_preference,
 		energy_cv,
@@ -207,6 +227,20 @@ fn lerp(min: f32, max: f32, t: f32) -> f32 {
 	min + (max - min) * t
 }
 
+/// Build a smooth quadratic curve with one optimum.
+///
+/// The curve bottoms out at `t_optimum`, where it returns the value at the
+/// optimum. Away from that point, it follows a normalized parabola of the form
+/// `1 + x^2`, where `x` is the distance from the optimum scaled so that the
+/// farthest end of the interval maps to `x = 1`.
+fn quadratic_value(t_optimum: f32, t_optimum_value: f32, t: f32) -> f32 {
+	let max_distance = t_optimum.max(1.0 - t_optimum).max(f32::EPSILON);
+	let distance = (t - t_optimum).abs();
+	let normalized_distance = (distance / max_distance).min(1.0);
+	let shape = 1.0 + normalized_distance.powi(2);
+	t_optimum_value * shape
+}
+
 fn sample_normal_value(mean: f32, cv: f32) -> f32 {
 	if cv <= 0.0 {
 		return mean;
@@ -214,7 +248,9 @@ fn sample_normal_value(mean: f32, cv: f32) -> f32 {
 	let std = mean * cv;
 	let mut rng = rand::rng();
 	let normal = Normal::new(mean, std).unwrap();
-	normal.sample(&mut rng)
+	let v = normal.sample(&mut rng);
+    debug_assert!(v >= 0.0);
+    v
 }
 
 /// Derive a relative score-error threshold from the score definition and the
