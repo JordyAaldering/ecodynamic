@@ -1,7 +1,10 @@
+use std::{io, str::FromStr};
+
 use clap::Parser;
-use controller::*;
 use rand::distr::Distribution;
 use rand_distr::Normal;
+
+use controller::*;
 
 const MAX_ITERATIONS: usize = 200;
 /// We consider the controller converged once enough recent iterations stay close to the
@@ -19,21 +22,38 @@ pub struct Args {
     /// for a normal distribution about 68% of measurements will be in the
     /// range [95J, 105J], and about 95% will be in the range [90J, 110J].
     #[arg(long, default_value_t = 0.025)]
-    pub energy_cv: f32,
+    energy_cv: f32,
+
 	/// Coefficient of variation for runtime measurements.
     #[arg(long, default_value_t = 0.005)]
-    pub runtime_cv: f32,
+    runtime_cv: f32,
+
+	/// Energy curve in the form `Linear:min,max` or `Quadratic:t_optimum,value_at_optimum`.
+	#[arg(long, default_value = "Quadratic:0.75,60.0")]
+    energy_curve: EnergyCurve,
+
+	/// Runtime curve in the form `Linear:min,max` or `Quadratic:t_optimum,value_at_optimum`.
+	#[arg(long, default_value = "Quadratic:0.25,20.0")]
+    runtime_curve: RuntimeCurve,
 
     #[command(flatten)]
-    pub config: GeneticControllerConfig,
+    config: GeneticControllerConfig,
 }
 
 #[derive(Clone, Copy, Debug)]
 enum EnergyCurve {
+	/// ```tex
+	/// \addplot[smooth,domain=0:1,samples=200]
+	///   {energy_at_min_power + (energy_at_max_power - energy_at_min_power) * x};
+	/// ```
 	Linear {
 		energy_at_min_power: f32,
 		energy_at_max_power: f32,
 	},
+	/// ```tex
+	/// \addplot[smooth,domain=0:1,samples=200]
+	///   {energy_at_optimum * (1 + ((x - t_optimum) / max(t_optimum, 1 - t_optimum))^2)};
+	/// ```
 	Quadratic {
 		t_optimum: f32,
 		energy_at_optimum: f32,
@@ -50,6 +70,52 @@ enum RuntimeCurve {
 		t_optimum: f32,
 		runtime_at_optimum: f32,
 	},
+}
+
+impl FromStr for EnergyCurve {
+	type Err = io::Error;
+
+	fn from_str(input: &str) -> Result<Self, Self::Err> {
+		let (variant, values) = input.split_once(':').unwrap_or((input, ""));
+		let (first, second) = values.split_once(',').unwrap_or((values, "0"));
+		let first = first.parse::<f32>().unwrap();
+		let second = second.parse::<f32>().unwrap();
+
+		Ok(match variant {
+			"Linear" => EnergyCurve::Linear {
+				energy_at_min_power: first,
+				energy_at_max_power: second,
+			},
+			"Quadratic" => EnergyCurve::Quadratic {
+				t_optimum: first,
+				energy_at_optimum: second,
+			},
+			_ => return Err(io::Error::new(io::ErrorKind::InvalidInput, input.to_string())),
+		})
+	}
+}
+
+impl FromStr for RuntimeCurve {
+	type Err = io::Error;
+
+	fn from_str(input: &str) -> Result<Self, Self::Err> {
+		let (variant, values) = input.split_once(':').unwrap();
+		let (first, second) = values.split_once(',').unwrap();
+		let first = first.parse::<f32>().unwrap();
+		let second = second.parse::<f32>().unwrap();
+
+		Ok(match variant {
+			"Linear" => RuntimeCurve::Linear {
+				runtime_at_min_power: first,
+				runtime_at_max_power: second,
+			},
+			"Quadratic" => RuntimeCurve::Quadratic {
+				t_optimum: first,
+				runtime_at_optimum: second,
+			},
+			_ => return Err(io::Error::new(io::ErrorKind::InvalidInput, input.to_string())),
+		})
+	}
 }
 
 impl EnergyCurve {
@@ -94,11 +160,11 @@ fn main() {
     let Args {
 		energy_cv,
 		runtime_cv,
+		energy_curve,
+		runtime_curve,
         config,
     } = Args::parse();
 
-	let runtime_curve = RuntimeCurve::Quadratic { runtime_at_optimum: 20.0, t_optimum: 0.25 };
-	let energy_curve = EnergyCurve::Quadratic { energy_at_optimum: 60.0, t_optimum: 0.75 };
 	let convergence_score_threshold = derive_score_error_threshold(
 		config.energy_preference,
 		energy_cv,
