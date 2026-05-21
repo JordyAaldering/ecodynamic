@@ -28,12 +28,17 @@ pub struct Args {
     #[arg(long, default_value_t = 0.005)]
     runtime_cv: f32,
 
-	/// Energy curve in the form `Linear:min,max` or `Quadratic:t_optimum,value_at_optimum`.
+	/// Energy curve in the form `Linear:min,max`, `Quadratic:t_optimum,value_at_optimum`,
+	/// or `Sigmoid:min,max,t_middle,steepness`.
+	///
+	/// Reasonable defaults for the current example are `Linear:60,90`,
+	/// `Quadratic:0.75,60`, and `Sigmoid:20,90,0.5,0.8`.
 	#[arg(long, default_value = "Quadratic:0.75,60.0")]
     energy_curve: EnergyCurve,
 
-	/// Runtime curve in the form `Linear:min,max` or `Quadratic:t_optimum,value_at_optimum`.
-	#[arg(long, default_value = "Quadratic:0.25,20.0")]
+	/// Runtime curve in the form `Linear:min,max`, `Quadratic:t_optimum,value_at_optimum`,
+	/// or `Sigmoid:min,max,t_middle,steepness`.
+	#[arg(long, default_value = "Sigmoid:50.0,20.0,0.5,0.8")]
     runtime_curve: RuntimeCurve,
 
     #[command(flatten)]
@@ -46,6 +51,7 @@ enum EnergyCurve {
 	/// \addplot[smooth,domain=0:1,samples=200]
 	///   {energy_at_min_power + (energy_at_max_power - energy_at_min_power) * x};
 	/// ```
+	/// Reasonable example default: `Linear:60,90`.
 	Linear {
 		energy_at_min_power: f32,
 		energy_at_max_power: f32,
@@ -54,9 +60,23 @@ enum EnergyCurve {
 	/// \addplot[smooth,domain=0:1,samples=200]
 	///   {energy_at_optimum * (1 + ((x - t_optimum) / max(t_optimum, 1 - t_optimum))^2)};
 	/// ```
+	/// Reasonable example default: `Quadratic:0.75,60`.
 	Quadratic {
 		t_optimum: f32,
 		energy_at_optimum: f32,
+	},
+	/// ```tex
+	/// \addplot[smooth,domain=0:1,samples=200]
+	///   {energy_at_min + (energy_at_max - energy_at_min) *
+	///    (1/(1+exp(-k*(x-t_middle))) - 1/(1+exp(k*t_middle))) /
+	///    (1/(1+exp(-k*(1-t_middle))) - 1/(1+exp(k*t_middle)))};
+	/// ```
+	/// Reasonable example default: `Sigmoid:20,90,0.5,0.8`.
+	Sigmoid {
+		min_energy: f32,
+		max_energy: f32,
+		t_middle: f32,
+		steepness: f32,
 	},
 }
 
@@ -70,26 +90,42 @@ enum RuntimeCurve {
 		t_optimum: f32,
 		runtime_at_optimum: f32,
 	},
+	Sigmoid {
+		min_runtime: f32,
+		max_runtime: f32,
+		t_middle: f32,
+		steepness: f32,
+	},
 }
 
 impl FromStr for EnergyCurve {
 	type Err = io::Error;
 
 	fn from_str(input: &str) -> Result<Self, Self::Err> {
-		let (variant, values) = input.split_once(':').unwrap_or((input, ""));
-		let (first, second) = values.split_once(',').unwrap_or((values, "0"));
-		let first = first.parse::<f32>().unwrap();
-		let second = second.parse::<f32>().unwrap();
+		let (variant, values) = input.split_once(':').unwrap();
+		let values = values
+			.split(',')
+			.map(str::parse::<f32>)
+			.collect::<Result<Vec<_>, _>>()
+			.map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, input.to_string()))?;
 
 		Ok(match variant {
 			"Linear" => EnergyCurve::Linear {
-				energy_at_min_power: first,
-				energy_at_max_power: second,
+				energy_at_min_power: values[0],
+				energy_at_max_power: values[1],
 			},
 			"Quadratic" => EnergyCurve::Quadratic {
-				t_optimum: first,
-				energy_at_optimum: second,
+				t_optimum: values[0],
+				energy_at_optimum: values[1],
 			},
+			"Sigmoid" => {
+				EnergyCurve::Sigmoid {
+					min_energy: values[0],
+					max_energy: values[1],
+					t_middle: values[2],
+					steepness: values[3],
+				}
+			}
 			_ => return Err(io::Error::new(io::ErrorKind::InvalidInput, input.to_string())),
 		})
 	}
@@ -100,19 +136,29 @@ impl FromStr for RuntimeCurve {
 
 	fn from_str(input: &str) -> Result<Self, Self::Err> {
 		let (variant, values) = input.split_once(':').unwrap();
-		let (first, second) = values.split_once(',').unwrap();
-		let first = first.parse::<f32>().unwrap();
-		let second = second.parse::<f32>().unwrap();
+		let values = values
+			.split(',')
+			.map(str::parse::<f32>)
+			.collect::<Result<Vec<_>, _>>()
+			.map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, input.to_string()))?;
 
 		Ok(match variant {
 			"Linear" => RuntimeCurve::Linear {
-				runtime_at_min_power: first,
-				runtime_at_max_power: second,
+				runtime_at_min_power: values[0],
+				runtime_at_max_power: values[1],
 			},
 			"Quadratic" => RuntimeCurve::Quadratic {
-				t_optimum: first,
-				runtime_at_optimum: second,
+				t_optimum: values[0],
+				runtime_at_optimum: values[1],
 			},
+			"Sigmoid" => {
+				RuntimeCurve::Sigmoid {
+					min_runtime: values[0],
+					max_runtime: values[1],
+					t_middle: values[2],
+					steepness: values[3],
+				}
+			}
 			_ => return Err(io::Error::new(io::ErrorKind::InvalidInput, input.to_string())),
 		})
 	}
@@ -133,6 +179,11 @@ impl EnergyCurve {
                 debug_assert!(energy >= 0.0);
 				sample_normal_value(energy, cv)
 			}
+			Sigmoid { min_energy, max_energy, t_middle, steepness } => {
+				let energy = sigmoid_value(min_energy, max_energy, t_middle, steepness, t);
+				debug_assert!(energy >= 0.0);
+				sample_normal_value(energy, cv)
+			}
 		}
 	}
 }
@@ -150,6 +201,11 @@ impl RuntimeCurve {
 			Quadratic { t_optimum, runtime_at_optimum } => {
 				let runtime = quadratic_value(t_optimum, runtime_at_optimum, t);
                 debug_assert!(runtime >= 0.0);
+				sample_normal_value(runtime, cv)
+			}
+			Sigmoid { min_runtime, max_runtime, t_middle, steepness } => {
+				let runtime = sigmoid_value(min_runtime, max_runtime, t_middle, steepness, t);
+				debug_assert!(runtime >= 0.0);
 				sample_normal_value(runtime, cv)
 			}
 		}
@@ -305,6 +361,28 @@ fn quadratic_value(t_optimum: f32, t_optimum_value: f32, t: f32) -> f32 {
 	let normalized_distance = (distance / max_distance).min(1.0);
 	let shape = 1.0 + normalized_distance.powi(2);
 	t_optimum_value * shape
+}
+
+/// Build a smooth sigmoid-like curve with plateaus at both ends.
+///
+/// `t_middle` marks the center of the S-curve. `min_value` and `max_value`
+/// define the plateau levels at the edges of the interval, and `steepness`
+/// controls how abruptly the curve transitions between them.
+///
+/// Steepness is interpreted on a `0..=1` scale:
+/// - `0` is almost linear
+/// - `1` is very steep, approaching a sign-like transition
+///
+/// The curve uses a shifted hyperbolic tangent, which keeps the code simple
+/// while still producing a smooth S-shaped transition between the two levels.
+fn sigmoid_value(min_value: f32, max_value: f32, t_middle: f32, steepness: f32, t: f32) -> f32 {
+	debug_assert!(t >= 0.0 && t <= 1.0);
+	debug_assert!(t_middle >= 0.0 && t_middle <= 1.0);
+	debug_assert!(steepness >= 0.0 && steepness <= 1.0);
+
+	let curve_strength = 2.0 + steepness * 10.0;
+	let normalized = 0.5 * (1.0 + ((t - t_middle) * curve_strength).tanh());
+	lerp(min_value, max_value, normalized)
 }
 
 fn sample_normal_value(mean: f32, cv: f32) -> f32 {
