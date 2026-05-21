@@ -1,5 +1,7 @@
 use clap::Parser;
 use controller::*;
+use rand::distr::Distribution;
+use rand_distr::Normal;
 
 const MAX_ITERATIONS: usize = 200;
 /// We consider the controller converged once enough recent iterations stay close to the
@@ -11,6 +13,19 @@ const CONVERGENCE_SCORE_PERCENT: f32 = 0.10;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
+	/// Coefficient of variation for energy measurements.
+	/// Standard deviation is computed as energy_cv * expected_energy.
+    ///
+    /// Example, if the CV is 0.05 (5%) and the expected energy is 100J, then
+    /// for a normal distribution about 68% of measurements will be in the
+    /// range [95J, 105J], and about 95% will be in the range [90J, 110J].
+    #[arg(long, default_value_t = 0.025)]
+    pub energy_cv: f32,
+	/// Coefficient of variation for runtime measurements.
+	/// Standard deviation is computed as runtime_cv * expected_runtime.
+    #[arg(long, default_value_t = 0.005)]
+    pub runtime_cv: f32,
+
     #[command(flatten)]
     pub config: GeneticControllerConfig,
 }
@@ -20,7 +35,6 @@ enum EnergyCurve {
 	Linear {
         energy_at_min_power: f32,
         energy_at_max_power: f32,
-        measurement_delta: f32,
     },
 }
 
@@ -29,43 +43,48 @@ enum RuntimeCurve {
 	Linear {
         runtime_at_min_power: f32,
         runtime_at_max_power: f32,
-        measurement_delta: f32,
     },
 }
 
 impl EnergyCurve {
-	fn eval(self, t: f32) -> f32 {
+	fn eval(self, t: f32, cv: f32) -> f32 {
         use EnergyCurve::*;
 		match self {
-			Linear { energy_at_min_power: min_powercap_energy, energy_at_max_power: max_powercap_energy, measurement_delta } => {
-				let energy = lerp(min_powercap_energy, max_powercap_energy, t);
-                energy + rand::random_range(-measurement_delta..=measurement_delta)
+			Linear { energy_at_min_power, energy_at_max_power } => {
+				let energy = lerp(energy_at_min_power, energy_at_max_power, t);
+                debug_assert!(energy >= 0.0);
+				energy + sample_normal_noise(energy * cv)
 			}
 		}
 	}
 }
 
 impl RuntimeCurve {
-	fn eval(self, t: f32) -> f32 {
+	fn eval(self, t: f32, cv: f32) -> f32 {
         use RuntimeCurve::*;
 		match self {
-			Linear { runtime_at_min_power: min_powercap_runtime, runtime_at_max_power: max_powercap_runtime, measurement_delta } => {
-				let runtime = lerp(min_powercap_runtime, max_powercap_runtime, t);
-                runtime + rand::random_range(-measurement_delta..=measurement_delta)
+			Linear { runtime_at_min_power, runtime_at_max_power } => {
+				let runtime = lerp(runtime_at_min_power, runtime_at_max_power, t);
+                debug_assert!(runtime >= 0.0);
+				runtime + sample_normal_noise(runtime * cv)
 			}
 		}
 	}
 }
 
 fn main() {
-    let Args { config } = Args::parse();
+    let Args {
+		energy_cv,
+		runtime_cv,
+        config,
+    } = Args::parse();
 
-	let runtime_curve = RuntimeCurve::Linear { runtime_at_min_power: 50.0, runtime_at_max_power: 20.0, measurement_delta: 0.1 };
-	let energy_curve = EnergyCurve::Linear { energy_at_min_power: 60.0, energy_at_max_power: 90.0, measurement_delta: 2.0 };
+	let runtime_curve = RuntimeCurve::Linear { runtime_at_min_power: 50.0, runtime_at_max_power: 20.0 };
+	let energy_curve = EnergyCurve::Linear { energy_at_min_power: 60.0, energy_at_max_power: 90.0 };
 
     // Precompute the optimal powercap for the given curves and score definition,
     // to have a reference for the controller's performance.
-	let (best_powercap, best_energy, best_runtime, best_score) = find_optimal_powercap(
+	let (best_score, best_powercap, best_energy, best_runtime) = find_optimal_powercap(
 		runtime_curve,
 		energy_curve,
 		config.energy_preference,
@@ -75,8 +94,8 @@ fn main() {
 
     let e_pref = config.energy_preference;
 	let mut controller = GeneticController::new(config, &Capabilities::default());
-    let mut best_observed_powercap = 0.0;
     let mut best_observed_score = f32::INFINITY;
+    let mut best_observed_powercap = 0.0;
 
 	let mut total_energy_overhead = 0.0;
 	let mut total_runtime_overhead = 0.0;
@@ -90,8 +109,8 @@ fn main() {
 		let demand = controller.get_demand();
 		let t = demand.powercap_pct;
 
-        let energy = energy_curve.eval(t);
-        let runtime = runtime_curve.eval(t);
+		let energy = energy_curve.eval(t, energy_cv);
+		let runtime = runtime_curve.eval(t, runtime_cv);
         total_energy_overhead += energy - best_energy;
         total_runtime_overhead += runtime - best_runtime;
         let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
@@ -108,8 +127,8 @@ fn main() {
 		controller.push_sample(sample);
 
 		let distance_to_optimum = (t - best_powercap).abs();
-		println!("iter={iteration:03} powercap={t:.4} score={score:.4} error_pct={:.2}% dist_to_optimal={distance_to_optimum:.4}",
-			score_error_ratio * 100.0);
+		println!("iter={:03} powercap={t:.4} score={:.4} error_pct={:.2}% dist_to_optimal={:.4}",
+			iteration, score, score_error_ratio * 100.0, distance_to_optimum);
 
 		if iteration >= CONVERGENCE_WINDOW_M && has_converged(&recent_score_error_ratios) {
 			converged = true;
@@ -118,7 +137,7 @@ fn main() {
 	}
 
     if converged {
-		println!("Converged after {iterations_done} iterations: {CONVERGENCE_REQUIRED_N} of the last {CONVERGENCE_WINDOW_M} score errors were within {CONVERGENCE_SCORE_PERCENT:.2}% of the predicted best score");
+		println!("Converged after {} iterations", iterations_done);
     } else {
         println!("Did not converge");
     }
@@ -147,32 +166,41 @@ fn find_optimal_powercap(
 	power_min: f32,
 	power_max: f32,
 ) -> (f32, f32, f32, f32) {
+    let mut best_score = f32::INFINITY;
     let mut best_powercap = power_min;
     let mut best_energy = f32::INFINITY;
     let mut best_runtime = f32::INFINITY;
-    let mut best_score = f32::INFINITY;
 
 	for i in 0..=5000 {
 		let t = i as f32 / 5000.0;
 		let powercap = lerp(power_min, power_max, t);
-        let energy=  energy_curve.eval(powercap);
-        let runtime = runtime_curve.eval(powercap);
+        let energy=  energy_curve.eval(powercap, 0.0);
+        let runtime = runtime_curve.eval(powercap, 0.0);
         let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
 
 		let score = score(&sample, alpha);
 		if score < best_score {
+			best_score = score;
 			best_powercap = powercap;
             best_energy = energy;
             best_runtime = runtime;
-			best_score = score;
 		}
 	}
 
-	(best_powercap, best_energy, best_runtime, best_score)
+	(best_score, best_powercap, best_energy, best_runtime)
 }
 
 fn lerp(min: f32, max: f32, t: f32) -> f32 {
 	min + (max - min) * t
+}
+
+fn sample_normal_noise(std: f32) -> f32 {
+	if std <= 0.0 {
+		return 0.0;
+	}
+	let mut rng = rand::rng();
+	let normal = Normal::new(0f32, std).unwrap();
+	normal.sample(&mut rng)
 }
 
 fn has_converged(recent_score_error_ratios: &[f32]) -> bool {

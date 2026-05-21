@@ -9,5 +9,8 @@ log = "0.4.29"
 rand = "0.10.1"
 serde = { version = "1.0.228", features = ["derive"] }
 
+[dev-dependencies]
+rand_distr = "0.6.0"
+
 [build-dependencies]
 cbindgen = "0.29.2"
