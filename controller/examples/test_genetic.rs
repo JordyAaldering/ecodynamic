@@ -142,12 +142,11 @@ fn main() {
 	}
 
     if converged {
-		println!("Converged after {} iterations ({} of the last {} iterations within threshold {:.2}% = {:.1}x derived score noise)",
-			iterations_done, CONVERGENCE_REQUIRED, CONVERGENCE_WINDOW,
-            convergence_score_threshold * 100.0, CONVERGENCE_THRESHOLD_MULTIPLIER);
+		println!("Converged after {} iterations ({} of the last {} iterations within score threshold {:.2}%)",
+			iterations_done, CONVERGENCE_REQUIRED, CONVERGENCE_WINDOW, convergence_score_threshold * 100.0);
     } else {
-        println!("Did not converge (threshold {:.2}% = {:.1}x derived score noise)",
-			convergence_score_threshold * 100.0, CONVERGENCE_THRESHOLD_MULTIPLIER);
+        println!("Did not converge (score threshold {:.2}%)",
+            convergence_score_threshold * 100.0);
     }
 
 	println!("Expected optimum: powercap={:.4}W, score={:.4}", best_powercap, best_score);
