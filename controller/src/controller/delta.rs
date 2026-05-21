@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, FilterFunction, Sample, get_scores};
+use crate::{Capabilities, Controller, Demand, FilterFunction, Sample, scores};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
@@ -65,7 +65,7 @@ impl Controller for DeltaController {
 
 impl DeltaController {
     fn evolve(&mut self) {
-        let e_next = self.config.select.select(get_scores(&self.samples, self.config.energy_preference));
+        let e_next = self.config.select.select(scores(&self.samples, self.config.energy_preference));
 
         if e_next > self.e_prev * 1.50 {
             self.step_size = 0.5;

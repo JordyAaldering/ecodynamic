@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, FilterFunction, Sample, get_scores};
+use crate::{Capabilities, Controller, Demand, FilterFunction, Sample, scores};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
@@ -67,7 +67,7 @@ impl Controller for CorridorController {
 
 impl CorridorController {
     fn evolve(&mut self) {
-        let tn = self.config.select.select(get_scores(&self.samples, self.config.energy_preference));
+        let tn = self.config.select.select(scores(&self.samples, self.config.energy_preference));
 
         // TODO: check if replacing num_threads with threads_pct here was sufficient, or if we need to update the formula
         if self.t1 / (tn + f32::EPSILON) < 0.5 * self.threads_pct {

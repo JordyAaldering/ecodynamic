@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Sample, get_scores};
+use crate::{Capabilities, Controller, Demand, Sample, scores};
 
 pub struct GeneticController {
     samples: Vec<Sample>,
@@ -151,7 +151,7 @@ impl GeneticController {
             ..
         } = self.config;
 
-        let scores = get_scores(&self.samples, energy_preference);
+        let scores = scores(&self.samples, energy_preference);
         let change_detected = update_prev_scores_and_check_for_shift(
             &mut self.population,
             &scores,
