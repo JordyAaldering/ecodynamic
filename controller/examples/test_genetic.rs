@@ -53,7 +53,7 @@ impl EnergyCurve {
 			Linear { energy_at_min_power, energy_at_max_power } => {
 				let energy = lerp(energy_at_min_power, energy_at_max_power, t);
                 debug_assert!(energy >= 0.0);
-				energy + sample_normal_noise(energy * cv)
+				sample_normal_value(energy, cv)
 			}
 		}
 	}
@@ -66,7 +66,7 @@ impl RuntimeCurve {
 			Linear { runtime_at_min_power, runtime_at_max_power } => {
 				let runtime = lerp(runtime_at_min_power, runtime_at_max_power, t);
                 debug_assert!(runtime >= 0.0);
-				runtime + sample_normal_noise(runtime * cv)
+				sample_normal_value(runtime, cv)
 			}
 		}
 	}
@@ -194,12 +194,13 @@ fn lerp(min: f32, max: f32, t: f32) -> f32 {
 	min + (max - min) * t
 }
 
-fn sample_normal_noise(std: f32) -> f32 {
-	if std <= 0.0 {
-		return 0.0;
+fn sample_normal_value(mean: f32, cv: f32) -> f32 {
+	if cv <= 0.0 {
+		return mean;
 	}
+	let std = mean * cv;
 	let mut rng = rand::rng();
-	let normal = Normal::new(0f32, std).unwrap();
+	let normal = Normal::new(mean, std).unwrap();
 	normal.sample(&mut rng)
 }
 
