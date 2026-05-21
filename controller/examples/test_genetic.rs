@@ -5,16 +5,15 @@ use rand_distr::Normal;
 
 const MAX_ITERATIONS: usize = 200;
 /// We consider the controller converged once enough recent iterations stay close to the
-/// predicted best score: at least CONVERGENCE_REQUIRED_N of the last CONVERGENCE_WINDOW_M
-/// iterations must be within CONVERGENCE_SCORE_PERCENT of that best score.
-const CONVERGENCE_WINDOW_M: usize = 10;
-const CONVERGENCE_REQUIRED_N: usize = 7;
-const CONVERGENCE_SCORE_PERCENT: f32 = 0.10;
+/// predicted best score: at least CONVERGENCE_REQUIRED of the last CONVERGENCE_WINDOW
+/// iterations must be within a derived score-error threshold of that best score.
+const CONVERGENCE_WINDOW: usize = 20;
+const CONVERGENCE_REQUIRED: usize = 15;
+const CONVERGENCE_THRESHOLD_MULTIPLIER: f32 = 2.0;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
 	/// Coefficient of variation for energy measurements.
-	/// Standard deviation is computed as energy_cv * expected_energy.
     ///
     /// Example, if the CV is 0.05 (5%) and the expected energy is 100J, then
     /// for a normal distribution about 68% of measurements will be in the
@@ -22,7 +21,6 @@ pub struct Args {
     #[arg(long, default_value_t = 0.025)]
     pub energy_cv: f32,
 	/// Coefficient of variation for runtime measurements.
-	/// Standard deviation is computed as runtime_cv * expected_runtime.
     #[arg(long, default_value_t = 0.005)]
     pub runtime_cv: f32,
 
@@ -81,6 +79,12 @@ fn main() {
 
 	let runtime_curve = RuntimeCurve::Linear { runtime_at_min_power: 50.0, runtime_at_max_power: 20.0 };
 	let energy_curve = EnergyCurve::Linear { energy_at_min_power: 60.0, energy_at_max_power: 90.0 };
+	let convergence_score_threshold = derive_score_error_threshold(
+		config.energy_preference,
+		energy_cv,
+		runtime_cv,
+		CONVERGENCE_THRESHOLD_MULTIPLIER,
+	);
 
     // Precompute the optimal powercap for the given curves and score definition,
     // to have a reference for the controller's performance.
@@ -99,7 +103,7 @@ fn main() {
 
 	let mut total_energy_overhead = 0.0;
 	let mut total_runtime_overhead = 0.0;
-	let mut recent_score_error_ratios = vec![f32::INFINITY; CONVERGENCE_WINDOW_M];
+	let mut recent_score_error_ratios = vec![f32::INFINITY; CONVERGENCE_WINDOW];
 	let mut recent_score_error_index = 0;
 	let mut iterations_done = 0;
     let mut converged = false;
@@ -118,7 +122,7 @@ fn main() {
 		let score = score(&sample, e_pref);
 		let score_error_ratio = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
 		recent_score_error_ratios[recent_score_error_index] = score_error_ratio;
-		recent_score_error_index = (recent_score_error_index + 1) % CONVERGENCE_WINDOW_M;
+		recent_score_error_index = (recent_score_error_index + 1) % CONVERGENCE_WINDOW;
 		if score < best_observed_score {
 			best_observed_powercap = t;
 			best_observed_score = score;
@@ -130,16 +134,20 @@ fn main() {
 		println!("iter={:03} powercap={t:.4} score={:.4} error_pct={:.2}% dist_to_optimal={:.4}",
 			iteration, score, score_error_ratio * 100.0, distance_to_optimum);
 
-		if iteration >= CONVERGENCE_WINDOW_M && has_converged(&recent_score_error_ratios) {
+		if iteration >= CONVERGENCE_WINDOW
+			&& has_converged(&recent_score_error_ratios, convergence_score_threshold) {
 			converged = true;
 			break;
 		}
 	}
 
     if converged {
-		println!("Converged after {} iterations", iterations_done);
+		println!("Converged after {} iterations ({} of the last {} iterations within threshold {:.2}% = {:.1}x derived score noise)",
+			iterations_done, CONVERGENCE_REQUIRED, CONVERGENCE_WINDOW,
+            convergence_score_threshold * 100.0, CONVERGENCE_THRESHOLD_MULTIPLIER);
     } else {
-        println!("Did not converge");
+        println!("Did not converge (threshold {:.2}% = {:.1}x derived score noise)",
+			convergence_score_threshold * 100.0, CONVERGENCE_THRESHOLD_MULTIPLIER);
     }
 
 	println!("Expected optimum: powercap={:.4}W, score={:.4}", best_powercap, best_score);
@@ -157,6 +165,12 @@ fn main() {
 /// The search is done by dense sampling: evaluate evenly spaced powercap values,
 /// compute runtime and energy from the provided curves, transform those into the
 /// controller score (energy^alpha * runtime^(1-alpha)), and keep the minimum.
+///
+/// This intentionally uses a noiseless baseline: runtime and energy are evaluated with
+/// zero measurement noise so the result represents an ideal "perfect world" optimum.
+/// The rest of the example then compares noisy controller samples against that reference
+/// on purpose, to show how well the genetic algorithm approaches the best possible
+/// configuration even when measurements are not perfect.
 ///
 /// Returns (best_powercap, best_score).
 fn find_optimal_powercap(
@@ -204,14 +218,42 @@ fn sample_normal_value(mean: f32, cv: f32) -> f32 {
 	normal.sample(&mut rng)
 }
 
-fn has_converged(recent_score_error_ratios: &[f32]) -> bool {
-	if recent_score_error_ratios.len() < CONVERGENCE_WINDOW_M {
-		return false;
-	}
+/// Derive a relative score-error threshold from the score definition and the
+/// measurement noise model.
+///
+/// The score is computed as `energy^energy_preference * runtime^(1-energy_preference)`.
+/// In this example, energy and runtime are sampled with normally distributed
+/// multiplicative noise described by their coefficients of variation (CVs).
+///
+/// For modest noise levels, the relative variation of the combined score can be
+/// approximated from the relative variations of its inputs. The energy term is
+/// weighted by `energy_preference`, and the runtime term is weighted by
+/// `1 - energy_preference`. Combining those two independent contributions in
+/// quadrature gives an estimated relative score noise level.
+///
+/// We then multiply that estimated score noise by `threshold_multiplier` to get
+/// the allowed relative score error for convergence checks. A multiplier of 2.0
+/// means we accept scores that fall within roughly two derived standard
+/// deviations of the noiseless optimum.
+fn derive_score_error_threshold(
+	energy_preference: f32,
+	energy_cv: f32,
+	runtime_cv: f32,
+	threshold_multiplier: f32,
+) -> f32 {
+	let runtime_preference = 1.0 - energy_preference;
+	let derived_score_cv = f32::sqrt(
+        (energy_preference * energy_cv).powi(2)
+        + (runtime_preference * runtime_cv).powi(2)
+    );
+	derived_score_cv * threshold_multiplier
+}
 
-	recent_score_error_ratios
+fn has_converged(recent_score_error_ratios: &[f32], convergence_score_threshold: f32) -> bool {
+	debug_assert_eq!(recent_score_error_ratios.len(), CONVERGENCE_WINDOW);
+	let num_converged = recent_score_error_ratios
 		.iter()
-		.filter(|&&score_error_ratio| score_error_ratio <= CONVERGENCE_SCORE_PERCENT)
-		.count()
-		>= CONVERGENCE_REQUIRED_N
+		.filter(|&&score_error_ratio| score_error_ratio <= convergence_score_threshold)
+		.count();
+	num_converged >= CONVERGENCE_REQUIRED
 }
