@@ -62,9 +62,7 @@ fn run(
 
 		controller.push_sample(sample);
 
-		if iteration >= CONVERGENCE_WINDOW
-			&& has_converged(&recent_score_error_ratios, convergence_score_threshold)
-		{
+		if has_converged(&recent_score_error_ratios, convergence_score_threshold) {
 			return Some(iteration)
 		}
 	}

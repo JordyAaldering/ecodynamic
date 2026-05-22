@@ -2,8 +2,8 @@ use clap::Parser;
 use controller::*;
 use prelude::*;
 
-const INITIALIZATION_ITERATIONS: usize = 200;
-const MAX_ADAPTATION_ITERATIONS: usize = 400;
+const INITIALIZATION_EVOLUTIONS: usize = 4;
+const MAX_ADAPTATION_ITERATIONS: usize = 300;
 /// We consider the controller converged once enough recent iterations stay close to the
 /// predicted best score: at least CONVERGENCE_REQUIRED of the last CONVERGENCE_WINDOW
 /// iterations must be within a derived score-error threshold of that best score.
@@ -15,13 +15,13 @@ const CONVERGENCE_THRESHOLD_MULTIPLIER: f32 = 1.5;
 const INIT_ENERGY_CURVE: Curve = Curve::Quadratic {
     lb: 0.1,
     t_middle: 0.25,
-    steepness: 3.0,
+    steepness: 5.0,
 };
 
 const INIT_RUNTIME_CURVE: Curve = Curve::Quadratic {
     lb: 0.1,
     t_middle: 0.75,
-    steepness: 3.0,
+    steepness: 5.0,
 };
 
 #[derive(Clone, Debug, Parser)]
@@ -59,7 +59,11 @@ fn run(
 ) -> Option<usize> {
     let mut controller = GeneticController::new(config.clone(), &Capabilities::default());
 
-    for _ in 1..=INITIALIZATION_ITERATIONS {
+    // We add some randomness to the number of iterations, as to ensure that the the shift happens
+    // at different points in the controller's evolution cycle. I.e., we want to avoid that the
+    // shift always aligns with an evolution step.
+    let initialization_runs = INITIALIZATION_EVOLUTIONS * config.population_size + rand::random_range(0..config.population_size);
+    for _ in 0..initialization_runs {
         let demand = controller.get_demand();
         let t = demand.powercap_pct;
         let energy = INIT_ENERGY_CURVE.eval(t, energy_cv);
@@ -69,9 +73,8 @@ fn run(
     }
 
     let mut recent_score_error_ratios = vec![f32::INFINITY; CONVERGENCE_WINDOW];
-    let mut recent_score_error_index = 0;
 
-    for iteration in 1..=MAX_ADAPTATION_ITERATIONS {
+    for i in 0..MAX_ADAPTATION_ITERATIONS {
         let demand = controller.get_demand();
         let t = demand.powercap_pct;
 
@@ -81,15 +84,12 @@ fn run(
 
         let score = score(&sample, config.energy_preference);
         let score_error_ratio = (score - target_best_score).abs() / target_best_score.abs().max(f32::EPSILON);
-        recent_score_error_ratios[recent_score_error_index] = score_error_ratio;
-        recent_score_error_index = (recent_score_error_index + 1) % CONVERGENCE_WINDOW;
+        recent_score_error_ratios[i % CONVERGENCE_WINDOW] = score_error_ratio;
 
         controller.push_sample(sample);
 
-        if iteration >= CONVERGENCE_WINDOW
-            && has_converged(&recent_score_error_ratios, convergence_score_threshold)
-        {
-            return Some(iteration)
+        if has_converged(&recent_score_error_ratios, convergence_score_threshold) {
+            return Some(i)
         }
     }
 
