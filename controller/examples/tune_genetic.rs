@@ -49,20 +49,30 @@ pub struct Args {
 ///
 /// Example TikZ scaffold:
 /// ```tex
-/// \pgfmathsetmacro{alpha}{0.5}
-///
-/// % Pick one body from EnergyCurve docs and one from RuntimeCurve docs.
-/// \pgfmathdeclarefunction{f}{1}{\pgfmathparse{<expr>}}
-/// \pgfmathdeclarefunction{g}{1}{\pgfmathparse{<expr>}}
-///
-/// \addplot[smooth,domain=0:1,samples=200] {f(x)};
-/// \addplot[smooth,domain=0:1,samples=200] {g(x)};
-/// \addplot[smooth,domain=0:1,samples=200] {f(x)^alpha * g(x)^(1-alpha)};
+/// \begin{tikzpicture}
+/// \begin{axis}[
+///   declare function={
+///     energy_lb = 60;
+///     energy_ub = 90;
+///     f(\x) = energy_lb + (energy_ub - energy_lb) * \x;
+///     runtime_lb = 60;
+///     runtime_ub = 90;
+///     t_optimum = 0.5;
+///     g(\x) = runtime_lb * (1 + ((\x - t_optimum) / max(t_optimum, 1 - t_optimum))^2);
+///     alpha = 0.5;
+///     score(\x) = f(\x)^alpha * g(\x)^(1 - alpha);
+///   },
+/// ]
+///   \addplot[domain=0:1,samples=100,color=green] {f(x)};
+///   \addplot[domain=0:1,samples=100,color=red] {g(x)};
+///   \addplot[domain=0:1,samples=100,color=cyan] {score(x)};
+/// \end{axis}
+/// \end{tikzpicture}
 /// ```
 #[derive(Clone, Copy, Debug)]
 enum EnergyCurve {
 	/// ```tex
-	/// energy_at_min_power + (energy_at_max_power - energy_at_min_power) * #1
+	/// f(\x) = energy_at_min_power + (energy_at_max_power - energy_at_min_power) * \x
 	/// ```
 	/// Reasonable example default: `Linear:60,90`.
 	Linear {
@@ -70,7 +80,7 @@ enum EnergyCurve {
 		energy_at_max_power: f32,
 	},
 	/// ```tex
-	/// energy_at_optimum * (1 + ((#1 - t_optimum) / max(t_optimum, 1 - t_optimum))^2)
+	/// f(\x) = energy_at_optimum * (1 + ((\x - t_optimum) / max(t_optimum, 1 - t_optimum))^2)
 	/// ```
 	/// Reasonable example default: `Quadratic:0.75,60`.
 	Quadratic {
@@ -78,8 +88,8 @@ enum EnergyCurve {
 		energy_at_optimum: f32,
 	},
 	/// ```tex
-	/// \pgfmathsetmacro{curve_strength}{2 + 10 * steepness}
-	/// energy_at_min + (energy_at_max - energy_at_min) * 0.5 * (1 + tanh((#1 - t_middle) * curve_strength))
+	/// curve_strength = 2 + 10 * steepness;
+	/// f(\x) = energy_at_min + (energy_at_max - energy_at_min) * 0.5 * (1 + tanh((\x - t_middle) * curve_strength))
 	/// ```
 	/// Reasonable example default: `Sigmoid:20,90,0.5,0.8`.
 	Sigmoid {
