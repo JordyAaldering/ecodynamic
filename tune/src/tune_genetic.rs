@@ -92,7 +92,7 @@ fn main() {
 
     // Precompute the optimal powercap for the given curves and score definition,
     // to have a reference for the controller's performance.
-	let (best_score, _, _, _) = find_optimal_powercap(
+	let (best_score, _, _, best_powercap) = find_optimal_powercap(
 		config.energy_preference,
 		energy_curve,
 		runtime_curve,
@@ -100,8 +100,14 @@ fn main() {
 		config.power_max,
 	);
 
+	log::info!(
+		"Optimal powercap={:.4}, score={:.4}, threshold={:.2}%",
+		best_powercap, best_score, convergence_score_threshold * 100.0
+	);
+
 	// usize::MAX / 2, to avoid an overflow in the median calculation
 	let mut run_results = vec![usize::MAX / 2; runs];
+	let mut converged_count = 0;
 	for i in 0..runs {
 		let converged = run(
 			best_score,
@@ -115,13 +121,19 @@ fn main() {
 
 		if let Some(iterations) = converged {
 			run_results[i] = iterations;
+			converged_count += 1;
 		}
 	}
 
 	let (median, q1, q3) = quartiles(run_results);
 	println!("f(\\x) = {};", energy_curve.to_tikz());
 	println!("g(\\x) = {};", runtime_curve.to_tikz());
-	println!("Iterations until convergence over {} runs: median={}, Q1={}, Q3={}", runs, median, q1, q3);
+	if converged_count < runs / 2 {
+		println!("Did not converge in most runs ({}/{} converged)", converged_count, runs);
+	} else {
+		println!("Iterations until convergence over {} runs: median={}, Q1={}, Q3={} ({}/{} converged)",
+			runs, median, q1, q3, converged_count, runs);
+	}
 }
 
 fn has_converged(recent_score_error_ratios: &[f32], convergence_score_threshold: f32) -> bool {

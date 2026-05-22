@@ -5,6 +5,7 @@ use crate::{Capabilities, Controller, Demand, Sample, filter_functions::median, 
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
+    generation: usize,
     immigration_cooldown: usize,
     sort_ascending: bool,
     max_threads: u16,
@@ -14,7 +15,7 @@ pub struct GeneticController {
 #[derive(Clone, Debug)]
 #[derive(Parser)]
 pub struct GeneticControllerConfig {
-    #[arg(short('s'), long, default_value_t = 40)]
+    #[arg(short('s'), long, default_value_t = 20)]
     pub population_size: usize,
 
     /// Describes the importance of optimising for energy efficiency over runtime performance.
@@ -38,19 +39,20 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
 
-    /// Genetic algorithm survival rate.
+    /// Genetic algorithm survival rate. Controls the fraction of the population that
+    /// survives into the next generation as elite individuals.
     /// Range: (0,1].
-    #[arg(long, default_value_t = 0.1)]
+    #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
 
-    /// Mutation rate.
+    /// Mutation rate: probability that a child chromosome is mutated after crossover.
     /// Range: (0,1]
-    #[arg(long, default_value_t = 0.2)]
+    #[arg(long, default_value_t = 0.3)]
     pub mutation_rate: f32,
 
-    /// Mutation strength.
+    /// Mutation strength: maximum magnitude of a random perturbation applied to each gene.
     /// Range: (0,1].
-    #[arg(long, default_value_t = 0.005)]
+    #[arg(long, default_value_t = 0.02)]
     pub mutation_strength: f32,
 
     /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
@@ -61,23 +63,23 @@ pub struct GeneticControllerConfig {
     pub immigration_rate: Option<f32>,
 
     /// Minimum median relative score change required to trigger immigration.
-    #[arg(long, default_value_t = 0.1)]
+    #[arg(long, default_value_t = 0.15)]
     pub immigration_change_threshold: f32,
 
     /// Minimum robust z-like score required to trigger immigration.
-    #[arg(long, default_value_t = 3.0)]
+    #[arg(long, default_value_t = 2.0)]
     pub immigration_robustness_threshold: f32,
 
     /// Minimum number of comparable chromosomes needed before trigger detection is active.
-    #[arg(long, default_value_t = 4)]
+    #[arg(long, default_value_t = 3)]
     pub immigration_min_matched_scores: usize,
 
     /// Maximum allowed per-parameter change when reusing a previous score.
-    #[arg(long, default_value_t = 0.025)]
+    #[arg(long, default_value_t = 0.03)]
     pub immigration_similarity_threshold: f32,
 
     /// Number of generations to wait before allowing immigration to trigger again.
-    #[arg(long, default_value_t = 5)]
+    #[arg(long, default_value_t = 3)]
     pub immigration_cooldown_generations: usize,
 }
 
@@ -106,6 +108,7 @@ impl GeneticController {
         Self {
             samples: Vec::with_capacity(config.population_size),
             population,
+            generation: 0,
             immigration_cooldown: 0,
             sort_ascending: false,
             max_threads: caps.max_threads.unwrap_or(1),
@@ -139,6 +142,8 @@ impl Controller for GeneticController {
 
 impl GeneticController {
     fn evolve(&mut self) {
+        self.generation += 1;
+
         let GeneticControllerConfig {
             energy_preference,
             survival_rate,
@@ -152,6 +157,19 @@ impl GeneticController {
         } = self.config;
 
         let scores = scores(&self.samples, energy_preference);
+
+        log::debug!(
+            "Generation {}: best_score={:.4}, worst_score={:.4}, median_score={:.4}",
+            self.generation,
+            scores.iter().cloned().reduce(f32::min).unwrap_or(0.0),
+            scores.iter().cloned().reduce(f32::max).unwrap_or(0.0),
+            {
+                let mut s = scores.clone();
+                s.sort_by(f32::total_cmp);
+                s[s.len() / 2]
+            }
+        );
+
         let change_detected = update_prev_scores_and_check_for_shift(
             &mut self.population,
             &scores,
@@ -162,8 +180,7 @@ impl GeneticController {
 
         let population_size = self.population.len();
 
-        // When survival rate is less than 1 / population_size, we use a random
-        // chance based on the remainder to ensure survival can still occur.
+        // Ensure at least 1 survivor to avoid empty range panic in crossover selection.
         let survival_count = {
             let survival_count = population_size as f32 * survival_rate;
             let survival_remainder = survival_count.fract();
@@ -171,7 +188,7 @@ impl GeneticController {
             if rand::random_bool(survival_remainder as f64) {
                 survival_count += 1;
             }
-            survival_count
+            survival_count.max(1)
         };
 
         let immigration_start = if let Some(immigration_rate) = immigration_rate {
@@ -188,6 +205,11 @@ impl GeneticController {
             };
 
             if do_immigration {
+                log::info!(
+                    "Generation {}: immigration triggered, replacing population with random individuals",
+                    self.generation
+                );
+
                 // When immigration rate is less than 1 / population_size, we use a random
                 // chance based on the remainder to ensure immigration can still occur.
                 let immigration_count = population_size as f32 * immigration_rate;

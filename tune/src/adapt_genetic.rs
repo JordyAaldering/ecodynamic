@@ -110,7 +110,7 @@ fn main() {
     } = Args::parse();
 
     // Immigration is disabled by default (might change later), so enter a default if it is not set
-    if config.immigration_rate.is_some() {
+    if config.immigration_rate.is_none() {
         config.immigration_rate = Some(1.0);
     }
 
@@ -122,15 +122,22 @@ fn main() {
     );
 
     // Compute the optimum for the post-shift workload.
-    let (target_best_score, _, _, _) = find_optimal_powercap(
+    let (target_best_score, _, _, best_powercap) = find_optimal_powercap(
         config.energy_preference,
         energy_curve,
         runtime_curve,
         config.power_min,
         config.power_max,
     );
+
+    log::info!(
+        "Post-shift optimum: powercap={:.4}, score={:.4}, threshold={:.2}%",
+        best_powercap, target_best_score, convergence_score_threshold * 100.0
+    );
+
 	// usize::MAX / 2, to avoid an overflow in the median calculation
     let mut run_results = vec![usize::MAX / 2; runs];
+    let mut converged_count = 0;
     for i in 0..runs {
         let converged = run(
             target_best_score,
@@ -144,16 +151,18 @@ fn main() {
 
         if let Some(iterations) = converged {
             run_results[i] = iterations;
+            converged_count += 1;
         }
     }
 
     let (median, q1, q3) = quartiles(run_results);
     println!("f(\\x) = {};", energy_curve.to_tikz());
     println!("g(\\x) = {};", runtime_curve.to_tikz());
-    if median == usize::MAX / 2 {
-        println!("Did not converge in (most) runs");
+    if converged_count < runs / 2 {
+        println!("Did not converge in most runs ({}/{} converged)", converged_count, runs);
     } else {
-        println!("Iterations until re-convergence over {} runs: median={}, Q1={}, Q3={}", runs, median, q1, q3);
+        println!("Iterations until re-convergence over {} runs: median={}, Q1={}, Q3={} ({}/{} converged)",
+            runs, median, q1, q3, converged_count, runs);
     }
 }
 
