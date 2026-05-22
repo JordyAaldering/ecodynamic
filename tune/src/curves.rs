@@ -77,7 +77,7 @@ impl FromStr for Curve {
 					steepness: values.next().unwrap()?,
 				}
 			}
-			_ => return Err(io::Error::new(io::ErrorKind::InvalidInput, input.to_string())),
+			_ => return Err(io::Error::new(io::ErrorKind::InvalidInput, variant)),
 		})
 	}
 }
@@ -88,17 +88,17 @@ impl Curve {
         debug_assert!(cv >= 0.0);
 		let mean = match self {
 			Curve::Linear { lb, ub } => {
-                let v_delta = ub - lb;
-				lb + v_delta * t
+                let v_dt = ub - lb;
+				lb + v_dt * t
 			}
 			Curve::Quadratic { lb, t_middle, steepness } => {
-                let t_delta = t - t_middle;
-                lb + steepness * (t_delta).powi(2)
+                let t_dt = t - t_middle;
+                lb + steepness * (t_dt).powi(2)
 			}
 			Curve::Sigmoid { lb, ub, t_middle, steepness } => {
-                let v_delta = ub - lb;
-                let t_delta = t - t_middle;
-                lb + v_delta * (0.5 * (1.0 + f32::tanh(t_delta * steepness)))
+                let v_dt = ub - lb;
+                let t_dt = t - t_middle;
+                lb + v_dt * (0.5 * (1.0 + f32::tanh(t_dt * steepness)))
 			}
 		};
         debug_assert!(mean >= 0.0);
@@ -113,7 +113,5 @@ fn sample_normal_value(mean: f32, cv: f32) -> f32 {
 	let std = mean * cv;
 	let mut rng = rand::rng();
 	let normal = Normal::new(mean, std).unwrap();
-	let v = normal.sample(&mut rng);
-    debug_assert!(v >= 0.0);
-    v
+	normal.sample(&mut rng)
 }
