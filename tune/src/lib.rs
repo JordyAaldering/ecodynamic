@@ -4,6 +4,24 @@ pub use curves::*;
 
 use controller::{Sample, score};
 
+fn median(xs: &[usize]) -> usize {
+    let n = xs.len();
+    if n % 2 == 0 {
+        (xs[n / 2 - 1] + xs[n / 2]) / 2
+    } else {
+        xs[n / 2]
+    }
+}
+
+pub fn quartiles(mut xs: Vec<usize>) -> (usize, usize, usize) {
+    xs.sort_unstable();
+    let n = xs.len();
+    let med = median(&xs);
+    let q1 = median(&xs[..n / 2]);
+    let q3 = median(&xs[(n + 1) / 2..]);
+    (med, q1, q3)
+}
+
 /// Estimates the globally best powercap in [power_min, power_max] for the current
 /// synthetic runtime/energy curves and score definition.
 ///

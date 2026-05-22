@@ -97,7 +97,8 @@ fn main() {
 	);
 
 	const RUNS: usize = 200;
-	let mut runs = vec![usize::MAX; RUNS];
+	// usize::MAX / 2, to avoid an overflow in the median calculation
+	let mut runs = vec![usize::MAX / 2; RUNS];
 	for i in 0..RUNS {
 		let converged = run(
 			best_score,
@@ -111,6 +112,9 @@ fn main() {
 
 		if let Some(iterations) = converged {
 			runs[i] = iterations;
+		} else {
+			eprintln!("Run {} did not converge", i + 1);
+			runs[i] = RUNS + 1;
 		}
 	}
 
@@ -127,22 +131,4 @@ fn has_converged(recent_score_error_ratios: &[f32], convergence_score_threshold:
 		.filter(|&&score_error_ratio| score_error_ratio <= convergence_score_threshold)
 		.count();
 	num_converged >= CONVERGENCE_REQUIRED
-}
-
-fn median(xs: &[usize]) -> usize {
-    let n = xs.len();
-    if n % 2 == 0 {
-        (xs[n / 2 - 1] + xs[n / 2]) / 2
-    } else {
-        xs[n / 2]
-    }
-}
-
-pub fn quartiles(mut xs: Vec<usize>) -> (usize, usize, usize) {
-    xs.sort_unstable();
-    let n = xs.len();
-    let med = median(&xs);
-    let q1 = median(&xs[..n / 2]);
-    let q3 = median(&xs[(n + 1) / 2..]);
-    (med, q1, q3)
 }
