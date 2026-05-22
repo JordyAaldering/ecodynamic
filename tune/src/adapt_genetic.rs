@@ -26,6 +26,9 @@ const INIT_RUNTIME_CURVE: Curve = Curve::Quadratic {
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
+    #[arg(short('i'),long, default_value_t = 200)]
+    runs: usize,
+
     /// Coefficient of variation for energy measurements.
     ///
     /// Example, if the CV is 0.05 (5%) and the expected energy is 100J, then
@@ -98,6 +101,7 @@ fn main() {
     env_logger::init();
 
     let Args {
+        runs,
         energy_cv,
         runtime_cv,
         energy_curve,
@@ -107,7 +111,7 @@ fn main() {
 
     // Immigration is disabled by default (might change later), so enter a default if it is not set
     if config.immigration_rate.is_some() {
-        config.immigration_rate = Some(0.75);
+        config.immigration_rate = Some(1.0);
     }
 
     let convergence_score_threshold = derive_score_error_threshold(
@@ -125,11 +129,9 @@ fn main() {
         config.power_min,
         config.power_max,
     );
-
-    const RUNS: usize = 200;
 	// usize::MAX / 2, to avoid an overflow in the median calculation
-    let mut runs = vec![usize::MAX / 2; RUNS];
-    for i in 0..RUNS {
+    let mut run_results = vec![usize::MAX / 2; runs];
+    for i in 0..runs {
         let converged = run(
             target_best_score,
             &config,
@@ -141,17 +143,17 @@ fn main() {
         );
 
         if let Some(iterations) = converged {
-            runs[i] = iterations;
+            run_results[i] = iterations;
         }
     }
 
-    let (median, q1, q3) = quartiles(runs);
+    let (median, q1, q3) = quartiles(run_results);
     println!("f(\\x) = {};", energy_curve.to_tikz());
     println!("g(\\x) = {};", runtime_curve.to_tikz());
     if median == usize::MAX / 2 {
         println!("Did not converge in (most) runs");
     } else {
-        println!("Iterations until re-convergence over {} runs: median={}, Q1={}, Q3={}", RUNS, median, q1, q3);
+        println!("Iterations until re-convergence over {} runs: median={}, Q1={}, Q3={}", runs, median, q1, q3);
     }
 }
 
