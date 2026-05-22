@@ -95,13 +95,20 @@ fn run(
 }
 
 fn main() {
+    env_logger::init();
+
     let Args {
         energy_cv,
         runtime_cv,
         energy_curve,
         runtime_curve,
-        config,
+        mut config,
     } = Args::parse();
+
+    // Immigration is disabled by default (might change later), so enter a default if it is not set
+    if config.immigration_rate.is_some() {
+        config.immigration_rate = Some(0.75);
+    }
 
     let convergence_score_threshold = derive_score_error_threshold(
         config.energy_preference,

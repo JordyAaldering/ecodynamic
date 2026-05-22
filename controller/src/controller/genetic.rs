@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Sample, scores};
+use crate::{Capabilities, Controller, Demand, Sample, filter_functions::median, scores};
 
 pub struct GeneticController {
     samples: Vec<Sample>,
@@ -307,17 +307,12 @@ fn update_prev_scores_and_check_for_shift(
 
     let mut deviations: Vec<_> = deltas.into_iter().map(|delta| (delta - median_delta).abs()).collect();
     let mad = median(&mut deviations);
-    median_delta / (mad + f32::EPSILON) >= robustness_threshold
-}
-
-fn median(values: &mut Vec<f32>) -> f32 {
-    debug_assert!(!values.is_empty());
-    values.sort_unstable_by(|a, b| a.total_cmp(b));
-    let mid = values.len() / 2;
-    if values.len() % 2 == 0 {
-        (values[mid - 1] + values[mid]) * 0.5
+    let ratio = median_delta / (mad + f32::EPSILON);
+    if ratio >= robustness_threshold {
+        log::info!("Shift detected: median change = {:.2}%, robustness ratio = {:.2}", median_delta * 100.0, ratio);
+        true
     } else {
-        values[mid]
+        false
     }
 }
 

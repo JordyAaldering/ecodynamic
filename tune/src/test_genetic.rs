@@ -32,6 +32,8 @@ pub struct Args {
 }
 
 fn main() {
+    env_logger::init();
+
     let Args {
 		energy_cv,
 		runtime_cv,
@@ -92,7 +94,7 @@ fn main() {
 		controller.push_sample(sample);
 
 		let distance_to_optimum = (t - best_powercap).abs();
-		println!("iter={:03} powercap={t:.4} score={:.4} error_pct={:.2}% dist_to_optimal={:.4}",
+		log::trace!("iter={:03} powercap={t:.4} score={:.4} error_pct={:.2}% dist_to_optimal={:.4}",
 			iteration, score, score_error_ratio * 100.0, distance_to_optimum);
 
 		if iteration >= CONVERGENCE_WINDOW

@@ -71,6 +71,8 @@ fn run(
 }
 
 fn main() {
+    env_logger::init();
+
     let Args {
 		energy_cv,
 		runtime_cv,

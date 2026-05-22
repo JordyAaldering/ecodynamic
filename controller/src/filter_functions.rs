@@ -8,12 +8,12 @@ pub enum FilterFunction {
 }
 
 impl FilterFunction {
-    pub fn select(self, scores: Vec<f32>) -> f32 {
+    pub fn select(self, mut scores: Vec<f32>) -> f32 {
         use FilterFunction::*;
         match self {
             Min => min(scores),
             Average => average(scores),
-            Median => median(scores),
+            Median => median(&mut scores),
             FrequencyDist => frequency_dist(scores, 5),
         }
     }
@@ -28,7 +28,7 @@ fn average(xs: Vec<f32>) -> f32 {
     xs.into_iter().sum::<f32>() / n
 }
 
-pub fn median(mut xs: Vec<f32>) -> f32 {
+pub fn median(xs: &mut Vec<f32>) -> f32 {
     xs.sort_unstable_by(f32::total_cmp);
     let n = xs.len();
     if n % 2 == 0 {
