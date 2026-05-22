@@ -3,5 +3,5 @@ resolver = "3"
 members = [
     "controller",
     "ecodynamic",
-    "server",
+    "server", "tune",
 ]
