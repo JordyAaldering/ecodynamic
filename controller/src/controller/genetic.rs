@@ -88,6 +88,14 @@ pub struct GeneticControllerConfig {
     pub immigration_robustness_threshold: f32,
 
     /// Minimum number of comparable chromosomes needed before trigger detection is active.
+    ///
+    /// Although it may seem unlikely that 5 of the 20 chromosomes have similar scores, as
+    /// chromosomes initially spread the configuration space, note that as the controller
+    /// converges, chromosomes will start to cluster together, resulting in similar scores.
+    /// Thus, this happens to produce exactly the behaviour we want: before convergence immigration
+    /// is unlikely to trigger, which is good because we have no way of telling whether score
+    /// changes are due to workload shifts or just the exploration process. After convergence
+    /// chromosomes are more similar, and score changes are more likely to be due to workload shifts.
     #[arg(long, default_value_t = 5)]
     pub immigration_min_matched_scores: usize,
 
