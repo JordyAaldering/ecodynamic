@@ -45,11 +45,24 @@ pub struct Args {
     config: GeneticControllerConfig,
 }
 
+/// Curve families used to synthesize energy measurements.
+///
+/// Example TikZ scaffold:
+/// ```tex
+/// \pgfmathsetmacro{alpha}{0.5}
+///
+/// % Pick one body from EnergyCurve docs and one from RuntimeCurve docs.
+/// \pgfmathdeclarefunction{f}{1}{\pgfmathparse{<expr>}}
+/// \pgfmathdeclarefunction{g}{1}{\pgfmathparse{<expr>}}
+///
+/// \addplot[smooth,domain=0:1,samples=200] {f(x)};
+/// \addplot[smooth,domain=0:1,samples=200] {g(x)};
+/// \addplot[smooth,domain=0:1,samples=200] {f(x)^alpha * g(x)^(1-alpha)};
+/// ```
 #[derive(Clone, Copy, Debug)]
 enum EnergyCurve {
 	/// ```tex
-	/// \addplot[smooth,domain=0:1,samples=200]
-	///   {energy_at_min_power + (energy_at_max_power - energy_at_min_power) * x};
+	/// energy_at_min_power + (energy_at_max_power - energy_at_min_power) * #1
 	/// ```
 	/// Reasonable example default: `Linear:60,90`.
 	Linear {
@@ -57,8 +70,7 @@ enum EnergyCurve {
 		energy_at_max_power: f32,
 	},
 	/// ```tex
-	/// \addplot[smooth,domain=0:1,samples=200]
-	///   {energy_at_optimum * (1 + ((x - t_optimum) / max(t_optimum, 1 - t_optimum))^2)};
+	/// energy_at_optimum * (1 + ((#1 - t_optimum) / max(t_optimum, 1 - t_optimum))^2)
 	/// ```
 	/// Reasonable example default: `Quadratic:0.75,60`.
 	Quadratic {
@@ -66,10 +78,8 @@ enum EnergyCurve {
 		energy_at_optimum: f32,
 	},
 	/// ```tex
-	/// \addplot[smooth,domain=0:1,samples=200]
-	///   {energy_at_min + (energy_at_max - energy_at_min) *
-	///    (1/(1+exp(-k*(x-t_middle))) - 1/(1+exp(k*t_middle))) /
-	///    (1/(1+exp(-k*(1-t_middle))) - 1/(1+exp(k*t_middle)))};
+	/// \pgfmathsetmacro{curve_strength}{2 + 10 * steepness}
+	/// energy_at_min + (energy_at_max - energy_at_min) * 0.5 * (1 + tanh((#1 - t_middle) * curve_strength))
 	/// ```
 	/// Reasonable example default: `Sigmoid:20,90,0.5,0.8`.
 	Sigmoid {
