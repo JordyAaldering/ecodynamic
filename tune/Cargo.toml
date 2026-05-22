@@ -8,6 +8,10 @@ name = "prelude"
 path = "src/lib.rs"
 
 [[bin]]
+name = "bench"
+path = "src/bench_genetic.rs"
+
+[[bin]]
 name = "adapt"
 path = "src/adapt_genetic.rs"
 
