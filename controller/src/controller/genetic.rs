@@ -292,7 +292,7 @@ impl GeneticController {
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
-        // and we oscilate between an increasing and decreasing order.
+        // and we oscillate between an increasing and decreasing order.
         if self.sort_ascending {
             self.population.sort_by(|a, b| a.partial_cmp(b).unwrap());
         } else {
