@@ -106,13 +106,10 @@ fn main() {
         runtime_cv,
         energy_curve,
         runtime_curve,
-        mut config,
+        config,
     } = Args::parse();
 
-    // Immigration is disabled by default (might change later), so enter a default if it is not set
-    if config.immigration_rate.is_none() {
-        config.immigration_rate = Some(1.0);
-    }
+    log::info!("Immigration rate: {}", config.immigration_rate);
 
     let convergence_score_threshold = derive_score_error_threshold(
         config.energy_preference,

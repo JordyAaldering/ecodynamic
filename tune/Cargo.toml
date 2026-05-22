@@ -12,6 +12,14 @@ name = "bench"
 path = "src/bench_genetic.rs"
 
 [[bin]]
+name = "bench-stability"
+path = "src/bench_stability.rs"
+
+[[bin]]
+name = "bench-drift"
+path = "src/bench_drift.rs"
+
+[[bin]]
 name = "adapt"
 path = "src/adapt_genetic.rs"
 
