@@ -7,8 +7,10 @@ pub struct GeneticController {
     population: Vec<Chromosome>,
     generation: usize,
     immigration_cooldown: usize,
+    immigration_triggered_flag: bool,
     sort_ascending: bool,
     max_threads: u16,
+    effective_mutation_rate: f32,
     config: GeneticControllerConfig,
 }
 
@@ -59,19 +61,34 @@ pub struct GeneticControllerConfig {
     /// avoid immigration to occur in every evolution step. Setting the value to less than
     /// 1 / population_size ensures this.
     /// Range: (0,1]
-    #[arg(long)]
-    pub immigration_rate: Option<f32>,
+    #[arg(long, default_value_t = 1.0)]
+    pub immigration_rate: f32,
+
+    /// Mutation rate decay factor. After each generation, the effective mutation rate is
+    /// multiplied by this factor, decaying toward a minimum. This allows aggressive exploration
+    /// early on and fine-tuning as the population converges. Set to 1.0 to disable decay.
+    /// Range: (0,1]
+    #[arg(long, default_value_t = 0.9)]
+    pub mutation_rate_decay: f32,
+
+    /// Minimum mutation rate after decay. The effective mutation rate will never drop below this.
+    /// Range: (0,1]
+    #[arg(long, default_value_t = 0.1)]
+    pub mutation_rate_min: f32,
 
     /// Minimum median relative score change required to trigger immigration.
-    #[arg(long, default_value_t = 0.15)]
+    #[arg(long, default_value_t = 0.03)]
     pub immigration_change_threshold: f32,
 
     /// Minimum robust z-like score required to trigger immigration.
-    #[arg(long, default_value_t = 2.0)]
+    /// This is the ratio of median change to MAD (median absolute deviation).
+    /// Higher values require more consistent shifts across chromosomes, filtering
+    /// out random noise while still detecting genuine workload changes.
+    #[arg(long, default_value_t = 8.0)]
     pub immigration_robustness_threshold: f32,
 
     /// Minimum number of comparable chromosomes needed before trigger detection is active.
-    #[arg(long, default_value_t = 3)]
+    #[arg(long, default_value_t = 5)]
     pub immigration_min_matched_scores: usize,
 
     /// Maximum allowed per-parameter change when reusing a previous score.
@@ -110,10 +127,23 @@ impl GeneticController {
             population,
             generation: 0,
             immigration_cooldown: 0,
+            immigration_triggered_flag: false,
             sort_ascending: false,
             max_threads: caps.max_threads.unwrap_or(1),
+            effective_mutation_rate: config.mutation_rate,
             config,
         }
+    }
+
+    /// Returns the current generation number.
+    pub fn generation(&self) -> usize {
+        self.generation
+    }
+
+    /// Returns whether immigration was triggered during the most recent evolution.
+    /// This flag is reset at the start of each evolve() call.
+    pub fn immigration_triggered(&self) -> bool {
+        self.immigration_triggered_flag
     }
 }
 
@@ -143,16 +173,18 @@ impl Controller for GeneticController {
 impl GeneticController {
     fn evolve(&mut self) {
         self.generation += 1;
+        self.immigration_triggered_flag = false;
 
         let GeneticControllerConfig {
             energy_preference,
             survival_rate,
-            mutation_rate,
             immigration_rate,
             immigration_change_threshold,
             immigration_cooldown_generations,
             immigration_min_matched_scores,
             immigration_robustness_threshold,
+            mutation_rate_decay,
+            mutation_rate_min,
             ..
         } = self.config;
 
@@ -191,7 +223,7 @@ impl GeneticController {
             survival_count.max(1)
         };
 
-        let immigration_start = if let Some(immigration_rate) = immigration_rate {
+        let immigration_start = {
             let do_immigration = if self.immigration_cooldown > 0 {
                 self.immigration_cooldown -= 1;
                 false
@@ -205,10 +237,14 @@ impl GeneticController {
             };
 
             if do_immigration {
+                self.immigration_triggered_flag = true;
                 log::info!(
                     "Generation {}: immigration triggered, replacing population with random individuals",
                     self.generation
                 );
+
+                // Reset mutation rate on immigration to allow aggressive exploration of new landscape
+                self.effective_mutation_rate = self.config.mutation_rate;
 
                 // When immigration rate is less than 1 / population_size, we use a random
                 // chance based on the remainder to ensure immigration can still occur.
@@ -226,23 +262,29 @@ impl GeneticController {
             } else {
                 population_size
             }
-        } else {
-            population_size
         };
 
         sort_population_by_score(&mut self.population, scores);
 
         // Replace chromosomes by children of the best performing chromosomes
+        let effective_mr = self.effective_mutation_rate;
         for i in survival_count..immigration_start {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(parent2, &self.config);
-            if rand::random_bool(mutation_rate as f64) {
+            if rand::random_bool(effective_mr as f64) {
                 child.mutate(&self.config);
             }
 
             self.population[i] = child;
         }
+
+        // Decay the mutation rate for next generation
+        self.effective_mutation_rate = (self.effective_mutation_rate * mutation_rate_decay).max(mutation_rate_min);
+        log::debug!(
+            "Generation {}: effective_mutation_rate={:.4}",
+            self.generation, self.effective_mutation_rate
+        );
 
         // Fill remaining chromosomes by immigration
         for i in immigration_start..population_size {
@@ -319,10 +361,14 @@ fn update_prev_scores_and_check_for_shift(
     }
 
     if deltas.len() < min_matched_scores {
+        log::debug!("Shift detection: {} comparable chromosomes (need {})", deltas.len(), min_matched_scores);
         return false;
     }
 
+    log::debug!("Shift detection: {} comparable chromosomes", deltas.len());
+
     let median_delta = median(&mut deltas);
+    log::trace!("Shift detection: median_delta={:.4}, threshold={:.4}", median_delta, change_threshold);
     if median_delta < change_threshold {
         return false;
     }
