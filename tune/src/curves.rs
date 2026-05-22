@@ -83,7 +83,7 @@ impl FromStr for Curve {
 }
 
 impl Curve {
-	pub fn eval(self, t: f32, cv: f32) -> f32 {
+	pub fn eval(&self, t: f32, cv: f32) -> f32 {
         debug_assert!(t >= 0.0 && t <= 1.0);
         debug_assert!(cv >= 0.0);
 		let mean = match self {
@@ -104,6 +104,17 @@ impl Curve {
         debug_assert!(mean >= 0.0);
         sample_normal_value(mean, cv)
 	}
+
+    pub fn to_tikz(&self) -> String {
+        match self {
+            Curve::Linear { lb, ub } =>
+                format!("{lb} + ({ub} - {lb}) * \\x"),
+            Curve::Quadratic { lb, t_middle, steepness } =>
+                format!("{lb} + {steepness} * (\\x - {t_middle})^2"),
+            Curve::Sigmoid { lb, ub, t_middle, steepness } =>
+                format!("{lb} + ({ub} - {lb}) * 0.5 * (1 + tanh((\\x - {t_middle}) * {steepness}))"),
+        }
+    }
 }
 
 fn sample_normal_value(mean: f32, cv: f32) -> f32 {

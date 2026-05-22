@@ -115,8 +115,9 @@ fn main() {
 	}
 
 	let (median, q1, q3) = quartiles(runs);
-	println!("Iterations until convergence over {} runs: median={}, Q1={}, Q3={}",
-		RUNS, median, q1, q3);
+	println!("f(\\x) = {};", energy_curve.to_tikz());
+	println!("g(\\x) = {};", runtime_curve.to_tikz());
+	println!("Iterations until convergence over {} runs: median={}, Q1={}, Q3={}", RUNS, median, q1, q3);
 }
 
 fn has_converged(recent_score_error_ratios: &[f32], convergence_score_threshold: f32) -> bool {
