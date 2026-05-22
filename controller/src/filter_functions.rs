@@ -20,7 +20,7 @@ impl FilterFunction {
 }
 
 fn min(xs: Vec<f32>) -> f32 {
-    xs.into_iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()
+    xs.into_iter().min_by(f32::total_cmp).unwrap()
 }
 
 fn average(xs: Vec<f32>) -> f32 {
@@ -29,12 +29,17 @@ fn average(xs: Vec<f32>) -> f32 {
 }
 
 pub fn median(mut xs: Vec<f32>) -> f32 {
-    xs.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-    xs[xs.len() / 2]
+    xs.sort_unstable_by(f32::total_cmp);
+    let n = xs.len();
+    if n % 2 == 0 {
+        (xs[n / 2 - 1] + xs[n / 2]) * 0.5
+    } else {
+        xs[n / 2]
+    }
 }
 
 fn frequency_dist(mut xs: Vec<f32>, num_ranges: usize) -> f32 {
-    xs.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    xs.sort_unstable_by(f32::total_cmp);
 
     let min = xs[0];
     let max = xs[xs.len() - 1];
