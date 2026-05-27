@@ -5,13 +5,14 @@ use crate::{Capabilities, Controller, Demand, Sample, filter_functions::median, 
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
-    generation: usize,
     immigration_cooldown: usize,
-    immigration_triggered_flag: bool,
     sort_ascending: bool,
     max_threads: u16,
     effective_mutation_rate: f32,
     config: GeneticControllerConfig,
+    // Debugging metadata
+    generation: usize,
+    immigration_was_triggered: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -32,49 +33,57 @@ pub struct GeneticControllerConfig {
     pub do_thread_control: bool,
 
     /// Minimum allowed percentage of the powercap.
+    ///
     /// Range: (0,1].
     #[arg(long, default_value_t = 0.1)]
     pub power_min: f32,
 
     /// Maximum allowed percentage of the powercap.
+    ///
     /// Range: (0,1].
     #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
 
     /// Genetic algorithm survival rate. Controls the fraction of the population that
     /// survives into the next generation as elite individuals.
+    ///
     /// Range: (0,1].
     #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
 
+    /// Mutation strength: maximum magnitude of a random perturbation applied to each gene.
+    ///
+    /// Range: (0,1].
+    #[arg(long, default_value_t = 0.01)]
+    pub mutation_strength: f32,
+
     /// Mutation rate: probability that a child chromosome is mutated after crossover.
+    ///
     /// Range: (0,1]
     #[arg(long, default_value_t = 0.3)]
     pub mutation_rate: f32,
 
-    /// Mutation strength: maximum magnitude of a random perturbation applied to each gene.
-    /// Range: (0,1].
-    #[arg(long, default_value_t = 0.02)]
-    pub mutation_strength: f32,
+    /// Mutation rate decay factor. After each generation, the effective mutation rate is
+    /// multiplied by this factor, decaying toward a minimum. This allows aggressive exploration
+    /// early on and fine-tuning as the population converges. Set to 1.0 to disable decay.
+    ///
+    /// Range: (0,1]
+    #[arg(long, default_value_t = 0.7)]
+    pub mutation_rate_decay: f32,
+
+    /// Minimum mutation rate after decay. The effective mutation rate will never drop below this.
+    ///
+    /// Range: (0,1]
+    #[arg(long, default_value_t = 0.05)]
+    pub mutation_rate_min: f32,
 
     /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
     /// avoid immigration to occur in every evolution step. Setting the value to less than
     /// 1 / population_size ensures this.
+    ///
     /// Range: (0,1]
     #[arg(long, default_value_t = 1.0)]
     pub immigration_rate: f32,
-
-    /// Mutation rate decay factor. After each generation, the effective mutation rate is
-    /// multiplied by this factor, decaying toward a minimum. This allows aggressive exploration
-    /// early on and fine-tuning as the population converges. Set to 1.0 to disable decay.
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 0.9)]
-    pub mutation_rate_decay: f32,
-
-    /// Minimum mutation rate after decay. The effective mutation rate will never drop below this.
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 0.1)]
-    pub mutation_rate_min: f32,
 
     /// Minimum median relative score change required to trigger immigration.
     #[arg(long, default_value_t = 0.03)]
@@ -133,13 +142,13 @@ impl GeneticController {
         Self {
             samples: Vec::with_capacity(config.population_size),
             population,
-            generation: 0,
             immigration_cooldown: 0,
-            immigration_triggered_flag: false,
             sort_ascending: false,
             max_threads: caps.max_threads.unwrap_or(1),
             effective_mutation_rate: config.mutation_rate,
             config,
+            generation: 0,
+            immigration_was_triggered: false,
         }
     }
 
@@ -151,7 +160,7 @@ impl GeneticController {
     /// Returns whether immigration was triggered during the most recent evolution.
     /// This flag is reset at the start of each evolve() call.
     pub fn immigration_triggered(&self) -> bool {
-        self.immigration_triggered_flag
+        self.immigration_was_triggered
     }
 }
 
@@ -181,7 +190,7 @@ impl Controller for GeneticController {
 impl GeneticController {
     fn evolve(&mut self) {
         self.generation += 1;
-        self.immigration_triggered_flag = false;
+        self.immigration_was_triggered = false;
 
         let GeneticControllerConfig {
             energy_preference,
@@ -198,8 +207,7 @@ impl GeneticController {
 
         let scores = scores(&self.samples, energy_preference);
 
-        log::debug!(
-            "Generation {}: best_score={:.4}, worst_score={:.4}, median_score={:.4}",
+        log::debug!("Generation {}: best_score={:.4}, worst_score={:.4}, median_score={:.4}",
             self.generation,
             scores.iter().cloned().reduce(f32::min).unwrap_or(0.0),
             scores.iter().cloned().reduce(f32::max).unwrap_or(0.0),
@@ -245,11 +253,9 @@ impl GeneticController {
             };
 
             if do_immigration {
-                self.immigration_triggered_flag = true;
-                log::info!(
-                    "Generation {}: immigration triggered, replacing population with random individuals",
-                    self.generation
-                );
+                self.immigration_was_triggered = true;
+                log::info!("Generation {}: immigration triggered, replacing population with random individuals",
+                    self.generation);
 
                 // Reset mutation rate on immigration to allow aggressive exploration of new landscape
                 self.effective_mutation_rate = self.config.mutation_rate;
@@ -289,10 +295,8 @@ impl GeneticController {
 
         // Decay the mutation rate for next generation
         self.effective_mutation_rate = (self.effective_mutation_rate * mutation_rate_decay).max(mutation_rate_min);
-        log::debug!(
-            "Generation {}: effective_mutation_rate={:.4}",
-            self.generation, self.effective_mutation_rate
-        );
+        log::debug!("Generation {}: effective_mutation_rate={:.4}",
+            self.generation, self.effective_mutation_rate);
 
         // Fill remaining chromosomes by immigration
         for i in immigration_start..population_size {
