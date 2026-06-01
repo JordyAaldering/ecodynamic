@@ -6,7 +6,7 @@ pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
     immigration_cooldown: usize,
-    sort_ascending: bool,
+    sort_descending: bool,
     max_threads: u16,
     effective_mutation_rate: f32,
     config: GeneticControllerConfig,
@@ -52,7 +52,7 @@ pub struct GeneticControllerConfig {
     /// and the last chromosomes will have high thread counts and power limits.
     /// Setting this value to true reverses this order.
     #[arg(long)]
-    pub initial_population_decreasing: bool,
+    pub initial_population_descending: bool,
 
     /// Genetic algorithm survival rate. Controls the fraction of the population that
     /// survives into the next generation as elite individuals.
@@ -132,7 +132,7 @@ impl GeneticController {
         let population = (0..config.population_size)
             .map(|mut i| {
                 // If the population spread is decreasing, invert the index
-                if config.initial_population_decreasing {
+                if config.initial_population_descending {
                     i = config.population_size - i - 1;
                 };
 
@@ -154,7 +154,7 @@ impl GeneticController {
             samples: Vec::with_capacity(config.population_size),
             population,
             immigration_cooldown: 0,
-            sort_ascending: false,
+            sort_descending: !config.initial_population_descending,
             max_threads: caps.max_threads.unwrap_or(1),
             effective_mutation_rate: config.mutation_rate,
             config,
@@ -316,12 +316,12 @@ impl GeneticController {
 
         // To minimise changes in the runtime we sort by the recommended power limit
         // and we oscillate between an increasing and decreasing order.
-        if self.sort_ascending {
-            self.population.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        } else {
+        if self.sort_descending {
             self.population.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        } else {
+            self.population.sort_by(|a, b| a.partial_cmp(b).unwrap());
         }
-        self.sort_ascending = !self.sort_ascending;
+        self.sort_descending = !self.sort_descending;
         log::trace!("Evolve: {:?}", self.population);
     }
 }
