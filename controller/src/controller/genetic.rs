@@ -265,7 +265,7 @@ impl GeneticController {
 
             if do_immigration {
                 self.immigration_was_triggered = true;
-                log::info!("Generation {}: immigration triggered, replacing population with random individuals",
+                log::info!("Generation {}: immigration triggered, replacing population with spread individuals",
                     self.generation);
 
                 // Reset mutation rate on immigration to allow aggressive exploration of new landscape
@@ -310,8 +310,9 @@ impl GeneticController {
             self.generation, self.effective_mutation_rate);
 
         // Fill remaining chromosomes by immigration
-        for i in immigration_start..population_size {
-            self.population[i] = Chromosome::rand(&self.config);
+        let immigration_count = population_size.saturating_sub(immigration_start);
+        for (offset, i) in (immigration_start..population_size).enumerate() {
+            self.population[i] = Chromosome::from_spread(offset, immigration_count, &self.config);
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
@@ -428,6 +429,26 @@ impl Chromosome {
         let num_threads = rand::random_range(0.1..=1.0);
         let power_limit_pct = rand::random_range(config.power_min..=config.power_max);
         Self::new(num_threads, power_limit_pct)
+    }
+
+    /// Generate a chromosome using an even spread over the valid search space.
+    ///
+    /// This includes exact min and max values whenever `count >= 2`.
+    fn from_spread(index: usize, count: usize, config: &GeneticControllerConfig) -> Self {
+        debug_assert_ne!(count, 0);
+        if count == 1 {
+            return Chromosome::rand(config);
+        }
+        let ratio = index as f32 / (count - 1) as f32;
+
+        let threads_pct = if config.do_thread_control {
+            0.1 + ratio * (1.0 - 0.1)
+        } else {
+            1.0
+        };
+        let power_pct = config.power_min + ratio * (config.power_max - config.power_min);
+
+        Self::new(threads_pct, power_pct)
     }
 
     fn crossover(&self, other: &Self, config: &GeneticControllerConfig) -> Self {
