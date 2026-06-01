@@ -84,7 +84,7 @@ pub struct GeneticControllerConfig {
     /// Minimum mutation rate after decay. The effective mutation rate will never drop below this.
     ///
     /// Range: (0,1]
-    #[arg(long, default_value_t = 0.05)]
+    #[arg(long, default_value_t = 0.01)]
     pub mutation_rate_min: f32,
 
     /// Immigration can result in very poor chromosomes and might thus be very costly. We want to
