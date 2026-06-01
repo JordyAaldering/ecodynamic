@@ -44,6 +44,16 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
 
+    /// Instead of randomly initialized values, use an even spread over valid thread
+    /// counts and power limits to reduce duplication and increase the chances of
+    /// finding an optimum immediately.
+    ///
+    /// By default, the first chromosomes will have low thread counts and power limits,
+    /// and the last chromosomes will have high thread counts and power limits.
+    /// Setting this value to true reverses this order.
+    #[arg(long)]
+    pub initial_population_decreasing: bool,
+
     /// Genetic algorithm survival rate. Controls the fraction of the population that
     /// survives into the next generation as elite individuals.
     ///
@@ -119,11 +129,13 @@ pub struct GeneticControllerConfig {
 
 impl GeneticController {
     pub fn new(config: GeneticControllerConfig, caps: &Capabilities) -> Self {
-        // Instead of randomly initialized values, use an even spread over valid thread-counts to
-        // reduce duplication and increase the chances of finding an optimum immediately.
-        // I.e. value = lower + i * (upper - lower) / length
         let population = (0..config.population_size)
-            .map(|i| {
+            .map(|mut i| {
+                // If the population spread is decreasing, invert the index
+                if config.initial_population_decreasing {
+                    i = config.population_size - i - 1;
+                };
+
                 let threads_pct = if config.do_thread_control {
                     0.1 + (i as f32 * (1.0 - 0.1) / (config.population_size - 1) as f32)
                 } else {
@@ -134,7 +146,6 @@ impl GeneticController {
                         / (config.population_size - 1) as f32);
                 Chromosome::new(threads_pct, power_pct)
             })
-            .rev()
             .collect();
 
         log::trace!("Init: {:?}", population);
