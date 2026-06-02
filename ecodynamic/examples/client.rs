@@ -36,9 +36,9 @@ fn main() {
 
     let caps = ecodynamic::Capabilities { max_threads: Some(4), ..Default::default() };
     ecodynamic::EcoIterator::new(1.., caps)
-        .before(|d| println!("Received demand: {:?}", d))
-        .after(|s| println!("Sending sample: {:?}", s))
-        .for_each(|i| {
+        .for_each_sample(|s| println!("Sending sample: {:?}", s))
+        .for_each(|(d, i)| {
+            println!("Received demand: {:?}", d);
             println!("Iteration {}", i);
             black_box(x.mul(&y));
         });
