@@ -12,73 +12,50 @@ static REGION_COUNTER: AtomicI32 = AtomicI32::new(0);
 
 pub struct EcoIterator<I: Iterator> {
     inner: I,
+    stream: UnixStream,
+    reader: BufReader<UnixStream>,
     region_uid: i32,
     measure_start: Option<(Instant, Rapl)>,
-    connection: Option<(UnixStream, BufReader<UnixStream>)>,
-    after_fn: Option<Box<dyn Fn(Sample)>>,
+    after_fn: Option<Box<dyn Fn(Sample, &Demand)>>,
 }
 
 impl<I: Iterator> EcoIterator<I> {
     /// Create a new `EcoIterator` wrapping the given iterator and connecting to the controller with the given capabilities.
     /// It is allowed that no controller is running, in which case we simply ignore all controller interactions.
-    pub fn new(inner: I, capabilities: Capabilities) -> Self {
-        let connection = if let Ok(mut stream) = UnixStream::connect("/tmp/mtd_letterbox") {
-            write_json_line(&mut stream, &capabilities).unwrap();
-            let reader = BufReader::new(stream.try_clone().unwrap());
-            Some((stream, reader))
-        } else {
-            println!("Warning: could not connect to controller; running without controller");
-            None
-        };
-
-        Self {
+    pub fn new(inner: I, capabilities: Capabilities) -> io::Result<Self> {
+        let mut stream = UnixStream::connect("/tmp/mtd_letterbox")?;
+        let reader = BufReader::new(stream.try_clone()?);
+        write_json_line(&mut stream, &capabilities)?;
+        Ok(Self {
             inner,
+            stream,
+            reader,
             region_uid: REGION_COUNTER.fetch_add(1, Ordering::Relaxed),
             measure_start: None,
-            connection,
             after_fn: None,
-        }
+        })
     }
 
-    pub fn for_each_sample<F>(mut self, f: F) -> Self
+    pub fn after_each_iteration<F>(mut self, f: F) -> Self
     where
-        F: Fn(Sample) + 'static,
+        F: Fn(Sample, &Demand) + 'static,
     {
         self.after_fn = Some(Box::new(f));
         self
     }
 
     /// Send a signal to the controller that we are at the start of a parallel region.
-    fn signal_start(&mut self) -> Option<Demand> {
-        if let Some((stream, reader)) = &mut self.connection {
-            write_json_line(stream, &Request {
-                region_uid: self.region_uid,
-                problem_size: None,
-            }).unwrap();
-            Some(read_json_line(reader).unwrap())
-        } else {
-            None
-        }
+    fn signal_start(&mut self) -> io::Result<Demand> {
+        write_json_line(&mut self.stream, &Request {
+            region_uid: self.region_uid,
+            problem_size: None,
+        })?;
+        read_json_line(&mut self.reader)
     }
 
     /// Signal the end of the region and send runtime and energy results.
-    fn signal_end(&mut self, time: Instant, rapl: Rapl) {
-        let runtime = time.elapsed();
-        let energy = rapl.elapsed();
-        let sample = Sample {
-            region_uid: self.region_uid,
-            runtime: runtime.as_secs_f32(),
-            energy: energy.values().sum(),
-            usertime: None,
-        };
-
-        if let Some((stream, _)) = &mut self.connection {
-            write_json_line(stream, &sample).unwrap();
-        }
-
-        if let Some(for_each_sample_fn) = &self.after_fn {
-            for_each_sample_fn(sample);
-        }
+    fn signal_end(&mut self, sample: &Sample) -> io::Result<()> {
+        write_json_line(&mut self.stream, sample)
     }
 }
 
@@ -86,29 +63,51 @@ impl<I> Iterator for EcoIterator<I>
 where
     I: Iterator,
 {
-    type Item = (Option<Demand>, I::Item);
+    type Item = (Demand, I::Item);
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.inner.next();
 
         if let Some(item) = item {
-            if let Some((time, rapl)) = self.measure_start.take() {
-                // Send results of the previous region
-                self.signal_end(time, rapl);
-            } else {
-                // First element; do nothing
-            }
+            let demand = if let Some(measure_start) = self.measure_start.take() {
+                let sample = stop_measurements(self.region_uid, measure_start);
+                self.signal_end(&sample).unwrap();
+                let demand = self.signal_start().unwrap();
 
-            let demand = self.signal_start();
+                if let Some(after_fn) = &self.after_fn {
+                    after_fn(sample, &demand);
+                }
+
+                demand
+            } else {
+                // First iteration, only signal the start of the region, no sample to send yet
+                self.signal_start().unwrap()
+            };
+
             self.measure_start = Some(start_measurements());
             Some((demand, item))
         } else {
-            // Last element; close connection if a controller is connected
-            if let Some((stream, _)) = &mut self.connection {
-                stream.shutdown(std::net::Shutdown::Both).unwrap();
-            }
+            // Last element; close the connection
+            self.stream.shutdown(std::net::Shutdown::Both).unwrap();
             None
         }
+    }
+}
+
+fn start_measurements() -> (Instant, Rapl) {
+    let rapl = Rapl::new(false).unwrap();
+    let now = Instant::now();
+    (now, rapl)
+}
+
+fn stop_measurements(region_uid: i32, (time, rapl): (Instant, Rapl)) -> Sample {
+    let runtime = time.elapsed();
+    let energy = rapl.elapsed();
+    Sample {
+        region_uid,
+        runtime: runtime.as_secs_f32(),
+        energy: energy.values().sum(),
+        usertime: None,
     }
 }
 
@@ -127,10 +126,4 @@ fn read_json_line<T: serde::de::DeserializeOwned>(reader: &mut BufReader<UnixStr
         ));
     }
     serde_json::from_str(line.trim_end()).map_err(io::Error::other)
-}
-
-fn start_measurements() -> (Instant, Rapl) {
-    let rapl = Rapl::new(false).unwrap();
-    let now = Instant::now();
-    (now, rapl)
 }
