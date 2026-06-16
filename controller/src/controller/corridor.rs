@@ -28,7 +28,7 @@ pub struct CorridorControllerConfig {
     #[arg(long, default_value_t = 0.9)]
     pub energy_preference: f32,
 
-    #[arg(long)]
+    #[arg(long, default_value = "frequency-dist")]
     pub select: FilterFunction,
 }
 
