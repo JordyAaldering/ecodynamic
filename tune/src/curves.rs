@@ -84,8 +84,8 @@ impl FromStr for Curve {
 
 impl Curve {
 	pub fn eval(&self, t: f32, cv: f32) -> f32 {
-        debug_assert!(t >= 0.0 && t <= 1.0);
-        debug_assert!(cv >= 0.0);
+        assert!(t >= 0.0 && t <= 1.0);
+        assert!(cv >= 0.0);
 		let mean = match self {
 			Curve::Linear { lb, ub } => {
                 let v_dt = ub - lb;
@@ -101,7 +101,7 @@ impl Curve {
                 lb + v_dt * (0.5 * (1.0 + f32::tanh(t_dt * steepness)))
 			}
 		};
-        debug_assert!(mean >= 0.0);
+        assert!(mean >= 0.0);
         sample_normal_value(mean, cv)
 	}
 

@@ -8,33 +8,21 @@ name = "prelude"
 path = "src/lib.rs"
 
 [[bin]]
-name = "bench"
+name = "bench-drift"
+path = "src/bench_drift.rs"
+
+[[bin]]
+name = "bench-genetic"
 path = "src/bench_genetic.rs"
 
 [[bin]]
 name = "bench-stability"
 path = "src/bench_stability.rs"
 
-[[bin]]
-name = "bench-drift"
-path = "src/bench_drift.rs"
-
-[[bin]]
-name = "adapt"
-path = "src/adapt_genetic.rs"
-
-[[bin]]
-name = "test"
-path = "src/test_genetic.rs"
-
-[[bin]]
-name = "tune"
-path = "src/tune_genetic.rs"
-
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
 controller = { path = "../controller" }
-env_logger = "0.11.10"
-log = "0.4.29"
+env_logger = "0.11.11"
+log = "0.4.33"
 rand = "0.10.1"
 rand_distr = "0.6.0"

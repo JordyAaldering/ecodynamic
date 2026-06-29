@@ -10,7 +10,7 @@ use prelude::*;
 /// (with measurement noise). We count how often immigration is falsely triggered.
 /// A well-tuned system should have a false positive rate near 0%.
 
-const TOTAL_ITERATIONS: usize = 500;
+const NUM_ITERATIONS: usize = 500;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
@@ -111,7 +111,7 @@ fn run(
     let mut immigration_count = 0;
     let mut prev_generation = 0;
 
-    for _ in 0..TOTAL_ITERATIONS {
+    for _ in 0..NUM_ITERATIONS {
         let demand = controller.get_demand();
         let t = demand.powercap_pct;
 
@@ -152,7 +152,7 @@ fn main() {
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, e_pref={}",
         config.population_size, config.survival_rate, config.mutation_rate,
         config.mutation_strength, config.energy_preference);
-    println!("Iterations per run: {}, Runs per case: {}", TOTAL_ITERATIONS, runs);
+    println!("Iterations per run: {}, Runs per case: {}", NUM_ITERATIONS, runs);
     println!();
     println!("┌─────────────────────────────────┬──────────────┬──────────────┬──────────────┐");
     println!("│ Test Case                       │ FP Rate      │ Avg Triggers │ Max Triggers │");
@@ -184,5 +184,4 @@ fn main() {
     println!("└─────────────────────────────────┴──────────────┴──────────────┴──────────────┘");
     println!();
     println!("FP Rate = percentage of runs that had at least one false immigration trigger.");
-    println!("Target: FP Rate should be <5% for low/standard noise and <15% for extreme noise.");
 }

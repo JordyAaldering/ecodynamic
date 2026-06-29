@@ -5,6 +5,6 @@ edition = "2024"
 
 [dependencies]
 controller = { path = "../controller" }
-rapl-energy = "0.2.1"
+rapl-energy = "0.2.2"
 serde = "1.0.228"
 serde_json = "1.0.150"

@@ -11,7 +11,7 @@ use prelude::*;
 /// 1. The controller tracks the moving optimum (stays near it)
 /// 2. Immigration does NOT trigger (the shift is gradual enough)
 
-const TOTAL_ITERATIONS: usize = 1000;
+const NUM_ITERATIONS: usize = 1000;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
@@ -122,8 +122,8 @@ fn run(
     let mut immigration_count = 0;
     let mut tracking_errors = Vec::new();
 
-    for iteration in 0..TOTAL_ITERATIONS {
-        let progress = iteration as f32 / TOTAL_ITERATIONS as f32;
+    for iteration in 0..NUM_ITERATIONS {
+        let progress = iteration as f32 / NUM_ITERATIONS as f32;
 
         let energy_curve = case.energy_base.at_time(progress, case.drift_amount);
         let runtime_curve = case.runtime_base.at_time(progress, case.drift_amount);
@@ -148,7 +148,7 @@ fn run(
         let score_error = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
 
         // Track errors in the second half of the run (after initial convergence)
-        if iteration >= TOTAL_ITERATIONS / 2 {
+        if iteration >= NUM_ITERATIONS / 2 {
             tracking_errors.push(score_error);
         }
 
@@ -188,7 +188,7 @@ fn main() {
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, decay={}, e_pref={}",
         config.population_size, config.survival_rate, config.mutation_rate,
         config.mutation_strength, config.mutation_rate_decay, config.energy_preference);
-    println!("Iterations per run: {}, Runs per case: {}", TOTAL_ITERATIONS, runs);
+    println!("Iterations per run: {}, Runs per case: {}", NUM_ITERATIONS, runs);
     println!();
     println!("┌─────────────────────────────────┬──────────────┬──────────────┬──────────────┐");
     println!("│ Test Case                       │ Avg Track %  │ Immigr. Rate │ Avg Triggers │");

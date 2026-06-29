@@ -4,7 +4,12 @@ pub use curves::*;
 
 use controller::{Sample, score};
 
+fn lerp(min: f32, max: f32, t: f32) -> f32 {
+	min + (max - min) * t
+}
+
 fn median(xs: &[usize]) -> usize {
+    assert!(xs.is_sorted());
     let n = xs.len();
     if n % 2 == 0 {
         (xs[n / 2 - 1] + xs[n / 2]) / 2
@@ -46,8 +51,9 @@ pub fn find_optimal_powercap(
     let mut best_runtime = f32::INFINITY;
     let mut best_powercap = power_min;
 
-	for i in 0..=5000 {
-		let t = i as f32 / 5000.0;
+    const SAMPLES: usize = 5000;
+	for i in 0..=SAMPLES {
+		let t = i as f32 / SAMPLES as f32;
 		let powercap = lerp(power_min, power_max, t);
         let energy=  energy_curve.eval(powercap, 0.0);
         let runtime = runtime_curve.eval(powercap, 0.0);
@@ -88,14 +94,7 @@ pub fn derive_score_error_threshold(
 	runtime_cv: f32,
 	threshold_multiplier: f32,
 ) -> f32 {
-	let runtime_preference = 1.0 - e_pref;
-	let derived_score_cv = f32::sqrt(
-        (e_pref * energy_cv).powi(2)
-        + (runtime_preference * runtime_cv).powi(2)
-    );
-	derived_score_cv * threshold_multiplier
-}
-
-fn lerp(min: f32, max: f32, t: f32) -> f32 {
-	min + (max - min) * t
+    let e_noise = (e_pref * energy_cv).powi(2);
+    let r_noise = ((1.0 - e_pref) * runtime_cv).powi(2);
+	threshold_multiplier * f32::sqrt(e_noise + r_noise)
 }
