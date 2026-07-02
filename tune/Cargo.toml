@@ -19,6 +19,10 @@ path = "src/bench_genetic.rs"
 name = "bench-stability"
 path = "src/bench_stability.rs"
 
+[[bin]]
+name = "montecarlo"
+path = "src/montecarlo.rs"
+
 [dependencies]
 clap = { version = "4.6.1", features = ["derive"] }
 controller = { path = "../controller" }
