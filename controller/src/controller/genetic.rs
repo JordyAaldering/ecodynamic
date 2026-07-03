@@ -52,6 +52,12 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
 
+    /// By default, the first chromosomes will have low thread counts and power limits,
+    /// and the last chromosomes will have high thread counts and power limits.
+    /// Setting this value to true reverses this order.
+    #[arg(long)]
+    pub initial_population_descending: bool,
+
     /// Genetic algorithm survival rate. Controls the fraction of the population that
     /// survives into the next generation as elite individuals.
     ///
@@ -135,9 +141,11 @@ impl GeneticController {
     /// finding an optimum immediately.
     pub fn new(config: GeneticControllerConfig, caps: &Capabilities) -> Self {
         let population = (0..config.population_size)
-            .map(|i| {
-                // Sort initial population in descending order
-                let i = config.population_size - i - 1;
+            .map(|mut i| {
+                if config.initial_population_descending {
+                    i = config.population_size - i - 1;
+                }
+
                 let t = i as f32 / (config.population_size - 1) as f32;
                 let threads_pct = lerp(config.threads_min, config.threads_max, t);
                 let power_pct = lerp(config.power_min, config.power_max, t);
@@ -151,7 +159,7 @@ impl GeneticController {
             samples: Vec::with_capacity(config.population_size),
             population,
             immigration_cooldown: 0,
-            sort_descending: false,
+            sort_descending: !config.initial_population_descending,
             max_threads: caps.max_threads.unwrap_or(1),
             effective_mutation_rate: config.mutation_rate,
             config,
