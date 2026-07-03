@@ -100,7 +100,7 @@ pub struct GeneticControllerConfig {
     pub immigration_rate: f32,
 
     /// Minimum median relative score change required to trigger immigration.
-    #[arg(long, default_value_t = 0.03)]
+    #[arg(long, default_value_t = 0.05)]
     pub immigration_change_threshold: f32,
 
     /// Minimum robust z-like score required to trigger immigration.
