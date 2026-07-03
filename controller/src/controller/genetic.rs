@@ -151,7 +151,7 @@ impl GeneticController {
             samples: Vec::with_capacity(config.population_size),
             population,
             immigration_cooldown: 0,
-            sort_descending: true,
+            sort_descending: false,
             max_threads: caps.max_threads.unwrap_or(1),
             effective_mutation_rate: config.mutation_rate,
             config,
