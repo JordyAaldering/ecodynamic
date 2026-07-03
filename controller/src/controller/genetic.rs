@@ -28,9 +28,17 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.9)]
     pub energy_preference: f32,
 
-    /// Whether dynamic thread adjustment is enabled.
-    #[arg(long)]
-    pub do_thread_control: bool,
+    /// Minimum allowed percentage of the number of threads.
+    ///
+    /// Range: (0,1].
+    #[arg(long, default_value_t = 0.1)]
+    pub threads_min: f32,
+
+    /// Maximum allowed percentage of the number of threads.
+    ///
+    /// Range: (0,1].
+    #[arg(long, default_value_t = 1.0)]
+    pub threads_max: f32,
 
     /// Minimum allowed percentage of the powercap.
     ///
@@ -43,16 +51,6 @@ pub struct GeneticControllerConfig {
     /// Range: (0,1].
     #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
-
-    /// Instead of randomly initialized values, use an even spread over valid thread
-    /// counts and power limits to reduce duplication and increase the chances of
-    /// finding an optimum immediately.
-    ///
-    /// By default, the first chromosomes will have low thread counts and power limits,
-    /// and the last chromosomes will have high thread counts and power limits.
-    /// Setting this value to true reverses this order.
-    #[arg(long)]
-    pub initial_population_descending: bool,
 
     /// Genetic algorithm survival rate. Controls the fraction of the population that
     /// survives into the next generation as elite individuals.
@@ -127,23 +125,22 @@ pub struct GeneticControllerConfig {
     pub immigration_cooldown_generations: usize,
 }
 
+fn lerp(min: f32, max: f32, t: f32) -> f32 {
+	min + (max - min) * t
+}
+
 impl GeneticController {
+    /// Instead of randomly initialized values, use an even spread over valid thread
+    /// counts and power limits to reduce duplication and increase the chances of
+    /// finding an optimum immediately.
     pub fn new(config: GeneticControllerConfig, caps: &Capabilities) -> Self {
         let population = (0..config.population_size)
-            .map(|mut i| {
-                // If the population spread is decreasing, invert the index
-                if config.initial_population_descending {
-                    i = config.population_size - i - 1;
-                };
-
-                let threads_pct = if config.do_thread_control {
-                    0.1 + (i as f32 * (1.0 - 0.1) / (config.population_size - 1) as f32)
-                } else {
-                    1.0
-                };
-                let power_pct = config.power_min
-                    + (i as f32 * (config.power_max - config.power_min)
-                        / (config.population_size - 1) as f32);
+            .map(|i| {
+                // Sort initial population in descending order
+                let i = config.population_size - i - 1;
+                let t = i as f32 / (config.population_size - 1) as f32;
+                let threads_pct = lerp(config.threads_min, config.threads_max, t);
+                let power_pct = lerp(config.power_min, config.power_max, t);
                 Chromosome::new(threads_pct, power_pct)
             })
             .collect();
@@ -154,7 +151,7 @@ impl GeneticController {
             samples: Vec::with_capacity(config.population_size),
             population,
             immigration_cooldown: 0,
-            sort_descending: !config.initial_population_descending,
+            sort_descending: true,
             max_threads: caps.max_threads.unwrap_or(1),
             effective_mutation_rate: config.mutation_rate,
             config,
@@ -265,8 +262,7 @@ impl GeneticController {
 
             if do_immigration {
                 self.immigration_was_triggered = true;
-                log::info!("Generation {}: immigration triggered, replacing population with spread individuals",
-                    self.generation);
+                log::info!("Generation {}: immigration triggered, replacing population with spread individuals", self.generation);
 
                 // Reset mutation rate on immigration to allow aggressive exploration of new landscape
                 self.effective_mutation_rate = self.config.mutation_rate;
@@ -439,15 +435,10 @@ impl Chromosome {
         if count == 1 {
             return Chromosome::rand(config);
         }
-        let ratio = index as f32 / (count - 1) as f32;
 
-        let threads_pct = if config.do_thread_control {
-            0.1 + ratio * (1.0 - 0.1)
-        } else {
-            1.0
-        };
-        let power_pct = config.power_min + ratio * (config.power_max - config.power_min);
-
+        let t = index as f32 / (count - 1) as f32;
+        let threads_pct = lerp(config.threads_min, config.threads_max, t);
+        let power_pct = lerp(config.power_min, config.power_max, t);
         Self::new(threads_pct, power_pct)
     }
 

@@ -144,8 +144,11 @@ fn main() {
         energy_cv,
         runtime_cv,
         tikz,
-        config,
+        mut config,
     } = Args::parse();
+
+    config.threads_min = 1.0;
+    config.threads_max = 1.0;
 
     let cases = get_test_cases();
 
