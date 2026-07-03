@@ -115,6 +115,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                     } else {
                         // Use the last-used configuration in an attempt to minimise configuration changes
                         // Note that changes may still occur, if multiple clients are connected.
+                        // We deliberately do not adjust the power limit.
                         log::trace!("PUT: default {:?}", last_demand);
                         write_json_line(&mut stream, &last_demand)?;
                     }
