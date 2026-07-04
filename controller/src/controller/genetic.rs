@@ -100,14 +100,14 @@ pub struct GeneticControllerConfig {
     pub immigration_rate: f32,
 
     /// Minimum median relative score change required to trigger immigration.
-    #[arg(long, default_value_t = 0.05)]
+    #[arg(long, default_value_t = 0.075)]
     pub immigration_change_threshold: f32,
 
     /// Minimum robust z-like score required to trigger immigration.
     /// This is the ratio of median change to MAD (median absolute deviation).
     /// Higher values require more consistent shifts across chromosomes, filtering
     /// out random noise while still detecting genuine workload changes.
-    #[arg(long, default_value_t = 8.0)]
+    #[arg(long, default_value_t = 10.0)]
     pub immigration_robustness_threshold: f32,
 
     /// Minimum number of comparable chromosomes needed before trigger detection is active.
