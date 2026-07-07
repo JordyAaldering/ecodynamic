@@ -62,20 +62,18 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
 
 fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, Box<dyn Controller>> = HashMap::new();
-    let mut reader = BufReader::new(stream.try_clone()?);
+    let mut rdr = BufReader::new(stream.try_clone()?);
     let mut line = String::new();
 
-    // First message must be a Capabilities broadcast from the client
-    reader.read_line(&mut line)?;
-    let caps: Capabilities = serde_json::from_str(line.trim_end())
+    // First message must be a capabilities broadcast from the client
+    rdr.read_line(&mut line)?;
+    let capabilities = serde_json::from_str(line.trim_end())
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
-    log::debug!("Client capabilities: {:?}", caps);
-
-    let mut last_demand = Demand { powercap_pct: 1.0, num_threads: caps.max_threads.unwrap_or(1) };
+    log::debug!("Client capabilities: {:?}", capabilities);
 
     loop {
         line.clear();
-        match reader.read_line(&mut line) {
+        match rdr.read_line(&mut line) {
             Ok(0) => {
                 log::info!("Client disconnected");
                 return Ok(());
@@ -87,40 +85,36 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 if let Ok(mut sample) = serde_json::from_str::<Sample>(&line) {
                     log::trace!("POST: {:?}", sample);
 
-                    if sample.runtime < 0.01 && !lbs.contains_key(&sample.region_uid) {
-                        // Ignore samples without a controller, where runtime is too short for accurate energy measurements
-                        // In these cases, the overhead of adjusting the configuration outweighs the potential benefits
-                        continue;
-                    }
-
-                    // Subtract idle power draw
+                    // Subtract idle energy
                     sample.energy -= config.idle_power * sample.runtime;
                     sample.energy = sample.energy.max(f32::EPSILON);
-                    log::trace!("POST: {:?}", sample);
 
-                    // Push sample to the controller, which can cause it to `evolve'
-                    lbs.entry(sample.region_uid)
-                        .or_insert_with(|| config.build_controller(&caps))
-                        .push_sample(sample);
+                    let controller = lbs.entry(sample.region_uid)
+                        .or_insert_with(|| {
+                            // At this point a controller should already exist
+                            log::warn!("Generating controller for sample {}", sample.region_uid);
+                            config.build_controller(&capabilities)
+                        });
+
+                    controller.push_sample(sample);
                 } else if let Ok(request) = serde_json::from_str::<Request>(&line) {
                     log::trace!("GET: {:?}", request.region_uid);
 
-                    if let Some(controller) = lbs.get_mut(&request.region_uid) {
-                        let demand = controller.get_demand();
+                    let controller = lbs.entry(request.region_uid)
+                        .or_insert_with(|| {
+                            log::info!("Generating controller for request {}", request.region_uid);
+                            config.build_controller(&capabilities)
+                        });
 
-                        log::trace!("PUT: {:?}", demand);
-                        set_power_limit(demand.powercap_pct);
-                        write_json_line(&mut stream, &demand)?;
-                        last_demand = demand;
-                    } else {
-                        // Use the last-used configuration in an attempt to minimise configuration changes
-                        // Note that changes may still occur, if multiple clients are connected.
-                        // We deliberately do not adjust the power limit.
-                        log::trace!("PUT: default {:?}", last_demand);
-                        write_json_line(&mut stream, &last_demand)?;
-                    }
+                    let demand = controller.get_demand();
+                    log::trace!("PUT: {:?}", demand);
+                    set_power_limit(demand.powercap_pct);
+                    write_json_line(&mut stream, &demand)?;
                 } else {
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, format!("Invalid JSON message: {line}")))
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("Invalid JSON message: {line}"))
+                    )
                 }
             }
             Err(e) => {
