@@ -259,13 +259,11 @@ impl GeneticController {
             let do_immigration = if self.immigration_cooldown > 0 {
                 self.immigration_cooldown -= 1;
                 false
+            } else if change_detected {
+                self.immigration_cooldown = immigration_cooldown_generations;
+                true
             } else {
-                if change_detected {
-                    self.immigration_cooldown = immigration_cooldown_generations;
-                    true
-                } else {
-                    false
-                }
+                false
             };
 
             if do_immigration {
@@ -451,9 +449,20 @@ impl Chromosome {
     }
 
     fn crossover(&self, other: &Self, config: &GeneticControllerConfig) -> Self {
+        // Use the same ratio for the thread count and power limit, as typically lowering
+        // the number of threads enables a reduction in the power limit, and vice versa.
+        let t = rand::random_range(0.0..=1.0);
+
+        // If both parents are similar (similar thread count and power limit), we use their
+        // scores to instantiate the child score. This is needed for immigration detection to
+        // work, as it relies on comparing the previous and current scores of similar chromosomes.
+        // With the default survival rate of only 15%, not enough prev_scores would survive each
+        // generation to result in enough scores to detect a workload shift. By averaging the
+        // scores of similar parents, we can ensure that the child has a prev_score that is
+        // hopefully representative of its configuration.
         let prev_score = if self.is_similar_to(other, config.immigration_similarity_threshold) {
             match (self.prev_score, other.prev_score) {
-                (Some(left), Some(right)) => Some((left + right) * 0.5),
+                (Some(left), Some(right)) => Some((left + right) * t),
                 _ => None,
             }
         } else {
@@ -461,8 +470,8 @@ impl Chromosome {
         };
 
         Self {
-            threads_pct: (self.threads_pct + other.threads_pct) * 0.5,
-            power_pct: (self.power_pct + other.power_pct) * 0.5,
+            threads_pct: (self.threads_pct + other.threads_pct) * t,
+            power_pct: (self.power_pct + other.power_pct) * t,
             prev_score,
         }
     }
