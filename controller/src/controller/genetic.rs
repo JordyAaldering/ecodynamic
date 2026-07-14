@@ -66,13 +66,16 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
 
-    /// Survival rate decay factor. After each generation, the effective survival rate is
-    /// multiplied by this factor, decaying toward a minimum. This allows faster convergence
-    /// when there is a wide range of good configurations, which would otherwise cause
-    /// high variability in the selected chromosomes.
+    /// Survival rate decay factor. After each generation, the effective survival rate
+    /// is multiplied by this factor. A decay of 0 means that no decay occurs. A decay
+    /// of 0.5 means that after every generation, the effective survival rate is halved.
+    /// This allows faster convergence when there is a wide range of good configurations,
+    /// which would otherwise cause high variability in the selected chromosomes.
     ///
-    /// Disabled by default.
-    #[arg(long, default_value_t = 1.0)]
+    /// No survival rate decay happens by default.
+    ///
+    /// Range: [0,1]
+    #[arg(long, default_value_t = 0.0)]
     pub survival_rate_decay: f32,
 
     /// Mutation strength: maximum magnitude of a random perturbation applied to each gene.
@@ -87,12 +90,13 @@ pub struct GeneticControllerConfig {
     #[arg(long, default_value_t = 0.3)]
     pub mutation_rate: f32,
 
-    /// Mutation rate decay factor. After each generation, the effective mutation rate is
-    /// multiplied by this factor, decaying toward a minimum. This allows aggressive exploration
-    /// early on and fine-tuning as the population converges. Set to 1.0 to disable decay.
+    /// Mutation rate decay factor. After each generation, the effective mutation rate
+    /// is multiplied by this factor. A decay of 0 means that no decay occurs. A decay
+    /// of 0.5 means that after every generation, the effective mutation rate is halved.
+    /// This allows aggressive exploration early on and fine-tuning as the population converges.
     ///
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 0.7)]
+    /// Range: [0,1]
+    #[arg(long, default_value_t = 0.3)]
     pub mutation_rate_decay: f32,
 
     /// Minimum mutation rate after decay. The effective mutation rate will never drop below this.
@@ -319,8 +323,8 @@ impl GeneticController {
         }
 
         // Decay rates for next generation
-        self.effective_survival_rate = (self.effective_survival_rate * survival_rate_decay).max(0.0);
-        self.effective_mutation_rate = (self.effective_mutation_rate * mutation_rate_decay).max(mutation_rate_min);
+        self.effective_survival_rate = (self.effective_survival_rate * (1.0 - survival_rate_decay)).max(0.0);
+        self.effective_mutation_rate = (self.effective_mutation_rate * (1.0 - mutation_rate_decay)).max(mutation_rate_min);
         log::debug!("Generation {}: survival rate={:.3}, mutation rate={:.3}",
             self.generation, self.effective_survival_rate, self.effective_mutation_rate);
 
