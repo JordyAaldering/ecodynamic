@@ -8,6 +8,7 @@ pub struct GeneticController {
     immigration_cooldown: usize,
     sort_descending: bool,
     max_threads: u16,
+    effective_survival_rate: f32,
     effective_mutation_rate: f32,
     config: GeneticControllerConfig,
     // Debugging metadata
@@ -30,25 +31,25 @@ pub struct GeneticControllerConfig {
 
     /// Minimum allowed percentage of the number of threads.
     ///
-    /// Range: (0,1].
+    /// Range: (0,1]
     #[arg(long, default_value_t = 0.1)]
     pub threads_min: f32,
 
     /// Maximum allowed percentage of the number of threads.
     ///
-    /// Range: (0,1].
+    /// Range: (0,1]
     #[arg(long, default_value_t = 1.0)]
     pub threads_max: f32,
 
     /// Minimum allowed percentage of the powercap.
     ///
-    /// Range: (0,1].
+    /// Range: (0,1]
     #[arg(long, default_value_t = 0.1)]
     pub power_min: f32,
 
     /// Maximum allowed percentage of the powercap.
     ///
-    /// Range: (0,1].
+    /// Range: (0,1]
     #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
 
@@ -61,13 +62,22 @@ pub struct GeneticControllerConfig {
     /// Genetic algorithm survival rate. Controls the fraction of the population that
     /// survives into the next generation as elite individuals.
     ///
-    /// Range: (0,1].
+    /// Range: (0,1]
     #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
 
+    /// Survival rate decay factor. After each generation, the effective survival rate is
+    /// multiplied by this factor, decaying toward a minimum. This allows faster convergence
+    /// when there is a wide range of good configurations, which would otherwise cause
+    /// high variability in the selected chromosomes.
+    ///
+    /// Disabled by default.
+    #[arg(long, default_value_t = 1.0)]
+    pub survival_rate_decay: f32,
+
     /// Mutation strength: maximum magnitude of a random perturbation applied to each gene.
     ///
-    /// Range: (0,1].
+    /// Range: (0,1]
     #[arg(long, default_value_t = 0.01)]
     pub mutation_strength: f32,
 
@@ -161,6 +171,7 @@ impl GeneticController {
             immigration_cooldown: 0,
             sort_descending: !config.initial_population_descending,
             max_threads: caps.max_threads.unwrap_or(1),
+            effective_survival_rate: config.survival_rate,
             effective_mutation_rate: config.mutation_rate,
             config,
             generation: 0,
@@ -211,11 +222,13 @@ impl GeneticController {
         let GeneticControllerConfig {
             energy_preference,
             survival_rate,
+            survival_rate_decay,
             immigration_rate,
             immigration_change_threshold,
             immigration_cooldown_generations,
             immigration_min_matched_scores,
             immigration_robustness_threshold,
+            mutation_rate,
             mutation_rate_decay,
             mutation_rate_min,
             ..
@@ -246,7 +259,7 @@ impl GeneticController {
 
         // Ensure at least 1 survivor to avoid empty range panic in crossover selection.
         let survival_count = {
-            let survival_count = population_size as f32 * survival_rate;
+            let survival_count = population_size as f32 * self.effective_survival_rate;
             let survival_remainder = survival_count.fract();
             let mut survival_count = survival_count.floor() as usize;
             if rand::random_bool(survival_remainder as f64) {
@@ -270,8 +283,8 @@ impl GeneticController {
                 self.immigration_was_triggered = true;
                 log::info!("Generation {}: immigration triggered, replacing population with spread individuals", self.generation);
 
-                // Reset mutation rate on immigration to allow aggressive exploration of new landscape
-                self.effective_mutation_rate = self.config.mutation_rate;
+                self.effective_survival_rate = survival_rate;
+                self.effective_mutation_rate = mutation_rate;
 
                 // When immigration rate is less than 1 / population_size, we use a random
                 // chance based on the remainder to ensure immigration can still occur.
@@ -294,22 +307,22 @@ impl GeneticController {
         sort_population_by_score(&mut self.population, scores);
 
         // Replace chromosomes by children of the best performing chromosomes
-        let effective_mr = self.effective_mutation_rate;
         for i in survival_count..immigration_start {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(parent2, &self.config);
-            if rand::random_bool(effective_mr as f64) {
+            if rand::random_bool(self.effective_mutation_rate as f64) {
                 child.mutate(&self.config);
             }
 
             self.population[i] = child;
         }
 
-        // Decay the mutation rate for next generation
+        // Decay rates for next generation
+        self.effective_survival_rate = (self.effective_survival_rate * survival_rate_decay).max(0.0);
         self.effective_mutation_rate = (self.effective_mutation_rate * mutation_rate_decay).max(mutation_rate_min);
-        log::debug!("Generation {}: effective_mutation_rate={:.4}",
-            self.generation, self.effective_mutation_rate);
+        log::debug!("Generation {}: survival rate={:.3}, mutation rate={:.3}",
+            self.generation, self.effective_survival_rate, self.effective_mutation_rate);
 
         // Fill remaining chromosomes by immigration
         let immigration_count = population_size.saturating_sub(immigration_start);
