@@ -172,7 +172,7 @@ impl GeneticController {
         Self {
             samples: Vec::with_capacity(config.population_size),
             population,
-            immigration_cooldown: 0,
+            immigration_cooldown: config.immigration_cooldown_generations,
             sort_descending: !config.initial_population_descending,
             max_threads: caps.max_threads.unwrap_or(1),
             effective_survival_rate: config.survival_rate,
