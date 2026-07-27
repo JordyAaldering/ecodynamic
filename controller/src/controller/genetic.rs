@@ -450,12 +450,11 @@ impl Chromosome {
         Self::new(num_threads, power_limit_pct)
     }
 
-    /// Generate a chromosome using an even spread over the valid search space.
-    ///
-    /// This includes exact min and max values whenever `count >= 2`.
+    /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
+    /// Otherwise, chromosomes are generated using an even spread over the valid search space.
     fn from_spread(index: usize, count: usize, config: &GeneticControllerConfig) -> Self {
         debug_assert_ne!(count, 0);
-        if count == 1 {
+        if count <= 3 {
             return Chromosome::rand(config);
         }
 
