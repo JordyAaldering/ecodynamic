@@ -1,11 +1,5 @@
 use std::{
-    collections::HashMap,
-    fs,
-    io::{self, BufRead, BufReader, Write},
-    os::unix::net::{UnixListener, UnixStream},
-    process,
-    sync::{LazyLock, Mutex},
-    thread,
+    collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex, atomic::{AtomicU16, Ordering}}, thread,
 };
 
 use clap::{Parser, Subcommand};
@@ -60,6 +54,8 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     rapl.map(Mutex::new)
 });
 
+static GLOBAL_THREAD_COUNT: AtomicU16 = AtomicU16::new(0);
+
 fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, Box<dyn Controller>> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
@@ -70,6 +66,8 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
     let capabilities = serde_json::from_str(line.trim_end())
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
     log::debug!("Client capabilities: {:?}", capabilities);
+
+    let mut last_thread_count = 0;
 
     loop {
         line.clear();
@@ -84,6 +82,10 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 // which happens when the request only contains the region, in which case the extra fields get ignored.
                 if let Ok(mut sample) = serde_json::from_str::<Sample>(&line) {
                     log::trace!("POST: {:?}", sample);
+
+                    // The region is over, so we can subtract the thread count from the global count
+                    GLOBAL_THREAD_COUNT.fetch_sub(last_thread_count, Ordering::Relaxed);
+                    last_thread_count = 0;
 
                     // Subtract idle energy
                     sample.energy -= config.idle_power * sample.runtime;
@@ -108,9 +110,16 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
 
                     let demand = controller.get_demand();
                     log::trace!("PUT: {:?}", demand);
+
+                    GLOBAL_THREAD_COUNT.fetch_add(demand.num_threads, Ordering::Relaxed);
+                    last_thread_count = demand.num_threads;
+
                     set_power_limit(demand.powercap_pct);
                     write_json_line(&mut stream, &demand)?;
                 } else {
+                    // If the program aborted, it could be that the thread count was not yet reset
+                    GLOBAL_THREAD_COUNT.fetch_sub(last_thread_count, Ordering::Relaxed);
+
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
                         format!("Invalid JSON message: {line}"))
@@ -118,6 +127,9 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                 }
             }
             Err(e) => {
+                // If the program aborted, it could be that the thread count was not yet reset
+                GLOBAL_THREAD_COUNT.fetch_sub(last_thread_count, Ordering::Relaxed);
+
                 log::info!("Client disconnected");
                 return Err(e);
             }
