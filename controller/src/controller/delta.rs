@@ -37,7 +37,7 @@ impl DeltaController {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
             threads_pct: 1.0,
-            max_threads: caps.max_threads.unwrap_or(1),
+            max_threads: caps.max_threads,
             step_size: 0.5,
             step_ascending: false,
             e_prev: 0.0,

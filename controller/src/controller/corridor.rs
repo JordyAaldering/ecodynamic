@@ -37,7 +37,7 @@ impl CorridorController {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
             threads_pct: 1.0,
-            max_threads: caps.max_threads.unwrap_or(1),
+            max_threads: caps.max_threads,
             step_size: 1.0, // Will immediately be halved in the first iteration
             step_ascending: false,
             t_prev: f32::MAX,

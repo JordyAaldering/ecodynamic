@@ -174,7 +174,7 @@ impl GeneticController {
             population,
             immigration_cooldown: config.immigration_cooldown_generations,
             sort_descending: !config.initial_population_descending,
-            max_threads: caps.max_threads.unwrap_or(1),
+            max_threads: caps.max_threads,
             effective_survival_rate: config.survival_rate,
             effective_mutation_rate: config.mutation_rate,
             config,

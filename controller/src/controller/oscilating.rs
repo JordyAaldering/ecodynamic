@@ -12,9 +12,9 @@ pub struct OscilatingController {
 impl OscilatingController {
     pub fn new(caps: &Capabilities) -> Self {
         Self {
-            min_threads: caps.min_threads.unwrap_or(1),
-            max_threads: caps.max_threads.unwrap_or(1),
-            num_threads: caps.max_threads.unwrap_or(1),
+            min_threads: caps.min_threads,
+            max_threads: caps.max_threads,
+            num_threads: caps.max_threads,
             ascending: false,
         }
     }

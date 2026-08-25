@@ -1,27 +1,21 @@
 use serde::{Deserialize, Serialize};
 
+/// Represents the capabilities of an application, including its process ID
+/// and the minimum and maximum number of threads it may use.
+///
+/// Power limit is deliberately not included, as it is a system-wide
+/// setting and not specific to the application.
 #[derive(Clone, Debug, Default)]
 #[derive(Deserialize, Serialize)]
 pub struct Capabilities {
     /// The process ID of the application.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pid: Option<i32>,
+    pub pid: i32,
 
-    /// Minimum number of threads that the application can use.
-    /// If `None`, defaults to 1.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_threads: Option<u16>,
-    /// Maximum number of threads that the application can use.
-    /// If `None`, thread adjustment is disabled.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_threads: Option<u16>,
-
-    /// Minimum power limit that the system may be configured to.
-    /// If `None`, defaults to 0.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_powercap: Option<u16>,
-    /// Maximum power limit that the system may be configured to.
-    /// If `None`, defaults to constraint_0_power_limit_uw.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_powercap: Option<u16>,
+    /// Minimum number of threads the application may use. [default: 1]
+    #[serde(default = "one")]
+    pub min_threads: u16,
+    /// Maximum number of threads the application may use.
+    pub max_threads: u16,
 }
+
+fn one() -> u16 { 1 }

@@ -7,7 +7,7 @@ pub struct FixedController {
 impl FixedController {
     pub fn new(caps: &Capabilities) -> Self {
         Self {
-            num_threads: caps.max_threads.unwrap_or(1),
+            num_threads: caps.max_threads,
         }
     }
 }
