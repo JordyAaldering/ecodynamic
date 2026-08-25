@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, filter_functions::FilterFunction, Sample, direction::Direction, score};
+use crate::*;
 
 const MIN_STEPSIZE: f32 = 0.1;
 
@@ -19,16 +19,8 @@ pub struct CorridorController {
 pub struct CorridorConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
-
-    /// Describes the importance of optimising for energy efficiency over runtime performance.
-    /// A value of 1 means that only energy efficiency is optimised for, while a value of 0 means that only runtime performance is optimised for.
-    ///
-    /// Range: [0,1]
-    #[arg(long, default_value_t = 0.9)]
-    pub energy_preference: f32,
-
     #[arg(long, default_value = "frequency-dist")]
-    pub select: FilterFunction,
+    pub filter: FilterFunction,
 }
 
 impl CorridorController {
@@ -56,7 +48,6 @@ impl Controller for CorridorController {
 
     fn push_sample(&mut self, sample: Sample) {
         self.samples.push(sample);
-
         if self.samples.len() >= self.config.letterbox_size {
             self.evolve();
             self.samples.clear();
@@ -66,7 +57,8 @@ impl Controller for CorridorController {
 
 impl CorridorController {
     fn evolve(&mut self) {
-        let tn = self.config.select.select(score(&self.samples, self.config.energy_preference));
+        let scores = self.samples.iter().map(|s| s.runtime).collect();
+        let tn = self.config.filter.select(scores);
 
         let speedup = self.t1 / (tn + f32::EPSILON);
         if speedup < 0.5 * self.num_threads() as f32 {

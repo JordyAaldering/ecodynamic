@@ -1,4 +1,4 @@
-use crate::{Capabilities, Controller, Demand, Sample};
+use crate::*;
 
 pub struct FixedController {
     num_threads: u16,

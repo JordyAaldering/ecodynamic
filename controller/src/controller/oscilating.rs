@@ -1,6 +1,4 @@
-use crate::{Capabilities, Demand, Sample, direction::Direction};
-
-use super::Controller;
+use crate::*;
 
 pub struct OscilatingController {
     max_threads: u16,

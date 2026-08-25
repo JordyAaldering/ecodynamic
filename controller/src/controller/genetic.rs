@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Sample, filter_functions::median, score};
+use crate::*;
 
 pub struct GeneticController {
     samples: Vec<Sample>,

@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, filter_functions::FilterFunction, score};
+use crate::*;
 
 pub struct DeltaController {
     samples: Vec<Sample>,
@@ -16,17 +16,8 @@ pub struct DeltaController {
 pub struct DeltaConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
-
-    /// Describes the importance of optimising for energy efficiency over runtime performance.
-    /// A value of 1 means that only energy efficiency is optimised for, while a value of 0 means that only runtime performance is optimised for.
-    ///
-    /// Range: [0,1]
-    #[arg(long, default_value_t = 0.9)]
-    pub energy_preference: f32,
-
-
     #[arg(long, default_value = "median")]
-    pub select: FilterFunction,
+    pub filter: FilterFunction,
 }
 
 impl DeltaController {
@@ -63,7 +54,8 @@ impl Controller for DeltaController {
 
 impl DeltaController {
     fn evolve(&mut self) {
-        let tn = self.config.select.select(score(&self.samples, self.config.energy_preference));
+        let scores = self.samples.iter().map(|s| s.energy).collect();
+        let tn = self.config.filter.select(scores);
 
         if tn > self.t_prev * 1.50 {
             self.reset();
