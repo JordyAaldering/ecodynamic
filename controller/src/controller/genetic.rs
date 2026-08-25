@@ -145,10 +145,6 @@ pub struct GeneticConfig {
     pub immigration_cooldown_generations: usize,
 }
 
-fn lerp(min: f32, max: f32, t: f32) -> f32 {
-	min + (max - min) * t
-}
-
 impl GeneticController {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
@@ -210,8 +206,8 @@ impl Controller for GeneticController {
         };
 
         Demand {
-            powercap_pct: chromosome.power_pct,
             num_threads,
+            powercap_pct: chromosome.power_pct,
         }
     }
 

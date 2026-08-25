@@ -19,8 +19,8 @@ impl OscilatingController {
 impl Controller for OscilatingController {
     fn get_demand(&self) -> Demand {
         Demand {
-            powercap_pct: 1.0,
             num_threads: self.num_threads,
+            powercap_pct: 1.0,
         }
     }
 

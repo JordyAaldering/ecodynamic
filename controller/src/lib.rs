@@ -18,3 +18,8 @@ pub fn score(samples: &[Sample], alpha: f32) -> Vec<f32> {
         sample.score(alpha)
     }).collect()
 }
+
+/// Linearly interpolate between two values.
+pub fn lerp(min: f32, max: f32, t: f32) -> f32 {
+	min + (max - min) * t
+}
