@@ -2,22 +2,15 @@ mod controller;
 mod direction;
 mod filter_functions;
 mod message;
-
-use std::sync::atomic::AtomicU16;
+mod state;
 
 pub use controller::*;
 pub(crate) use direction::*;
 pub(crate) use filter_functions::*;
 pub use message::*;
+pub use state::*;
 
 pub const LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
-
-/// Track the total number of threads currently in use across all clients.
-/// This can be used to steer configurations towards efficiently sharing available resources.
-pub static GLOBAL_THREAD_COUNT: AtomicU16 = AtomicU16::new(0);
-
-/// Temporary value, until I convert this to a proper configuration parameter.
-pub(crate) const AVAILABLE_CORES: u16 = 16;
 
 /// Compute the score for a set of samples, given an alpha parameter.
 ///

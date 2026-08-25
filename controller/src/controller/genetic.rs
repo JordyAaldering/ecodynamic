@@ -538,6 +538,10 @@ impl Chromosome {
 
     /// How well this chromosome matches secondary preferences, in [0, 1] where
     /// 1 means perfectly aligned and 0 means maximally misaligned.
+    ///
+    /// TODO: currently, this assumes that the global thread count remained consistent across the entire generation.
+    /// This is not necessarily true; in future, each chromosome should be evaluated against the global thread count
+    /// at the time it was sampled.
     fn alignment(&self, config: &GeneticConfig, global_thread_count: u16) -> f32 {
         // Prefer thread counts that, combined with other clients, fully use the available cores.
         let total_threads = global_thread_count as f32 + self.num_threads as f32;
