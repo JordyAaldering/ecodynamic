@@ -28,7 +28,7 @@ pub enum ControllerType {
     /// Algorithm based on a performance corridor.
     Corridor(CorridorConfig),
     /// Algorithm based on deltas between runs.
-    Delta(DeltaControllerConfig),
+    Delta(DeltaConfig),
     /// Continuously oscillates between the zero-capabilities and the given capabilities.
     Oscilating,
     /// Always returns the given capabilities.

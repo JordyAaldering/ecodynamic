@@ -8,9 +8,9 @@ pub struct CorridorController {
     samples: Vec<Sample>,
     min_threads: u16,
     max_threads: u16,
-    num_threads_r: f32,
+    cur_threads: f32,
     step_size: f32,
-    step_direction: Direction,
+    step_dir: Direction,
     t_prev: f32,
     t1: f32,
     config: CorridorConfig,
@@ -39,9 +39,9 @@ impl CorridorController {
             samples: Vec::with_capacity(config.letterbox_size),
             min_threads: capabilities.min_threads,
             max_threads: capabilities.max_threads,
-            num_threads_r: capabilities.max_threads as f32,
+            cur_threads: capabilities.max_threads as f32,
             step_size: capabilities.max_threads as f32, // Will immediately be halved in the first iteration
-            step_direction: Direction::Descending,
+            step_dir: Direction::Descending,
             t_prev: f32::MAX,
             t1: f32::MAX,
             config,
@@ -74,8 +74,8 @@ impl CorridorController {
         let speedup = self.t1 / (tn + f32::EPSILON);
         if speedup < 0.5 * self.num_threads() as f32 {
             // We have fallen below the corridor; reset step size and direction
-            self.step_size = (0.5 * self.num_threads_r).max(MIN_STEPSIZE);
-            self.step_direction = Direction::Descending;
+            self.step_size = (0.5 * self.cur_threads).max(MIN_STEPSIZE);
+            self.step_dir = Direction::Descending;
         } else {
             if speedup > self.num_threads() as f32 {
                 // In the initial iteration t1 and t_last are f64::MAX so we
@@ -84,7 +84,7 @@ impl CorridorController {
             }
 
             if tn > self.t_prev {
-                self.step_direction = !self.step_direction;
+                self.step_dir = !self.step_dir;
             }
 
             // Halve the step size
@@ -92,12 +92,12 @@ impl CorridorController {
         }
 
         self.t_prev = tn;
-        self.num_threads_r += self.step_direction * self.step_size;
-        self.num_threads_r = self.num_threads_r.clamp(self.min_threads as f32, self.max_threads as f32);
+        self.cur_threads += self.step_dir * self.step_size;
+        self.cur_threads = self.cur_threads.clamp(self.min_threads as f32, self.max_threads as f32);
     }
 
     /// Get the actual number of threads to use.
     fn num_threads(&self) -> u16 {
-        (self.num_threads_r.round() as u16).clamp(self.min_threads, self.max_threads)
+        (self.cur_threads.round() as u16).clamp(self.min_threads, self.max_threads)
     }
 }
