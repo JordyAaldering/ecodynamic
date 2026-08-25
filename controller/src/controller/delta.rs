@@ -1,16 +1,15 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, filter_functions::FilterFunction, Sample, scores};
-
-const THREADS_PCT_MIN: f32 = 0.1;
+use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, filter_functions::FilterFunction, scores};
 
 pub struct DeltaController {
     samples: Vec<Sample>,
-    threads_pct: f32,
+    min_threads: u16,
     max_threads: u16,
+    num_threads_r: f32,
     step_size: f32,
-    step_ascending: bool,
-    e_prev: f32,
+    step_direction: Direction,
+    t_last: f32,
     config: DeltaControllerConfig,
 }
 
@@ -36,11 +35,12 @@ impl DeltaController {
     pub fn new(config: DeltaControllerConfig, capabilities: &Capabilities) -> Self {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
-            threads_pct: 1.0,
+            min_threads: capabilities.min_threads,
             max_threads: capabilities.max_threads,
+            num_threads_r: capabilities.max_threads as f32,
             step_size: 0.5,
-            step_ascending: false,
-            e_prev: 0.0,
+            step_direction: Direction::Descending,
+            t_last: 0.0,
             config,
         }
     }
@@ -49,7 +49,7 @@ impl DeltaController {
 impl Controller for DeltaController {
     fn get_demand(&self) -> Demand {
         Demand {
-            num_threads: ((self.threads_pct * self.max_threads as f32).round() as u16).max(1),
+            num_threads: self.num_threads(),
             powercap_pct: 1.0,
         }
     }
@@ -66,35 +66,34 @@ impl Controller for DeltaController {
 
 impl DeltaController {
     fn evolve(&mut self) {
-        let e_next = self.config.select.select(scores(&self.samples, self.config.energy_preference));
+        let tn = self.config.select.select(scores(&self.samples, self.config.energy_preference));
 
-        if e_next > self.e_prev * 1.50 {
-            self.step_size = 0.5;
-            self.reset_direction();
+        if tn > self.t_last * 1.50 {
+            self.reset();
         } else {
-            if e_next > self.e_prev {
-                self.step_ascending = !self.step_ascending;
+            if tn > self.t_last {
+                self.step_direction = !self.step_direction;
             }
 
-            // TODO: this needs to be updated for step_size in range (0,1] instead of range [1,max_threads]
-            if self.step_size > 0.16 {
+            if self.step_size > 0.155 {
                 self.step_size = f32::max(self.step_size * 0.6, self.step_size / (0.85 + self.step_size));
             } else {
-                self.step_size = 0.5;
-                self.reset_direction();
+                self.reset();
             }
         }
 
-        self.e_prev = e_next;
-        self.threads_pct += if self.step_ascending { self.step_size } else { -self.step_size };
-        self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
+        self.t_last = tn;
+        self.num_threads_r += self.step_direction * self.step_size;
+        self.num_threads_r = self.num_threads_r.clamp(self.min_threads as f32, self.max_threads as f32);
     }
 
-    fn reset_direction(&mut self) {
-        self.step_ascending = if self.threads_pct < (1.0 + THREADS_PCT_MIN) / 2.0 {
-            true
-        } else {
-            false
-        };
+    /// Reset step size, and set direction towards the center.
+    fn reset(&mut self) {
+        self.step_size = 0.5 * self.max_threads as f32;
+        self.step_direction = Direction::from(self.num_threads() < (self.max_threads / 2));
+    }
+
+    fn num_threads(&self) -> u16 {
+        (self.num_threads_r.round() as u16).clamp(self.min_threads, self.max_threads)
     }
 }

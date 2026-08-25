@@ -73,9 +73,9 @@ impl CorridorController {
 
         let speedup = self.t1 / (tn + f32::EPSILON);
         if speedup < 0.5 * self.num_threads() as f32 {
-            // We have fallen below the corridor; reset direction and step size
+            // We have fallen below the corridor; reset step size and direction
+            self.step_size = (0.5 * self.num_threads_r).max(MIN_STEPSIZE);
             self.step_direction = Direction::Descending;
-            self.descrease_stepsize();
         } else {
             if speedup > self.num_threads() as f32 {
                 // In the initial iteration t1 and t_last are f64::MAX so we
@@ -87,17 +87,13 @@ impl CorridorController {
                 self.step_direction = !self.step_direction;
             }
 
-            self.descrease_stepsize();
+            // Halve the step size
+            self.step_size = (0.5 * self.step_size).max(MIN_STEPSIZE);
         }
 
         self.t_prev = tn;
-
         self.num_threads_r += self.step_direction * self.step_size;
         self.num_threads_r = self.num_threads_r.clamp(self.min_threads as f32, self.max_threads as f32);
-    }
-
-    fn descrease_stepsize(&mut self) {
-        self.step_size = (0.5 * self.num_threads_r).max(MIN_STEPSIZE);
     }
 
     /// Get the actual number of threads to use.

@@ -4,6 +4,16 @@ pub enum Direction {
     Descending,
 }
 
+impl From<bool> for Direction {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::Ascending
+        } else {
+            Self::Descending
+        }
+    }
+}
+
 impl std::ops::Not for Direction {
     type Output = Direction;
 
