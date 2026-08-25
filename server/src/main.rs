@@ -54,6 +54,8 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     rapl.map(Mutex::new)
 });
 
+/// Track the total number of threads currently in use across all clients.
+/// This can be used to steer configurations towards efficiently sharing available resources.
 static GLOBAL_THREAD_COUNT: AtomicU16 = AtomicU16::new(0);
 
 fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
