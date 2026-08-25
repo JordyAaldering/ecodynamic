@@ -7,6 +7,7 @@ pub struct GeneticController {
     population: Vec<Chromosome>,
     immigration_cooldown: usize,
     sort_descending: bool,
+    min_threads: u16,
     max_threads: u16,
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
@@ -18,7 +19,7 @@ pub struct GeneticController {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Chromosome {
-    threads_pct: f32,
+    num_threads: u16,
     power_pct: f32,
     prev_score: Option<f32>,
 }
@@ -35,17 +36,11 @@ pub struct GeneticConfig {
     #[arg(long, default_value_t = 0.9)]
     pub energy_preference: f32,
 
-    /// Minimum allowed percentage of the number of threads.
+    /// Enable thread control.
     ///
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 0.1)]
-    pub threads_min: f32,
-
-    /// Maximum allowed percentage of the number of threads.
-    ///
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 1.0)]
-    pub threads_max: f32,
+    /// If disabled, the controller will only control the power limit.
+    #[arg(long("thread-control"))]
+    pub do_thread_control: bool,
 
     /// Minimum allowed percentage of the powercap.
     ///
@@ -167,9 +162,9 @@ impl GeneticController {
                 }
 
                 let t = i as f32 / (config.population_size - 1) as f32;
-                let threads_pct = lerp(config.threads_min, config.threads_max, t);
+                let num_threads = lerp(capabilities.min_threads as f32, capabilities.max_threads as f32, t).round() as u16;
                 let power_pct = lerp(config.power_min, config.power_max, t);
-                Chromosome::new(threads_pct, power_pct)
+                Chromosome::new(num_threads, power_pct)
             })
             .collect();
 
@@ -180,6 +175,7 @@ impl GeneticController {
             population,
             immigration_cooldown: config.immigration_cooldown_generations,
             sort_descending: !config.initial_population_descending,
+            min_threads: capabilities.min_threads,
             max_threads: capabilities.max_threads,
             effective_survival_rate: config.survival_rate,
             effective_mutation_rate: config.mutation_rate,
@@ -208,9 +204,16 @@ impl Controller for GeneticController {
     fn get_demand(&self) -> Demand {
         debug_assert!(self.samples.len() < self.population.len());
         let chromosome = &self.population[self.samples.len()];
+
+        let num_threads = if self.config.do_thread_control {
+            chromosome.num_threads.clamp(self.min_threads, self.max_threads)
+        } else {
+            self.max_threads
+        };
+
         Demand {
             powercap_pct: chromosome.power_pct,
-            num_threads: ((chromosome.threads_pct * self.max_threads as f32).round() as u16).max(1),
+            num_threads,
         }
     }
 
@@ -322,7 +325,7 @@ impl GeneticController {
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(parent2, &self.config);
             if rand::random_bool(self.effective_mutation_rate as f64) {
-                child.mutate(&self.config);
+                child.mutate(&self.config, self.min_threads, self.max_threads);
             }
 
             self.population[i] = child;
@@ -337,7 +340,7 @@ impl GeneticController {
         // Fill remaining chromosomes by immigration
         let immigration_count = population_size.saturating_sub(immigration_start);
         for (offset, i) in (immigration_start..population_size).enumerate() {
-            self.population[i] = Chromosome::from_spread(offset, immigration_count, &self.config);
+            self.population[i] = Chromosome::from_spread(offset, immigration_count, &self.config, self.min_threads, self.max_threads);
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
@@ -413,33 +416,33 @@ fn update_prev_scores_and_check_for_shift(
 }
 
 impl Chromosome {
-    fn new(threads_pct: f32, power_pct: f32) -> Self {
+    fn new(num_threads: u16, power_pct: f32) -> Self {
         Self {
-            threads_pct,
+            num_threads,
             power_pct,
             prev_score: None,
         }
     }
 
     /// Generate a random chromosome for immigration
-    fn rand(config: &GeneticConfig) -> Self {
-        let num_threads = rand::random_range(0.1..=1.0);
+    fn rand(config: &GeneticConfig, min_threads: u16, max_threads: u16) -> Self {
+        let num_threads = rand::random_range(min_threads..=max_threads);
         let power_limit_pct = rand::random_range(config.power_min..=config.power_max);
         Self::new(num_threads, power_limit_pct)
     }
 
     /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
     /// Otherwise, chromosomes are generated using an even spread over the valid search space.
-    fn from_spread(index: usize, count: usize, config: &GeneticConfig) -> Self {
+    fn from_spread(index: usize, count: usize, config: &GeneticConfig, min_threads: u16, max_threads: u16) -> Self {
         debug_assert_ne!(count, 0);
         if count <= 3 {
-            return Chromosome::rand(config);
+            return Chromosome::rand(config, min_threads, max_threads);
         }
 
         let t = index as f32 / (count - 1) as f32;
-        let threads_pct = lerp(config.threads_min, config.threads_max, t);
+        let num_threads = lerp(min_threads as f32, max_threads as f32, t).round() as u16;
         let power_pct = lerp(config.power_min, config.power_max, t);
-        Self::new(threads_pct, power_pct)
+        Self::new(num_threads, power_pct)
     }
 
     fn crossover(&self, other: &Self, config: &GeneticConfig) -> Self {
@@ -465,31 +468,36 @@ impl Chromosome {
         };
 
         Self {
-            threads_pct: self.threads_pct * t + other.threads_pct * tr,
+            num_threads: (self.num_threads as f32 * t + other.num_threads as f32 * tr).round() as u16,
             power_pct: self.power_pct * t + other.power_pct * tr,
             prev_score,
         }
     }
 
     /// Add or subtract one thread
-    fn mutate(&mut self, config: &GeneticConfig) {
-        let prev_threads_pct = self.threads_pct;
+    fn mutate(&mut self, config: &GeneticConfig, min_threads: u16, max_threads: u16) {
+        let prev_num_threads = self.num_threads;
         let prev_power_pct = self.power_pct;
 
-        self.threads_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
-        self.threads_pct = self.threads_pct.max(0.1).min(1.0);
+        if rand::random_bool(config.mutation_strength as f64) {
+            if rand::random_bool(0.5) {
+                self.num_threads = self.num_threads.saturating_sub(1);
+            } else {
+                self.num_threads = self.num_threads.saturating_add(1);
+            }
+            self.num_threads = self.num_threads.clamp(min_threads, max_threads);
+        }
 
         self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
         self.power_pct = self.power_pct.max(config.power_min).min(config.power_max);
 
-        if (self.threads_pct - prev_threads_pct).abs() > config.immigration_similarity_threshold
-            || (self.power_pct - prev_power_pct).abs() > config.immigration_similarity_threshold {
+        if self.num_threads != prev_num_threads || (self.power_pct - prev_power_pct).abs() > config.immigration_similarity_threshold {
             self.prev_score = None;
         }
     }
 
     fn is_similar_to(&self, other: &Self, similarity_threshold: f32) -> bool {
-        (self.threads_pct - other.threads_pct).abs() <= similarity_threshold
+        self.num_threads == other.num_threads
             && (self.power_pct - other.power_pct).abs() <= similarity_threshold
     }
 }

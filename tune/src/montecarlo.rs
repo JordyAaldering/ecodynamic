@@ -69,8 +69,7 @@ fn main() {
         mut config,
     } = Args::parse();
 
-    config.threads_min = 1.0;
-    config.threads_max = 1.0;
+    config.do_thread_control = false;
 
     let convergence_score_threshold = derive_score_error_threshold(
         config.energy_preference,

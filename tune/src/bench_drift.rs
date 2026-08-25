@@ -181,8 +181,7 @@ fn main() {
         mut config,
     } = Args::parse();
 
-    config.threads_min = 1.0;
-    config.threads_max = 1.0;
+    config.do_thread_control = false;
 
     let cases = get_test_cases();
 
