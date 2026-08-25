@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, filter_functions::FilterFunction, scores};
+use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, filter_functions::FilterFunction, score};
 
 pub struct DeltaController {
     samples: Vec<Sample>,
@@ -66,7 +66,7 @@ impl Controller for DeltaController {
 
 impl DeltaController {
     fn evolve(&mut self) {
-        let tn = self.config.select.select(scores(&self.samples, self.config.energy_preference));
+        let tn = self.config.select.select(score(&self.samples, self.config.energy_preference));
 
         if tn > self.t_last * 1.50 {
             self.reset();

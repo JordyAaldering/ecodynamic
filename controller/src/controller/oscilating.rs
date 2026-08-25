@@ -1,4 +1,4 @@
-use crate::{Capabilities, Demand, Sample};
+use crate::{Capabilities, Demand, Sample, direction::Direction};
 
 use super::Controller;
 
@@ -6,7 +6,7 @@ pub struct OscilatingController {
     min_threads: u16,
     max_threads: u16,
     num_threads: u16,
-    ascending: bool,
+    direction: Direction,
 }
 
 impl OscilatingController {
@@ -15,7 +15,7 @@ impl OscilatingController {
             min_threads: capabilities.min_threads,
             max_threads: capabilities.max_threads,
             num_threads: capabilities.max_threads,
-            ascending: false,
+            direction: Direction::Descending,
         }
     }
 }
@@ -28,19 +28,18 @@ impl Controller for OscilatingController {
         }
     }
 
-    /// Ignores the sample, always evolve to the next step
     fn push_sample(&mut self, _: Sample) {
-        if self.ascending {
+        if self.direction == Direction::Ascending {
             self.num_threads = self.num_threads.saturating_add(1);
             if self.num_threads >= self.max_threads {
                 self.num_threads = self.max_threads;
-                self.ascending = false;
+                self.direction = Direction::Descending;
             }
         } else {
             self.num_threads = self.num_threads.saturating_sub(1);
             if self.num_threads <= self.min_threads {
                 self.num_threads = self.min_threads;
-                self.ascending = true;
+                self.direction = Direction::Ascending;
             }
         }
     }

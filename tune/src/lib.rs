@@ -2,7 +2,7 @@ mod curves;
 
 pub use curves::*;
 
-use controller::{Sample, score};
+use controller::Sample;
 
 fn lerp(min: f32, max: f32, t: f32) -> f32 {
 	min + (max - min) * t
@@ -76,7 +76,7 @@ pub fn find_optimal_powercap(
         let runtime = runtime_curve.eval(powercap, 0.0);
         let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
 
-		let score = score(&sample, e_pref);
+		let score = sample.score(e_pref);
 		if score < best_score {
 			best_score = score;
             best_energy = energy;

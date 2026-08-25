@@ -13,3 +13,10 @@ pub struct Sample {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usertime: Option<f32>,
 }
+
+impl Sample {
+    /// Compute the score for a single sample, given an alpha parameter.
+    pub fn score(&self, alpha: f32) -> f32 {
+        self.energy.powf(alpha) * self.runtime.powf(1.0 - alpha)
+    }
+}

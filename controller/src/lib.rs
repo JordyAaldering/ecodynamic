@@ -11,15 +11,8 @@ pub const LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 /// Compute the score for a set of samples, given an alpha parameter.
 ///
 /// score = energy^alpha * runtime^(1 - alpha)
-pub fn scores(samples: &[Sample], alpha: f32) -> Vec<f32> {
-    samples.iter().map(|s| {
-        score(s, alpha)
+pub fn score(samples: &[Sample], alpha: f32) -> Vec<f32> {
+    samples.iter().map(|sample| {
+        sample.score(alpha)
     }).collect()
-}
-
-/// Compute the score for a single sample, given an alpha parameter.
-///
-/// score = energy^alpha * runtime^(1 - alpha)
-pub fn score(sample: &Sample, alpha: f32) -> f32 {
-    sample.energy.powf(alpha) * sample.runtime.powf(1.0 - alpha)
 }

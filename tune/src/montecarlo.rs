@@ -44,7 +44,7 @@ fn run(
         let runtime = runtime_curve.eval(t, runtime_cv);
         let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
 
-        let score = score(&sample, config.energy_preference);
+        let score = sample.score(config.energy_preference);
         let score_error_ratio = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
         recent_score_error_ratios[recent_score_error_index] = score_error_ratio;
         recent_score_error_index = (recent_score_error_index + 1) % CONVERGENCE_WINDOW;

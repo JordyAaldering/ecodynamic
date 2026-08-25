@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, Sample, filter_functions::median, scores};
+use crate::{Capabilities, Controller, Demand, Sample, filter_functions::median, score};
 
 pub struct GeneticController {
     samples: Vec<Sample>,
@@ -238,7 +238,7 @@ impl GeneticController {
             ..
         } = self.config;
 
-        let scores = scores(&self.samples, energy_preference);
+        let scores = score(&self.samples, energy_preference);
 
         log::debug!("Generation {}: best_score={:.4}, worst_score={:.4}, median_score={:.4}",
             self.generation,

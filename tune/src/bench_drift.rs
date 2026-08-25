@@ -144,7 +144,7 @@ fn run(
             config.power_max,
         );
 
-        let score = score(&sample, config.energy_preference);
+        let score = sample.score(config.energy_preference);
         let score_error = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
 
         // Track errors in the second half of the run (after initial convergence)

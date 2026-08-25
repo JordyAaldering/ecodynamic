@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, filter_functions::FilterFunction, Sample, direction::Direction, scores};
+use crate::{Capabilities, Controller, Demand, filter_functions::FilterFunction, Sample, direction::Direction, score};
 
 const MIN_STEPSIZE: f32 = 0.1;
 
@@ -69,7 +69,7 @@ impl Controller for CorridorController {
 
 impl CorridorController {
     fn evolve(&mut self) {
-        let tn = self.config.select.select(scores(&self.samples, self.config.energy_preference));
+        let tn = self.config.select.select(score(&self.samples, self.config.energy_preference));
 
         let speedup = self.t1 / (tn + f32::EPSILON);
         if speedup < 0.5 * self.num_threads() as f32 {
