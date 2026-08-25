@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex, atomic::{AtomicU16, Ordering}}, thread,
+    collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex, atomic::Ordering}, thread,
 };
 
 use clap::{Parser, Subcommand};
@@ -53,10 +53,6 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     log::trace!("RAPL interface: {:?}", rapl);
     rapl.map(Mutex::new)
 });
-
-/// Track the total number of threads currently in use across all clients.
-/// This can be used to steer configurations towards efficiently sharing available resources.
-static GLOBAL_THREAD_COUNT: AtomicU16 = AtomicU16::new(0);
 
 fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, Box<dyn Controller>> = HashMap::new();

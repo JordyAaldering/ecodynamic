@@ -27,9 +27,9 @@ impl CorridorController {
     pub fn new(config: CorridorConfig, capabilities: &Capabilities) -> Self {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
-            max_threads: capabilities.max_threads,
-            cur_threads: capabilities.max_threads as f32,
-            step_size: capabilities.max_threads as f32, // Will immediately be halved in the first iteration
+            max_threads: capabilities.max_threads.max(1),
+            cur_threads: capabilities.max_threads.max(1) as f32,
+            step_size: capabilities.max_threads.max(1) as f32, // Will immediately be halved in the first iteration
             step_dir: Direction::Descending,
             t_prev: f32::MAX,
             t1: f32::MAX,

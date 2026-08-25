@@ -24,8 +24,8 @@ impl DeltaController {
     pub fn new(config: DeltaConfig, capabilities: &Capabilities) -> Self {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
-            max_threads: capabilities.max_threads,
-            cur_threads: capabilities.max_threads as f32,
+            max_threads: capabilities.max_threads.max(1),
+            cur_threads: capabilities.max_threads.max(1) as f32,
             step_size: 0.5,
             step_dir: Direction::Descending,
             t_prev: 0.0,

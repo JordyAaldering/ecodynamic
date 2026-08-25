@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use clap::Parser;
 
 use crate::*;
@@ -35,6 +37,10 @@ pub struct GeneticConfig {
     #[arg(long, default_value_t = 0.9)]
     pub energy_preference: f32,
 
+    /// Enable nudging of chromosomes towards secondary preferences, such as core sharing and power limit proportional to energy preference.
+    #[arg(long("nudge"))]
+    pub do_nudging: bool,
+
     /// Enable thread control.
     ///
     /// If disabled, the controller will only control the power limit.
@@ -52,6 +58,27 @@ pub struct GeneticConfig {
     /// Range: (0,1]
     #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
+
+    /// Upper bound on the influence secondary preferences ("nudges") may have
+    /// on a chromosome's score, expressed as a fraction of that score.
+    ///
+    /// Nudges are applied multiplicatively rather than as a fixed offset, so they can only ever
+    /// re-order chromosomes whose raw scores already fall within this fraction of one another;
+    /// they can never override a clearly better scoring chromosome.
+    /// The effective nudge is additionally capped by [GeneticConfig::nudge_relative_cap] so a fixed
+    /// percentage doesn't dominate on flat score landscapes or become irrelevant on steep ones.
+    ///
+    /// Range: [0,1]
+    #[arg(long, default_value_t = 0.05)]
+    pub nudge_strength: f32,
+
+    /// Caps the effective nudge strength to this fraction of the current generation's own
+    /// relative score spread. This keeps nudges proportional to how much the scores actually
+    /// vary this generation, rather than always applying the full [GeneticConfig::nudge_strength].
+    ///
+    /// Range: [0,1]
+    #[arg(long, default_value_t = 0.5)]
+    pub nudge_relative_cap: f32,
 
     /// By default, the first chromosomes will have low thread counts and power limits,
     /// and the last chromosomes will have high thread counts and power limits.
@@ -157,7 +184,7 @@ impl GeneticController {
                 }
 
                 let t = i as f32 / (config.population_size - 1) as f32;
-                let num_threads = lerp(1.0, capabilities.max_threads as f32, t).round() as u16;
+                let num_threads = lerp(1.0, capabilities.max_threads.max(1) as f32, t).round() as u16;
                 let power_pct = lerp(config.power_min, config.power_max, t);
                 Chromosome::new(num_threads, power_pct)
             })
@@ -170,7 +197,7 @@ impl GeneticController {
             population,
             immigration_cooldown: config.immigration_cooldown_generations,
             sort_descending: !config.initial_population_descending,
-            max_threads: capabilities.max_threads,
+            max_threads: capabilities.max_threads.max(1),
             effective_survival_rate: config.survival_rate,
             effective_mutation_rate: config.mutation_rate,
             config,
@@ -200,9 +227,9 @@ impl Controller for GeneticController {
         let chromosome = &self.population[self.samples.len()];
 
         let num_threads = if self.config.do_thread_control {
-            chromosome.num_threads.clamp(1, self.max_threads)
+            chromosome.num_threads.clamp(1, self.max_threads.max(1))
         } else {
-            self.max_threads
+            self.max_threads.max(1)
         };
 
         Demand {
@@ -311,7 +338,21 @@ impl GeneticController {
             }
         };
 
-        sort_population_by_score(&mut self.population, scores);
+        if self.config.do_nudging {
+            // Cap the nudge strength to a fraction of this generation's own relative score spread
+            let effective_nudge_strength = self.config.nudge_strength
+                .min(relative_score_spread(&scores) * self.config.nudge_relative_cap);
+
+            let global_thread_count = GLOBAL_THREAD_COUNT.load(Ordering::Relaxed);
+            let nudged_scores: Vec<f32> = self.population.iter()
+                .zip(&scores)
+                .map(|(chromosome, &score)| chromosome.nudged_score(&self.config, global_thread_count, score, effective_nudge_strength))
+                .collect();
+
+            sort_population_by_score(&mut self.population, nudged_scores);
+        } else {
+            sort_population_by_score(&mut self.population, scores);
+        }
 
         // Replace chromosomes by children of the best performing chromosomes
         for i in survival_count..immigration_start {
@@ -493,6 +534,29 @@ impl Chromosome {
     fn is_similar_to(&self, other: &Self, similarity_threshold: f32) -> bool {
         self.num_threads == other.num_threads
             && (self.power_pct - other.power_pct).abs() <= similarity_threshold
+    }
+
+    /// How well this chromosome matches secondary preferences, in [0, 1] where
+    /// 1 means perfectly aligned and 0 means maximally misaligned.
+    fn alignment(&self, config: &GeneticConfig, global_thread_count: u16) -> f32 {
+        // Prefer thread counts that, combined with other clients, fully use the available cores.
+        let total_threads = global_thread_count as f32 + self.num_threads as f32;
+        let thread_alignment = 1.0 - ((total_threads - AVAILABLE_CORES as f32).abs()
+            / AVAILABLE_CORES as f32).clamp(0.0, 1.0);
+
+        // Prefer power limits proportional to (1 - energy_preference / 2).
+        // (So maximum power at runtime-oriented, and half power at energy-oriented.)
+        let target_power = 1.0 - 0.5 * config.energy_preference;
+        let power_alignment = 1.0 - (self.power_pct - target_power).abs().clamp(0.0, 1.0);
+
+        (thread_alignment + power_alignment) / 2.0
+    }
+
+    /// Nudges a raw score towards secondary preferences, bounded to at most `nudge_strength` of the raw score.
+    /// See [GeneticConfig::nudge_strength] for why this multiplicative approach is used instead of a fixed offset.
+    fn nudged_score(&self, config: &GeneticConfig, global_thread_count: u16, score: f32, nudge_strength: f32) -> f32 {
+        let alignment = self.alignment(config, global_thread_count);
+        score * (1.0 - alignment * nudge_strength)
     }
 }
 
