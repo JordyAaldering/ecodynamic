@@ -35,10 +35,6 @@ pub struct GeneticConfig {
     #[arg(long, default_value_t = 0.9)]
     pub energy_preference: f32,
 
-    /// Enable nudging of chromosomes towards secondary preferences, such as core sharing and power limit proportional to energy preference.
-    #[arg(long("nudge"))]
-    pub do_nudging: bool,
-
     /// Enable thread control.
     #[arg(long("thread-control"))]
     pub do_thread_control: bool,
@@ -48,19 +44,20 @@ pub struct GeneticConfig {
     /// Requires RAPL to be available and the server to be run with root privileges.
     #[arg(long("power-control"))]
     pub do_power_control: bool,
-
     /// Minimum allowed percentage of the powercap.
     ///
     /// Range: (0,1]
     #[arg(long, default_value_t = 0.1)]
     pub power_min: f32,
-
     /// Maximum allowed percentage of the powercap.
     ///
     /// Range: (0,1]
     #[arg(long, default_value_t = 1.0)]
     pub power_max: f32,
 
+    /// Enable nudging of chromosomes towards secondary preferences, such as core sharing and power limit proportional to energy preference.
+    #[arg(long("nudge"))]
+    pub do_nudging: bool,
     /// Upper bound on the influence secondary preferences ("nudges") may have
     /// on a chromosome's score, expressed as a fraction of that score.
     ///
@@ -73,7 +70,6 @@ pub struct GeneticConfig {
     /// Range: [0,1]
     #[arg(long, default_value_t = 0.05)]
     pub nudge_strength: f32,
-
     /// Caps the effective nudge strength to this fraction of the current generation's own
     /// relative score spread. This keeps nudges proportional to how much the scores actually
     /// vary this generation, rather than always applying the full [GeneticConfig::nudge_strength].
@@ -94,7 +90,6 @@ pub struct GeneticConfig {
     /// Range: (0,1]
     #[arg(long, default_value_t = 0.15)]
     pub survival_rate: f32,
-
     /// Survival rate decay factor. After each generation, the effective survival rate
     /// is multiplied by this factor. A decay of 0 means that no decay occurs. A decay
     /// of 0.5 means that after every generation, the effective survival rate is halved.
@@ -112,13 +107,11 @@ pub struct GeneticConfig {
     /// Range: (0,1]
     #[arg(long, default_value_t = 0.01)]
     pub mutation_strength: f32,
-
     /// Mutation rate: probability that a child chromosome is mutated after crossover.
     ///
     /// Range: (0,1]
     #[arg(long, default_value_t = 0.3)]
     pub mutation_rate: f32,
-
     /// Mutation rate decay factor. After each generation, the effective mutation rate
     /// is multiplied by this factor. A decay of 0 means that no decay occurs. A decay
     /// of 0.5 means that after every generation, the effective mutation rate is halved.
@@ -127,7 +120,6 @@ pub struct GeneticConfig {
     /// Range: [0,1]
     #[arg(long, default_value_t = 0.3)]
     pub mutation_rate_decay: f32,
-
     /// Minimum mutation rate after decay. The effective mutation rate will never drop below this.
     ///
     /// Range: (0,1]
@@ -141,18 +133,15 @@ pub struct GeneticConfig {
     /// Range: (0,1]
     #[arg(long, default_value_t = 1.0)]
     pub immigration_rate: f32,
-
     /// Minimum median relative score change required to trigger immigration.
     #[arg(long, default_value_t = 0.075)]
     pub immigration_change_threshold: f32,
-
     /// Minimum robust z-like score required to trigger immigration.
     /// This is the ratio of median change to MAD (median absolute deviation).
     /// Higher values require more consistent shifts across chromosomes, filtering
     /// out random noise while still detecting genuine workload changes.
     #[arg(long, default_value_t = 10.0)]
     pub immigration_robustness_threshold: f32,
-
     /// Minimum number of comparable chromosomes needed before trigger detection is active.
     ///
     /// Although it may seem unlikely that 5 of the 20 chromosomes have similar scores, as
@@ -164,11 +153,9 @@ pub struct GeneticConfig {
     /// chromosomes are more similar, and score changes are more likely to be due to workload shifts.
     #[arg(long, default_value_t = 5)]
     pub immigration_min_matched_scores: usize,
-
     /// Maximum allowed per-parameter change when reusing a previous score.
     #[arg(long, default_value_t = 0.03)]
     pub immigration_similarity_threshold: f32,
-
     /// Number of generations to wait before allowing immigration to trigger again.
     #[arg(long, default_value_t = 3)]
     pub immigration_cooldown_generations: usize,
