@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Demand {
     /// Maximum allowed CPU power as a fraction beteen (0,1].
     ///

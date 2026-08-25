@@ -1,5 +1,4 @@
-#[derive(Copy, Clone, Debug)]
-#[derive(clap::ValueEnum)]
+#[derive(Copy, Clone, Debug, clap::ValueEnum)]
 pub enum FilterFunction {
     Min,
     Average,

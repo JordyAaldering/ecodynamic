@@ -16,8 +16,7 @@ pub struct CorridorController {
     config: CorridorConfig,
 }
 
-#[derive(Clone, Debug)]
-#[derive(Parser)]
+#[derive(Clone, Debug, Parser)]
 pub struct CorridorConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,

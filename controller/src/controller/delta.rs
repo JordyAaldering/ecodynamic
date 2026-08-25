@@ -13,8 +13,7 @@ pub struct DeltaController {
     config: DeltaConfig,
 }
 
-#[derive(Clone, Debug)]
-#[derive(Parser)]
+#[derive(Clone, Debug, Parser)]
 pub struct DeltaConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,

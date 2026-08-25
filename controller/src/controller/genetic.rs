@@ -16,8 +16,14 @@ pub struct GeneticController {
     immigration_was_triggered: bool,
 }
 
-#[derive(Clone, Debug)]
-#[derive(Parser)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Chromosome {
+    threads_pct: f32,
+    power_pct: f32,
+    prev_score: Option<f32>,
+}
+
+#[derive(Clone, Debug, Parser)]
 pub struct GeneticConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub population_size: usize,
@@ -384,15 +390,13 @@ fn update_prev_scores_and_check_for_shift(
         chromosome.prev_score = Some(score);
     }
 
+    log::debug!("Shift detection: {} comparable chromosomes", deltas.len());
     if deltas.len() < min_matched_scores {
-        log::debug!("Shift detection: {} comparable chromosomes (need {})", deltas.len(), min_matched_scores);
         return false;
     }
 
-    log::debug!("Shift detection: {} comparable chromosomes", deltas.len());
-
     let median_delta = median(&mut deltas);
-    log::trace!("Shift detection: median_delta={:.4}, threshold={:.4}", median_delta, change_threshold);
+    log::trace!("Shift detection: delta={:.3}, threshold={:.3}", median_delta, change_threshold);
     if median_delta < change_threshold {
         return false;
     }
@@ -401,18 +405,11 @@ fn update_prev_scores_and_check_for_shift(
     let mad = median(&mut deviations);
     let ratio = median_delta / (mad + f32::EPSILON);
     if ratio >= robustness_threshold {
-        log::info!("Shift detected: median change = {:.2}%, robustness ratio = {:.2}", median_delta * 100.0, ratio);
+        log::info!("Shift detected: change={:.2}%, robustness={:.2}", median_delta * 100.0, ratio);
         true
     } else {
         false
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Chromosome {
-    threads_pct: f32,
-    power_pct: f32,
-    prev_score: Option<f32>,
 }
 
 impl Chromosome {
