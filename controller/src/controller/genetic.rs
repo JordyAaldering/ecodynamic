@@ -40,10 +40,14 @@ pub struct GeneticConfig {
     pub do_nudging: bool,
 
     /// Enable thread control.
-    ///
-    /// If disabled, the controller will only control the power limit.
     #[arg(long("thread-control"))]
     pub do_thread_control: bool,
+
+    /// Enable power limit control.
+    ///
+    /// Requires RAPL to be available and the server to be run with root privileges.
+    #[arg(long("power-control"))]
+    pub do_power_control: bool,
 
     /// Minimum allowed percentage of the powercap.
     ///
@@ -182,8 +186,19 @@ impl GeneticController {
                 }
 
                 let t = i as f32 / (config.population_size - 1) as f32;
-                let num_threads = lerp(1.0, capabilities.max_threads.max(1) as f32, t).round() as u16;
-                let power_pct = lerp(config.power_min, config.power_max, t);
+
+                let num_threads = if config.do_thread_control {
+                    lerp(1.0, capabilities.max_threads.max(1) as f32, t).round() as u16
+                } else {
+                    capabilities.max_threads.max(1)
+                };
+
+                let power_pct = if config.do_power_control {
+                    lerp(config.power_min, config.power_max, t)
+                } else {
+                    1.0
+                };
+
                 Chromosome::new(num_threads, power_pct)
             })
             .collect();
@@ -230,9 +245,15 @@ impl Controller for GeneticController {
             self.max_threads.max(1)
         };
 
+        let powercap_pct = if self.config.do_power_control {
+            chromosome.power_pct
+        } else {
+            1.0
+        };
+
         Demand {
             num_threads,
-            powercap_pct: chromosome.power_pct,
+            powercap_pct,
         }
     }
 
@@ -459,9 +480,19 @@ impl Chromosome {
 
     /// Generate a random chromosome for immigration
     fn rand(config: &GeneticConfig, max_threads: u16) -> Self {
-        let num_threads = rand::random_range(1..=max_threads);
-        let power_limit_pct = rand::random_range(config.power_min..=config.power_max);
-        Self::new(num_threads, power_limit_pct)
+        let num_threads = if config.do_thread_control {
+            rand::random_range(1..=max_threads)
+        } else {
+            max_threads.max(1)
+        };
+
+        let power_pct = if config.do_power_control {
+            rand::random_range(config.power_min..=config.power_max)
+        } else {
+            1.0
+        };
+
+        Self::new(num_threads, power_pct)
     }
 
     /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
@@ -473,8 +504,19 @@ impl Chromosome {
         }
 
         let t = index as f32 / (count - 1) as f32;
-        let num_threads = lerp(1.0, max_threads as f32, t).round() as u16;
-        let power_pct = lerp(config.power_min, config.power_max, t);
+
+        let num_threads = if config.do_thread_control {
+            lerp(1.0, max_threads as f32, t).round() as u16
+        } else {
+            max_threads.max(1)
+        };
+
+        let power_pct = if config.do_power_control {
+            lerp(config.power_min, config.power_max, t)
+        } else {
+            1.0
+        };
+
         Self::new(num_threads, power_pct)
     }
 
@@ -500,11 +542,19 @@ impl Chromosome {
             None
         };
 
-        Self {
-            num_threads: (self.num_threads as f32 * t + other.num_threads as f32 * tr).round() as u16,
-            power_pct: self.power_pct * t + other.power_pct * tr,
-            prev_score,
-        }
+        let num_threads = if config.do_thread_control {
+            (self.num_threads as f32 * t + other.num_threads as f32 * tr).round() as u16
+        } else {
+            self.num_threads.max(other.num_threads)
+        };
+
+        let power_pct = if config.do_power_control {
+            self.power_pct * t + other.power_pct * tr
+        } else {
+            1.0
+        };
+
+        Self { num_threads, power_pct, prev_score }
     }
 
     /// Add or subtract one thread
@@ -512,17 +562,21 @@ impl Chromosome {
         let prev_num_threads = self.num_threads;
         let prev_power_pct = self.power_pct;
 
-        if rand::random_bool(config.mutation_strength as f64) {
-            if rand::random_bool(0.5) {
-                self.num_threads = self.num_threads.saturating_sub(1);
-            } else {
-                self.num_threads = self.num_threads.saturating_add(1);
+        if config.do_thread_control {
+            if rand::random_bool(config.mutation_strength as f64) {
+                if rand::random_bool(0.5) {
+                    self.num_threads = self.num_threads.saturating_sub(1);
+                } else {
+                    self.num_threads = self.num_threads.saturating_add(1);
+                }
+                self.num_threads = self.num_threads.clamp(1, max_threads);
             }
-            self.num_threads = self.num_threads.clamp(1, max_threads);
         }
 
-        self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
-        self.power_pct = self.power_pct.max(config.power_min).min(config.power_max);
+        if config.do_power_control {
+            self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);
+            self.power_pct = self.power_pct.max(config.power_min).min(config.power_max);
+        }
 
         if self.num_threads != prev_num_threads || (self.power_pct - prev_power_pct).abs() > config.immigration_similarity_threshold {
             self.prev_score = None;
@@ -542,15 +596,22 @@ impl Chromosome {
     /// at the time it was sampled.
     fn alignment(&self, config: &GeneticConfig, global_thread_count: u16) -> f32 {
         // Prefer thread counts that, combined with other clients, fully use the available cores.
-        let total_threads = global_thread_count as f32 + self.num_threads as f32;
-        let thread_alignment = 1.0 - (
-            (total_threads - HARDWARE.available_cores() as f32).abs() / HARDWARE.available_cores() as f32
-        ).clamp(0.0, 1.0);
+        let thread_alignment = if config.do_thread_control {
+            let total_threads = global_thread_count as f32 + self.num_threads as f32;
+            1.0 - ((total_threads - HARDWARE.available_cores() as f32).abs()
+                / HARDWARE.available_cores() as f32).clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
 
-        // Prefer power limits proportional to (1 - energy_preference / 2)
-        // So maximum power at runtime-oriented, and half power at energy-oriented
-        let target_power = 1.0 - 0.5 * config.energy_preference;
-        let power_alignment = 1.0 - (self.power_pct - target_power).abs().clamp(0.0, 1.0);
+        let power_alignment = if config.do_power_control {
+            // Prefer power limits proportional to (1 - energy_preference / 2)
+            // So maximum power at runtime-oriented, and half power at energy-oriented
+            let target_power = 1.0 - 0.5 * config.energy_preference;
+            1.0 - (self.power_pct - target_power).abs().clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
 
         (thread_alignment + power_alignment) / 2.0
     }
