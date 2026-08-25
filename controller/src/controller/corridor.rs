@@ -1,23 +1,24 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, FilterFunction, Sample, scores};
+use crate::{Capabilities, Controller, Demand, filter_functions::FilterFunction, Sample, direction::Direction, scores};
 
-const THREADS_PCT_MIN: f32 = 0.1;
+const MIN_STEPSIZE: f32 = 0.1;
 
 pub struct CorridorController {
     samples: Vec<Sample>,
-    threads_pct: f32,
+    min_threads: u16,
     max_threads: u16,
+    num_threads_r: f32,
     step_size: f32,
-    step_ascending: bool,
+    step_direction: Direction,
     t_prev: f32,
     t1: f32,
-    config: CorridorControllerConfig,
+    config: CorridorConfig,
 }
 
 #[derive(Clone, Debug)]
 #[derive(Parser)]
-pub struct CorridorControllerConfig {
+pub struct CorridorConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
 
@@ -33,13 +34,14 @@ pub struct CorridorControllerConfig {
 }
 
 impl CorridorController {
-    pub fn new(config: CorridorControllerConfig, caps: &Capabilities) -> Self {
+    pub fn new(config: CorridorConfig, capabilities: &Capabilities) -> Self {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
-            threads_pct: 1.0,
-            max_threads: caps.max_threads,
-            step_size: 1.0, // Will immediately be halved in the first iteration
-            step_ascending: false,
+            min_threads: capabilities.min_threads,
+            max_threads: capabilities.max_threads,
+            num_threads_r: capabilities.max_threads as f32,
+            step_size: capabilities.max_threads as f32, // Will immediately be halved in the first iteration
+            step_direction: Direction::Descending,
             t_prev: f32::MAX,
             t1: f32::MAX,
             config,
@@ -50,7 +52,7 @@ impl CorridorController {
 impl Controller for CorridorController {
     fn get_demand(&self) -> Demand {
         Demand {
-            num_threads: ((self.threads_pct * self.max_threads as f32).round() as u16).max(1),
+            num_threads: self.num_threads(),
             powercap_pct: 1.0,
         }
     }
@@ -69,24 +71,37 @@ impl CorridorController {
     fn evolve(&mut self) {
         let tn = self.config.select.select(scores(&self.samples, self.config.energy_preference));
 
-        // TODO: check if replacing num_threads with threads_pct here was sufficient, or if we need to update the formula
-        if self.t1 / (tn + f32::EPSILON) < 0.5 * self.threads_pct {
-            self.step_size = f32::max(THREADS_PCT_MIN, self.threads_pct / 2.0);
-            self.step_ascending = false;
+        let speedup = self.t1 / (tn + f32::EPSILON);
+        if speedup < 0.5 * self.num_threads() as f32 {
+            // We have fallen below the corridor; reset direction and step size
+            self.step_direction = Direction::Descending;
+            self.descrease_stepsize();
         } else {
-            if self.t1 / (tn + f32::EPSILON) > self.threads_pct {
-                self.t1 = tn * self.threads_pct;
+            if speedup > self.num_threads() as f32 {
+                // In the initial iteration t1 and t_last are f64::MAX so we
+                // reach this condition, an initialize t1 with an actual value
+                self.t1 = tn * (self.num_threads() as f32);
             }
 
             if tn > self.t_prev {
-                self.step_ascending = !self.step_ascending;
+                self.step_direction = !self.step_direction;
             }
 
-            self.step_size = f32::max(THREADS_PCT_MIN, self.threads_pct / 2.0);
+            self.descrease_stepsize();
         }
 
         self.t_prev = tn;
-        self.threads_pct += if self.step_ascending { self.step_size } else { -self.step_size };
-        self.threads_pct = self.threads_pct.max(THREADS_PCT_MIN).min(1.0);
+
+        self.num_threads_r += self.step_direction * self.step_size;
+        self.num_threads_r = self.num_threads_r.clamp(self.min_threads as f32, self.max_threads as f32);
+    }
+
+    fn descrease_stepsize(&mut self) {
+        self.step_size = (0.5 * self.num_threads_r).max(MIN_STEPSIZE);
+    }
+
+    /// Get the actual number of threads to use.
+    fn num_threads(&self) -> u16 {
+        (self.num_threads_r.round() as u16).clamp(self.min_threads, self.max_threads)
     }
 }

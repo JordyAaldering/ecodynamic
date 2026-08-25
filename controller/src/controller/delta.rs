@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{Capabilities, Controller, Demand, FilterFunction, Sample, scores};
+use crate::{Capabilities, Controller, Demand, filter_functions::FilterFunction, Sample, scores};
 
 const THREADS_PCT_MIN: f32 = 0.1;
 
@@ -33,11 +33,11 @@ pub struct DeltaControllerConfig {
 }
 
 impl DeltaController {
-    pub fn new(config: DeltaControllerConfig, caps: &Capabilities) -> Self {
+    pub fn new(config: DeltaControllerConfig, capabilities: &Capabilities) -> Self {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
             threads_pct: 1.0,
-            max_threads: caps.max_threads,
+            max_threads: capabilities.max_threads,
             step_size: 0.5,
             step_ascending: false,
             e_prev: 0.0,

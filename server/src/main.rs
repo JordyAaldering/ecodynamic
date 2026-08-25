@@ -26,7 +26,7 @@ pub enum ControllerType {
     /// Genetic algorithm approach.
     Genetic(GeneticControllerConfig),
     /// Algorithm based on a performance corridor.
-    Corridor(CorridorControllerConfig),
+    Corridor(CorridorConfig),
     /// Algorithm based on deltas between runs.
     Delta(DeltaControllerConfig),
     /// Continuously oscillates between the zero-capabilities and the given capabilities.

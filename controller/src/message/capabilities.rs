@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 pub struct Capabilities {
     /// The process ID of the application.
     pub pid: i32,
-
     /// Minimum number of threads the application may use. [default: 1]
     #[serde(default = "one")]
     pub min_threads: u16,

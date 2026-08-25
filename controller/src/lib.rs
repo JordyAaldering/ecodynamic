@@ -1,10 +1,10 @@
 mod message;
 mod controller;
+mod direction;
 mod filter_functions;
 
 pub use message::*;
 pub use controller::*;
-use filter_functions::FilterFunction;
 
 pub const LETTERBOX_PATH: &str = "/tmp/mtd_letterbox";
 

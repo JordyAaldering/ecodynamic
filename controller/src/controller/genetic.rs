@@ -153,7 +153,7 @@ impl GeneticController {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
     /// finding an optimum immediately.
-    pub fn new(config: GeneticControllerConfig, caps: &Capabilities) -> Self {
+    pub fn new(config: GeneticControllerConfig, capabilities: &Capabilities) -> Self {
         let population = (0..config.population_size)
             .map(|mut i| {
                 if config.initial_population_descending {
@@ -174,7 +174,7 @@ impl GeneticController {
             population,
             immigration_cooldown: config.immigration_cooldown_generations,
             sort_descending: !config.initial_population_descending,
-            max_threads: caps.max_threads,
+            max_threads: capabilities.max_threads,
             effective_survival_rate: config.survival_rate,
             effective_mutation_rate: config.mutation_rate,
             config,
