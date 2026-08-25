@@ -7,11 +7,6 @@ use serde::{Deserialize, Serialize};
 pub struct Capabilities {
     /// The process ID of the application.
     pub pid: i32,
-    /// Minimum number of threads the application may use. [default: 1]
-    #[serde(default = "one")]
-    pub min_threads: u16,
     /// Maximum number of threads the application may use.
     pub max_threads: u16,
 }
-
-fn one() -> u16 { 1 }

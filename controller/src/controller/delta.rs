@@ -4,7 +4,6 @@ use crate::{Capabilities, Controller, Demand, Sample, direction::Direction, filt
 
 pub struct DeltaController {
     samples: Vec<Sample>,
-    min_threads: u16,
     max_threads: u16,
     cur_threads: f32,
     step_size: f32,
@@ -34,7 +33,6 @@ impl DeltaController {
     pub fn new(config: DeltaConfig, capabilities: &Capabilities) -> Self {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
-            min_threads: capabilities.min_threads,
             max_threads: capabilities.max_threads,
             cur_threads: capabilities.max_threads as f32,
             step_size: 0.5,
@@ -83,7 +81,7 @@ impl DeltaController {
 
         self.t_prev = tn;
         self.cur_threads += self.step_dir * self.step_size;
-        self.cur_threads = self.cur_threads.clamp(self.min_threads as f32, self.max_threads as f32);
+        self.cur_threads = self.cur_threads.clamp(1.0, self.max_threads as f32);
     }
 
     /// Reset step size, and set direction towards the center.
@@ -93,6 +91,6 @@ impl DeltaController {
     }
 
     fn num_threads(&self) -> u16 {
-        (self.cur_threads.round() as u16).clamp(self.min_threads, self.max_threads)
+        (self.cur_threads.round() as u16).clamp(1, self.max_threads)
     }
 }

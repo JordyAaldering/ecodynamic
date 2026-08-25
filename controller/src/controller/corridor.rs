@@ -6,7 +6,6 @@ const MIN_STEPSIZE: f32 = 0.1;
 
 pub struct CorridorController {
     samples: Vec<Sample>,
-    min_threads: u16,
     max_threads: u16,
     cur_threads: f32,
     step_size: f32,
@@ -36,7 +35,6 @@ impl CorridorController {
     pub fn new(config: CorridorConfig, capabilities: &Capabilities) -> Self {
         Self {
             samples: Vec::with_capacity(config.letterbox_size),
-            min_threads: capabilities.min_threads,
             max_threads: capabilities.max_threads,
             cur_threads: capabilities.max_threads as f32,
             step_size: capabilities.max_threads as f32, // Will immediately be halved in the first iteration
@@ -92,11 +90,11 @@ impl CorridorController {
 
         self.t_prev = tn;
         self.cur_threads += self.step_dir * self.step_size;
-        self.cur_threads = self.cur_threads.clamp(self.min_threads as f32, self.max_threads as f32);
+        self.cur_threads = self.cur_threads.clamp(1.0, self.max_threads as f32);
     }
 
     /// Get the actual number of threads to use.
     fn num_threads(&self) -> u16 {
-        (self.cur_threads.round() as u16).clamp(self.min_threads, self.max_threads)
+        (self.cur_threads.round() as u16).clamp(1, self.max_threads)
     }
 }

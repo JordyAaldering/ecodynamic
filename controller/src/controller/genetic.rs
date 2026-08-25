@@ -7,7 +7,6 @@ pub struct GeneticController {
     population: Vec<Chromosome>,
     immigration_cooldown: usize,
     sort_descending: bool,
-    min_threads: u16,
     max_threads: u16,
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
@@ -162,7 +161,7 @@ impl GeneticController {
                 }
 
                 let t = i as f32 / (config.population_size - 1) as f32;
-                let num_threads = lerp(capabilities.min_threads as f32, capabilities.max_threads as f32, t).round() as u16;
+                let num_threads = lerp(1.0, capabilities.max_threads as f32, t).round() as u16;
                 let power_pct = lerp(config.power_min, config.power_max, t);
                 Chromosome::new(num_threads, power_pct)
             })
@@ -175,7 +174,6 @@ impl GeneticController {
             population,
             immigration_cooldown: config.immigration_cooldown_generations,
             sort_descending: !config.initial_population_descending,
-            min_threads: capabilities.min_threads,
             max_threads: capabilities.max_threads,
             effective_survival_rate: config.survival_rate,
             effective_mutation_rate: config.mutation_rate,
@@ -206,7 +204,7 @@ impl Controller for GeneticController {
         let chromosome = &self.population[self.samples.len()];
 
         let num_threads = if self.config.do_thread_control {
-            chromosome.num_threads.clamp(self.min_threads, self.max_threads)
+            chromosome.num_threads.clamp(1, self.max_threads)
         } else {
             self.max_threads
         };
@@ -325,7 +323,7 @@ impl GeneticController {
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(parent2, &self.config);
             if rand::random_bool(self.effective_mutation_rate as f64) {
-                child.mutate(&self.config, self.min_threads, self.max_threads);
+                child.mutate(&self.config, self.max_threads);
             }
 
             self.population[i] = child;
@@ -340,7 +338,7 @@ impl GeneticController {
         // Fill remaining chromosomes by immigration
         let immigration_count = population_size.saturating_sub(immigration_start);
         for (offset, i) in (immigration_start..population_size).enumerate() {
-            self.population[i] = Chromosome::from_spread(offset, immigration_count, &self.config, self.min_threads, self.max_threads);
+            self.population[i] = Chromosome::from_spread(offset, immigration_count, &self.config, self.max_threads);
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
@@ -425,22 +423,22 @@ impl Chromosome {
     }
 
     /// Generate a random chromosome for immigration
-    fn rand(config: &GeneticConfig, min_threads: u16, max_threads: u16) -> Self {
-        let num_threads = rand::random_range(min_threads..=max_threads);
+    fn rand(config: &GeneticConfig, max_threads: u16) -> Self {
+        let num_threads = rand::random_range(1..=max_threads);
         let power_limit_pct = rand::random_range(config.power_min..=config.power_max);
         Self::new(num_threads, power_limit_pct)
     }
 
     /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
     /// Otherwise, chromosomes are generated using an even spread over the valid search space.
-    fn from_spread(index: usize, count: usize, config: &GeneticConfig, min_threads: u16, max_threads: u16) -> Self {
+    fn from_spread(index: usize, count: usize, config: &GeneticConfig, max_threads: u16) -> Self {
         debug_assert_ne!(count, 0);
         if count <= 3 {
-            return Chromosome::rand(config, min_threads, max_threads);
+            return Chromosome::rand(config, max_threads);
         }
 
         let t = index as f32 / (count - 1) as f32;
-        let num_threads = lerp(min_threads as f32, max_threads as f32, t).round() as u16;
+        let num_threads = lerp(1.0, max_threads as f32, t).round() as u16;
         let power_pct = lerp(config.power_min, config.power_max, t);
         Self::new(num_threads, power_pct)
     }
@@ -475,7 +473,7 @@ impl Chromosome {
     }
 
     /// Add or subtract one thread
-    fn mutate(&mut self, config: &GeneticConfig, min_threads: u16, max_threads: u16) {
+    fn mutate(&mut self, config: &GeneticConfig, max_threads: u16) {
         let prev_num_threads = self.num_threads;
         let prev_power_pct = self.power_pct;
 
@@ -485,7 +483,7 @@ impl Chromosome {
             } else {
                 self.num_threads = self.num_threads.saturating_add(1);
             }
-            self.num_threads = self.num_threads.clamp(min_threads, max_threads);
+            self.num_threads = self.num_threads.clamp(1, max_threads);
         }
 
         self.power_pct += rand::random_range(-config.mutation_strength..=config.mutation_strength);

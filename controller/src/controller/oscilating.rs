@@ -3,7 +3,6 @@ use crate::{Capabilities, Demand, Sample, direction::Direction};
 use super::Controller;
 
 pub struct OscilatingController {
-    min_threads: u16,
     max_threads: u16,
     num_threads: u16,
     direction: Direction,
@@ -12,7 +11,6 @@ pub struct OscilatingController {
 impl OscilatingController {
     pub fn new(capabilities: &Capabilities) -> Self {
         Self {
-            min_threads: capabilities.min_threads,
             max_threads: capabilities.max_threads,
             num_threads: capabilities.max_threads,
             direction: Direction::Descending,
@@ -37,8 +35,8 @@ impl Controller for OscilatingController {
             }
         } else {
             self.num_threads = self.num_threads.saturating_sub(1);
-            if self.num_threads <= self.min_threads {
-                self.num_threads = self.min_threads;
+            if self.num_threads <= 1 {
+                self.num_threads = 1;
                 self.direction = Direction::Ascending;
             }
         }
