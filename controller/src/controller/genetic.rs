@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use clap::Parser;
 
 use crate::*;
@@ -343,7 +341,7 @@ impl GeneticController {
             let effective_nudge_strength = self.config.nudge_strength
                 .min(relative_score_spread(&scores) * self.config.nudge_relative_cap);
 
-            let global_thread_count = GLOBAL_THREAD_COUNT.load(Ordering::Relaxed);
+            let global_thread_count = STATE.thread_utilization();
             let nudged_scores: Vec<f32> = self.population.iter()
                 .zip(&scores)
                 .map(|(chromosome, &score)| chromosome.nudged_score(&self.config, global_thread_count, score, effective_nudge_strength))
@@ -545,11 +543,12 @@ impl Chromosome {
     fn alignment(&self, config: &GeneticConfig, global_thread_count: u16) -> f32 {
         // Prefer thread counts that, combined with other clients, fully use the available cores.
         let total_threads = global_thread_count as f32 + self.num_threads as f32;
-        let thread_alignment = 1.0 - ((total_threads - AVAILABLE_CORES as f32).abs()
-            / AVAILABLE_CORES as f32).clamp(0.0, 1.0);
+        let thread_alignment = 1.0 - (
+            (total_threads - HARDWARE.available_cores() as f32).abs() / HARDWARE.available_cores() as f32
+        ).clamp(0.0, 1.0);
 
-        // Prefer power limits proportional to (1 - energy_preference / 2).
-        // (So maximum power at runtime-oriented, and half power at energy-oriented.)
+        // Prefer power limits proportional to (1 - energy_preference / 2)
+        // So maximum power at runtime-oriented, and half power at energy-oriented
         let target_power = 1.0 - 0.5 * config.energy_preference;
         let power_alignment = 1.0 - (self.power_pct - target_power).abs().clamp(0.0, 1.0);
 

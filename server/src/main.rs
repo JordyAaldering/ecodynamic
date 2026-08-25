@@ -1,5 +1,11 @@
 use std::{
-    collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex, atomic::Ordering}, thread,
+    collections::HashMap,
+    fs,
+    io::{self, BufRead, BufReader, Write},
+    os::unix::net::{UnixListener, UnixStream},
+    process,
+    sync::{LazyLock, Mutex},
+    thread,
 };
 
 use clap::{Parser, Subcommand};
@@ -82,7 +88,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                     log::trace!("POST: {:?}", sample);
 
                     // The region is over, so we can subtract the thread count from the global count
-                    GLOBAL_THREAD_COUNT.fetch_sub(last_thread_count, Ordering::Relaxed);
+                    STATE.remove_threads(last_thread_count);
                     last_thread_count = 0;
 
                     // Subtract idle energy
@@ -109,14 +115,14 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                     let demand = controller.get_demand();
                     log::trace!("PUT: {:?}", demand);
 
-                    GLOBAL_THREAD_COUNT.fetch_add(demand.num_threads, Ordering::Relaxed);
+                    STATE.add_threads(demand.num_threads);
                     last_thread_count = demand.num_threads;
 
                     set_power_limit(demand.powercap_pct);
                     write_json_line(&mut stream, &demand)?;
                 } else {
                     // If the program aborted, it could be that the thread count was not yet reset
-                    GLOBAL_THREAD_COUNT.fetch_sub(last_thread_count, Ordering::Relaxed);
+                    STATE.remove_threads(last_thread_count);
 
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -126,7 +132,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
             }
             Err(e) => {
                 // If the program aborted, it could be that the thread count was not yet reset
-                GLOBAL_THREAD_COUNT.fetch_sub(last_thread_count, Ordering::Relaxed);
+                STATE.remove_threads(last_thread_count);
 
                 log::info!("Client disconnected");
                 return Err(e);
@@ -138,6 +144,24 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
 fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) -> io::Result<()> {
     serde_json::to_writer(&mut *stream, message).map_err(io::Error::other)?;
     stream.write_all(b"\n")
+}
+
+fn find_max_power_uw() -> u64 {
+    if let Some(rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
+        let max_power_uw = rapl.packages.first()
+            .and_then(|p| p.constraints.first())
+            .and_then(|c| c.max_power_uw);
+        if let Some(max_power_uw) = max_power_uw {
+            log::info!("Max power: {}uW", max_power_uw);
+            max_power_uw
+        } else {
+            log::warn!("RAPL does not provide max_power_uw; using 0uW");
+            0
+        }
+    } else {
+        log::warn!("RAPL not available; using 0uW as max power");
+        0
+    }
 }
 
 fn set_power_limit(power_limit_pct: f32) {
@@ -189,6 +213,10 @@ fn main() {
 
     let config = Args::parse();
     log::trace!("Config: {:?}", config);
+
+    // TODO: number of available cores assumed to be 8 for now
+    HARDWARE.available_cores.set(8).expect_err("available_cores initialized twice");
+    HARDWARE.max_power_uw.set(find_max_power_uw()).expect_err("max_power_uw initialized twice");
 
     let listener = open_socket();
 
