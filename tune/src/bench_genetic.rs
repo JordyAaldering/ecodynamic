@@ -22,7 +22,7 @@ pub struct Args {
     tikz: bool,
 
     #[command(flatten)]
-    config: GeneticControllerConfig,
+    config: GeneticConfig,
 }
 
 struct TestCase {
@@ -103,7 +103,7 @@ fn get_test_cases() -> Vec<TestCase> {
 
 fn run(
     best_score: f32,
-    config: &GeneticControllerConfig,
+    config: &GeneticConfig,
     energy_curve: Curve,
     runtime_curve: Curve,
     energy_cv: f32,

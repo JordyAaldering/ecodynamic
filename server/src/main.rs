@@ -24,7 +24,7 @@ pub struct Args {
 #[derive(Clone, Debug, Subcommand)]
 pub enum ControllerType {
     /// Genetic algorithm approach.
-    Genetic(GeneticControllerConfig),
+    Genetic(GeneticConfig),
     /// Algorithm based on a performance corridor.
     Corridor(CorridorConfig),
     /// Algorithm based on deltas between runs.

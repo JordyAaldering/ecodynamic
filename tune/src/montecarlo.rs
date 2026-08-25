@@ -20,12 +20,12 @@ pub struct Args {
     runtime_cv: f32,
 
     #[command(flatten)]
-    config: GeneticControllerConfig,
+    config: GeneticConfig,
 }
 
 fn run(
     best_score: f32,
-    config: &GeneticControllerConfig,
+    config: &GeneticConfig,
     energy_curve: Curve,
     runtime_curve: Curve,
     energy_cv: f32,

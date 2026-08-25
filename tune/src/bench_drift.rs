@@ -25,7 +25,7 @@ pub struct Args {
     runtime_cv: f32,
 
     #[command(flatten)]
-    config: GeneticControllerConfig,
+    config: GeneticConfig,
 }
 
 struct TestCase {
@@ -113,7 +113,7 @@ struct RunResult {
 }
 
 fn run(
-    config: &GeneticControllerConfig,
+    config: &GeneticConfig,
     case: &TestCase,
     energy_cv: f32,
     runtime_cv: f32,

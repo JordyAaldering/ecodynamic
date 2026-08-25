@@ -24,7 +24,7 @@ pub struct Args {
     runtime_cv: f32,
 
     #[command(flatten)]
-    config: GeneticControllerConfig,
+    config: GeneticConfig,
 }
 
 struct TestCase {
@@ -101,7 +101,7 @@ fn get_test_cases(default_energy_cv: f32, default_runtime_cv: f32) -> Vec<TestCa
 
 /// Run a single trial and return the number of immigration events observed.
 fn run(
-    config: &GeneticControllerConfig,
+    config: &GeneticConfig,
     energy_curve: Curve,
     runtime_curve: Curve,
     energy_cv: f32,

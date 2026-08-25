@@ -10,7 +10,7 @@ pub struct GeneticController {
     max_threads: u16,
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
-    config: GeneticControllerConfig,
+    config: GeneticConfig,
     // Debugging metadata
     generation: usize,
     immigration_was_triggered: bool,
@@ -18,7 +18,7 @@ pub struct GeneticController {
 
 #[derive(Clone, Debug)]
 #[derive(Parser)]
-pub struct GeneticControllerConfig {
+pub struct GeneticConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub population_size: usize,
 
@@ -153,7 +153,7 @@ impl GeneticController {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
     /// finding an optimum immediately.
-    pub fn new(config: GeneticControllerConfig, capabilities: &Capabilities) -> Self {
+    pub fn new(config: GeneticConfig, capabilities: &Capabilities) -> Self {
         let population = (0..config.population_size)
             .map(|mut i| {
                 if config.initial_population_descending {
@@ -223,7 +223,7 @@ impl GeneticController {
         self.generation += 1;
         self.immigration_was_triggered = false;
 
-        let GeneticControllerConfig {
+        let GeneticConfig {
             energy_preference,
             survival_rate,
             survival_rate_decay,
@@ -352,37 +352,18 @@ fn sort_population_by_score(population: &mut Vec<Chromosome>, scores: Vec<f32>) 
     *population = combined.into_iter().map(|(c, _)| c).collect();
 }
 
-/// Detect whether program behaviour appears to have shifted between the previous
-/// and current generation. The approach is grounded in robust statistics: the
-/// median and MAD replace mean and standard deviation, and the ratio `median_delta / MAD`
-/// is a robust signal-to-noise measure equivalent to the modified z-score. The paired-comparison
-/// structure is the non-parametric analogue of a paired t-test.
+/// Detect whether program behaviour shifted between generations.
 ///
-/// We only compare chromosomes that still have a `prev_score`, which means they
-/// are considered similar enough to their earlier version that the score
-/// comparison is meaningful. Freshly immigrated chromosomes and crossover
-/// children do not carry history, and mutations clear history once the parameter
-/// change is large enough. This avoids confusing workload changes with score
-/// differences caused by evaluating completely different configurations.
-///
-/// For each comparable chromosome, we compute the absolute relative change
-/// between the old and new score. We then summarize those paired changes with
-/// the median, because energy and runtime measurements can be noisy and a single
-/// outlier should not force immigration on its own. The median must exceed a
-/// minimum change threshold before we consider the shift meaningful.
-///
-/// We additionally compute the median absolute deviation (MAD) around that
-/// median change. This gives a cheap robust measure of how consistent the shift
-/// is across the comparable chromosomes. Immigration is only triggered when the
-/// median change is both large enough in absolute terms and large relative to
-/// that spread.
-///
-/// This design intentionally uses only the previous and current generation. The
-/// goal is to answer a local question: did the workload appear to change since
-/// the last time these comparable configurations were observed? That keeps the
-/// logic simple, avoids detector state that must be carried across many
-/// generations, and fits the genetic algorithm better than treating all samples
-/// as one continuous stationary process.
+/// We compare only chromosomes with a valid `prev_score`, so the score change is
+/// meaningful. Heavily mutated chromosomes are ignored to avoid confusing workload
+/// drift with unrelated configuration changes.
+/// For each comparable chromosome, we compute the relative score change and take
+/// the median. We also compute the median absolute deviation (MAD) of those changes.
+/// Immigration triggers only when the median change is large enough and clearly
+/// exceeds the spread of the paired deltas.
+/// The goal is to answer a local question: did the workload change since the last
+/// time these comparable configurations were observed? That keeps the logic simple
+/// and avoids state that must be carried across many generations.
 fn update_prev_scores_and_check_for_shift(
     population: &mut [Chromosome],
     scores: &[f32],
@@ -444,7 +425,7 @@ impl Chromosome {
     }
 
     /// Generate a random chromosome for immigration
-    fn rand(config: &GeneticControllerConfig) -> Self {
+    fn rand(config: &GeneticConfig) -> Self {
         let num_threads = rand::random_range(0.1..=1.0);
         let power_limit_pct = rand::random_range(config.power_min..=config.power_max);
         Self::new(num_threads, power_limit_pct)
@@ -452,7 +433,7 @@ impl Chromosome {
 
     /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
     /// Otherwise, chromosomes are generated using an even spread over the valid search space.
-    fn from_spread(index: usize, count: usize, config: &GeneticControllerConfig) -> Self {
+    fn from_spread(index: usize, count: usize, config: &GeneticConfig) -> Self {
         debug_assert_ne!(count, 0);
         if count <= 3 {
             return Chromosome::rand(config);
@@ -464,7 +445,7 @@ impl Chromosome {
         Self::new(threads_pct, power_pct)
     }
 
-    fn crossover(&self, other: &Self, config: &GeneticControllerConfig) -> Self {
+    fn crossover(&self, other: &Self, config: &GeneticConfig) -> Self {
         // Use the same ratio for the thread count and power limit, as typically lowering
         // the number of threads enables a reduction in the power limit, and vice versa.
         let t = rand::random_range(0.0..=1.0);
@@ -494,7 +475,7 @@ impl Chromosome {
     }
 
     /// Add or subtract one thread
-    fn mutate(&mut self, config: &GeneticControllerConfig) {
+    fn mutate(&mut self, config: &GeneticConfig) {
         let prev_threads_pct = self.threads_pct;
         let prev_power_pct = self.power_pct;
 
