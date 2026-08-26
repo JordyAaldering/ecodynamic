@@ -582,11 +582,16 @@ impl Chromosome {
     /// This is not necessarily true; in future, each chromosome should be evaluated against the global thread count
     /// at the time it was sampled.
     fn alignment(&self, config: &GeneticConfig, global_thread_count: u16) -> f32 {
-        // Prefer thread counts that, combined with other clients, fully use the available cores.
+        // Prefer thread counts that, combined with other clients, use no more than the available cores
         let thread_alignment = if config.do_thread_control {
-            let total_threads = global_thread_count as f32 + self.num_threads as f32;
-            1.0 - ((total_threads - HARDWARE.available_cores() as f32).abs()
-                / HARDWARE.available_cores() as f32).clamp(0.0, 1.0)
+            let total_threads = global_thread_count + self.num_threads;
+            if total_threads <= HARDWARE.available_cores() {
+                1.0
+            } else {
+                1.0 - (
+                    ((total_threads - HARDWARE.available_cores()) as f32) / HARDWARE.available_cores() as f32
+                ).clamp(0.0, 1.0)
+            }
         } else {
             1.0
         };
