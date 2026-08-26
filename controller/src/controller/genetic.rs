@@ -1,3 +1,5 @@
+use std::debug_assert;
+
 use clap::Parser;
 
 use crate::*;
@@ -27,6 +29,7 @@ pub struct Chromosome {
     /// The global thread count at the time this chromosome was sampled.
     /// This excludes the threads used by this chromosome itself ([Chromosome::num_threads]).
     /// Note that this can never be exact, as the thread count may change during a sample's execution time.
+    /// To somewhat account for this we read the thread count before and after the sample, and take the average.
     global_thread_count: Option<u16>,
 }
 
@@ -229,9 +232,9 @@ impl Controller for GeneticController {
     /// Use the number of samples to determine the current index into the population.
     /// The population is reset every `population_size` iterations.
     /// In between, we want every chromosome to be applied once.
-    fn get_demand(&self) -> Demand {
+    fn get_demand(&mut self) -> Demand {
         debug_assert!(self.samples.len() < self.population.len());
-        let chromosome = &self.population[self.samples.len()];
+        let chromosome = &mut self.population[self.samples.len()];
 
         let num_threads = if self.config.do_thread_control {
             chromosome.num_threads.clamp(1, self.max_threads.max(1))
@@ -245,6 +248,8 @@ impl Controller for GeneticController {
             1.0
         };
 
+        chromosome.global_thread_count = Some(STATE.thread_utilization());
+
         Demand {
             num_threads,
             powercap_pct,
@@ -254,7 +259,9 @@ impl Controller for GeneticController {
     fn push_sample(&mut self, sample: Sample) {
         // Store the global thread count at the time this sample was taken, so we can use it to compute alignment later.
         // Before calling push_sample, the server has already subtracted this chromosome's thread count from the global count.
-        self.population[self.samples.len()].global_thread_count = Some(STATE.thread_utilization());
+        let before = self.population[self.samples.len()].global_thread_count.unwrap();
+        let total = before + STATE.thread_utilization();
+        self.population[self.samples.len()].global_thread_count = Some(total / 2);
 
         self.samples.push(sample);
 
@@ -588,14 +595,10 @@ impl Chromosome {
 
     /// How well this chromosome matches secondary preferences, in [0, 1] where
     /// 1 means perfectly aligned and 0 means maximally misaligned.
-    ///
-    /// TODO: currently, this assumes that the global thread count remained consistent across the entire generation.
-    /// This is not necessarily true; in future, each chromosome should be evaluated against the global thread count
-    /// at the time it was sampled.
-    fn alignment(&self, config: &GeneticConfig, global_thread_count: u16) -> f32 {
+    fn alignment(&self, config: &GeneticConfig) -> f32 {
         // Prefer thread counts that, combined with other clients, use no more than the available cores
         let thread_alignment = if config.do_thread_control {
-            let total_threads = global_thread_count + self.num_threads;
+            let total_threads = self.num_threads + self.global_thread_count.expect("global_thread_count must be set at this point");
             if total_threads <= HARDWARE.available_cores() {
                 1.0
             } else {
@@ -622,8 +625,7 @@ impl Chromosome {
     /// Nudges a raw score towards secondary preferences, bounded to at most `nudge_strength` of the raw score.
     /// See [GeneticConfig::nudge_strength] for why this multiplicative approach is used instead of a fixed offset.
     fn nudged_score(&self, config: &GeneticConfig, score: f32, nudge_strength: f32) -> f32 {
-        let global_thread_count = self.global_thread_count.expect("global_thread_count must be set at this point");
-        let alignment = self.alignment(config, global_thread_count);
+        let alignment = self.alignment(config);
         score * (1.0 - alignment * nudge_strength)
     }
 }

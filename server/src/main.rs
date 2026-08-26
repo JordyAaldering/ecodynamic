@@ -88,6 +88,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                     log::trace!("POST: {:?}", sample);
 
                     // The region is over, so we can subtract the thread count from the global count
+                    // Must be run before push_sample, because the controller tracks the number of threads in use
                     STATE.remove_threads(last_thread_count);
                     last_thread_count = 0;
 
@@ -115,6 +116,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                     let demand = controller.get_demand();
                     log::trace!("PUT: {:?}", demand);
 
+                    // Must be run after get_demand, because the controller tracks the number of threads in use
                     STATE.add_threads(demand.num_threads);
                     last_thread_count = demand.num_threads;
 

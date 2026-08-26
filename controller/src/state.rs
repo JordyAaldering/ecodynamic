@@ -1,6 +1,6 @@
 //! Global system/hardware state, shared across all clients and threads.
 
-use std::{debug_assert, sync::{OnceLock, atomic}};
+use std::sync::{OnceLock, atomic};
 
 pub static STATE: State = State {
     thread_utilization: atomic::AtomicU16::new(0),

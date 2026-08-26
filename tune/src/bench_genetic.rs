@@ -147,7 +147,11 @@ fn main() {
         mut config,
     } = Args::parse();
 
-    config.do_thread_control = false;
+    HARDWARE.available_cores.set(8).unwrap();
+    HARDWARE.max_power_uw.set(125000000).unwrap();
+
+    config.do_nudging = true;
+    config.do_thread_control = true;
 
     let cases = get_test_cases();
 
