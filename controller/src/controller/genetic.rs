@@ -29,7 +29,6 @@ pub struct Chromosome {
     /// The global thread count at the time this chromosome was sampled.
     /// This excludes the threads used by this chromosome itself ([Chromosome::num_threads]).
     /// Note that this can never be exact, as the thread count may change during a sample's execution time.
-    /// To somewhat account for this we read the thread count before and after the sample, and take the average.
     global_thread_count: Option<u16>,
 }
 
@@ -232,9 +231,8 @@ impl Controller for GeneticController {
     /// Use the number of samples to determine the current index into the population.
     /// The population is reset every `population_size` iterations.
     /// In between, we want every chromosome to be applied once.
-    fn get_demand(&mut self) -> Demand {
-        debug_assert!(self.samples.len() < self.population.len());
-        let chromosome = &mut self.population[self.samples.len()];
+    fn get_demand(&self) -> Demand {
+        let chromosome = &self.population[self.samples.len()];
 
         let num_threads = if self.config.do_thread_control {
             chromosome.num_threads.clamp(1, self.max_threads.max(1))
@@ -248,8 +246,6 @@ impl Controller for GeneticController {
             1.0
         };
 
-        chromosome.global_thread_count = Some(STATE.thread_utilization());
-
         Demand {
             num_threads,
             powercap_pct,
@@ -259,9 +255,7 @@ impl Controller for GeneticController {
     fn push_sample(&mut self, sample: Sample) {
         // Store the global thread count at the time this sample was taken, so we can use it to compute alignment later.
         // Before calling push_sample, the server has already subtracted this chromosome's thread count from the global count.
-        let before = self.population[self.samples.len()].global_thread_count.unwrap();
-        let total = before + STATE.thread_utilization();
-        self.population[self.samples.len()].global_thread_count = Some(total / 2);
+        self.population[self.samples.len()].global_thread_count = Some(STATE.thread_utilization());
 
         self.samples.push(sample);
 
