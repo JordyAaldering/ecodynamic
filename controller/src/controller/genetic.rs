@@ -593,6 +593,13 @@ impl Chromosome {
             && (self.power_pct - other.power_pct).abs() <= similarity_threshold
     }
 
+    /// Nudges a raw score towards secondary preferences, bounded to at most `nudge_strength` of the raw score.
+    /// See [GeneticConfig::nudge_strength] for why this multiplicative approach is used instead of a fixed offset.
+    fn nudged_score(&self, config: &GeneticConfig, score: f32, nudge_strength: f32) -> f32 {
+        let alignment = self.alignment(config);
+        score * (1.0 - alignment * nudge_strength)
+    }
+
     /// How well this chromosome matches secondary preferences, in [0, 1] where
     /// 1 means perfectly aligned and 0 means maximally misaligned.
     fn alignment(&self, config: &GeneticConfig) -> f32 {
@@ -602,9 +609,10 @@ impl Chromosome {
             if total_threads <= HARDWARE.available_cores() {
                 1.0
             } else {
-                1.0 - (
-                    ((total_threads - HARDWARE.available_cores()) as f32) / HARDWARE.available_cores() as f32
-                ).clamp(0.0, 1.0)
+                let available_cores = HARDWARE.available_cores();
+                let oversubscription = total_threads - available_cores;
+                debug_assert!(oversubscription > 0);
+                1.0 - (oversubscription as f32 / available_cores as f32).clamp(0.0, 1.0)
             }
         } else {
             1.0
@@ -620,13 +628,6 @@ impl Chromosome {
         };
 
         (thread_alignment + power_alignment) / 2.0
-    }
-
-    /// Nudges a raw score towards secondary preferences, bounded to at most `nudge_strength` of the raw score.
-    /// See [GeneticConfig::nudge_strength] for why this multiplicative approach is used instead of a fixed offset.
-    fn nudged_score(&self, config: &GeneticConfig, score: f32, nudge_strength: f32) -> f32 {
-        let alignment = self.alignment(config);
-        score * (1.0 - alignment * nudge_strength)
     }
 }
 
