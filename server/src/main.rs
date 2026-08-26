@@ -215,8 +215,8 @@ fn main() {
     log::trace!("Config: {:?}", config);
 
     // TODO: number of available cores assumed to be 8 for now
-    HARDWARE.available_cores.set(8).expect_err("available_cores initialized twice");
-    HARDWARE.max_power_uw.set(find_max_power_uw()).expect_err("max_power_uw initialized twice");
+    HARDWARE.available_cores.set(8).expect("available_cores initialized twice");
+    HARDWARE.max_power_uw.set(find_max_power_uw()).expect("max_power_uw initialized twice");
 
     let listener = open_socket();
 
