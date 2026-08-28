@@ -1,6 +1,6 @@
 use super::{Gene, lerp};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ThreadGene {
     num_threads: u16,
     max_threads: u16,

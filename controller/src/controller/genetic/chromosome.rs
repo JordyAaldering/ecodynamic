@@ -11,7 +11,7 @@ pub struct ChromosomeConfig {
     pub max_power: f32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Chromosome {
     threads: Option<ThreadGene>,
     pinning: Option<PinningGene>,

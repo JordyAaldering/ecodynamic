@@ -1,6 +1,6 @@
 use super::{Gene, lerp};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct PowerGene {
     powercap: f32,
     min_power: f32,
