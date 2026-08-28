@@ -22,6 +22,28 @@ pub struct Args {
     #[arg(short('w'), long("idle"), default_value_t = 0.0)]
     pub idle_power: f32,
 
+    /// Enable thread control.
+    #[arg(long("thread-control"))]
+    pub do_thread_control: bool,
+
+    /// Enable thread pinning control.
+    #[arg(long("pinning-control"))]
+    pub do_pinning_control: bool,
+
+    /// Enable power limit control.
+    #[arg(long("power-control"))]
+    pub do_power_control: bool,
+    /// Minimum allowed percentage of the powercap.
+    ///
+    /// Range: (0,1]
+    #[arg(long, default_value_t = 0.1)]
+    pub power_min: f32,
+    /// Maximum allowed percentage of the powercap.
+    ///
+    /// Range: (0,1]
+    #[arg(long, default_value_t = 1.0)]
+    pub power_max: f32,
+
     /// Controller type.
     #[command(subcommand)]
     pub controller: ControllerType,
@@ -42,14 +64,20 @@ pub enum ControllerType {
 }
 
 impl Args {
-    pub fn build_controller(&self, caps: &Capabilities) -> Box<dyn Controller> {
+    pub fn build_controller(&self, capabilities: &Capabilities) -> Box<dyn Controller> {
         use ControllerType::*;
         match &self.controller {
-            Genetic(config) => Box::new(GeneticController::new(config.clone(), caps)),
-            Corridor(config) => Box::new(CorridorController::new(config.clone(), caps)),
-            Delta(config) => Box::new(DeltaController::new(config.clone(), caps)),
-            Oscilating => Box::new(OscilatingController::new(caps)),
-            Fixed => Box::new(FixedController::new(caps)),
+            Genetic(config) => Box::new(
+                GeneticControllerBuilder::new(config.clone(), capabilities.clone())
+                    .thread_control(self.do_thread_control)
+                    .pinning_control(self.do_pinning_control)
+                    .power_control(self.do_power_control)
+                    .build(),
+            ),
+            Corridor(config) => Box::new(CorridorController::new(config.clone(), capabilities)),
+            Delta(config) => Box::new(DeltaController::new(config.clone(), capabilities)),
+            Oscilating => Box::new(OscilatingController::new(capabilities)),
+            Fixed => Box::new(FixedController::new(capabilities)),
         }
     }
 }
@@ -67,8 +95,10 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
 
     // First message must be a capabilities broadcast from the client
     rdr.read_line(&mut line)?;
-    let capabilities = serde_json::from_str(line.trim_end())
+    let mut capabilities: Capabilities = serde_json::from_str(line.trim_end())
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
+    capabilities.power_min = config.power_min;
+    capabilities.power_max = config.power_max;
     log::debug!("Client capabilities: {:?}", capabilities);
 
     let mut last_thread_count = 0;

@@ -1,3 +1,4 @@
+mod builder;
 mod chromosome;
 mod gene;
 
@@ -5,20 +6,22 @@ use clap::Parser;
 
 use chromosome::Chromosome;
 
-use crate::*;
+use crate::{controller::genetic::chromosome::ChromosomeConfig, *};
+
+pub use builder::GeneticControllerBuilder;
 
 pub struct GeneticController {
     samples: Vec<Sample>,
     population: Vec<Chromosome>,
     immigration_cooldown: usize,
     sort_descending: bool,
-    max_threads: u16,
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
     config: GeneticConfig,
+    bounds: ChromosomeConfig,
     // Debugging metadata
-    generation: usize,
-    immigration_was_triggered: bool,
+    pub generation: usize,
+    pub immigration_was_triggered: bool,
 }
 
 #[derive(Clone, Debug, Parser)]
@@ -32,26 +35,6 @@ pub struct GeneticConfig {
     /// Range: [0,1]
     #[arg(long, default_value_t = 0.9)]
     pub energy_preference: f32,
-
-    /// Enable thread control.
-    #[arg(long("thread-control"))]
-    pub do_thread_control: bool,
-
-    /// Enable power limit control.
-    ///
-    /// Requires RAPL to be available and the server to be run with root privileges.
-    #[arg(long("power-control"))]
-    pub do_power_control: bool,
-    /// Minimum allowed percentage of the powercap.
-    ///
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 0.1)]
-    pub power_min: f32,
-    /// Maximum allowed percentage of the powercap.
-    ///
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 1.0)]
-    pub power_max: f32,
 
     /// Enable nudging of chromosomes towards secondary preferences, such as core sharing and power limit proportional to energy preference.
     #[arg(long("nudge"))]
@@ -159,58 +142,13 @@ pub struct GeneticConfig {
     pub immigration_cooldown_generations: usize,
 }
 
-impl GeneticController {
-    /// Instead of randomly initialized values, use an even spread over valid thread
-    /// counts and power limits to reduce duplication and increase the chances of
-    /// finding an optimum immediately.
-    pub fn new(config: GeneticConfig, capabilities: &Capabilities) -> Self {
-        let max_threads = capabilities.max_threads.max(1);
-        let population = (0..config.population_size)
-            .map(|mut i| {
-                if config.initial_population_descending {
-                    i = config.population_size - i - 1;
-                }
-
-                let t = i as f32 / (config.population_size - 1) as f32;
-                Chromosome::from_t(t, &config, max_threads)
-            })
-            .collect();
-
-        log::trace!("Init: {:?}", population);
-
-        Self {
-            samples: Vec::with_capacity(config.population_size),
-            population,
-            immigration_cooldown: config.immigration_cooldown_generations,
-            sort_descending: !config.initial_population_descending,
-            max_threads: capabilities.max_threads.max(1),
-            effective_survival_rate: config.survival_rate,
-            effective_mutation_rate: config.mutation_rate,
-            config,
-            generation: 0,
-            immigration_was_triggered: false,
-        }
-    }
-
-    /// Returns the current generation number.
-    pub fn generation(&self) -> usize {
-        self.generation
-    }
-
-    /// Returns whether immigration was triggered during the most recent evolution.
-    /// This flag is reset at the start of each evolve() call.
-    pub fn immigration_triggered(&self) -> bool {
-        self.immigration_was_triggered
-    }
-}
-
 impl Controller for GeneticController {
     /// Use the number of samples to determine the current index into the population.
     /// The population is reset every `population_size` iterations.
     /// In between, we want every chromosome to be applied once.
     fn get_demand(&self) -> Demand {
         let chromosome = &self.population[self.samples.len()];
-        chromosome.get_demand(self.max_threads)
+        chromosome.get_demand(&self.bounds)
     }
 
     fn push_sample(&mut self, sample: Sample) {
@@ -324,7 +262,7 @@ impl GeneticController {
 
             let nudged_scores: Vec<f32> = self.population.iter()
                 .zip(&scores)
-                .map(|(chromosome, &score)| chromosome.nudged_score(&self.config, score, effective_nudge_strength))
+                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.config.energy_preference))
                 .collect();
 
             sort_population_by_score(&mut self.population, nudged_scores);
@@ -336,9 +274,9 @@ impl GeneticController {
         for i in survival_count..immigration_start {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
-            let mut child = parent1.crossover(parent2, &self.config);
+            let mut child = parent1.crossover(parent2, self.config.immigration_similarity_threshold);
             if rand::random_bool(self.effective_mutation_rate as f64) {
-                child.mutate(&self.config, self.max_threads);
+                child.mutate(&self.bounds, self.effective_mutation_rate, self.config.immigration_similarity_threshold);
             }
 
             self.population[i] = child;
@@ -353,7 +291,7 @@ impl GeneticController {
         // Fill remaining chromosomes by immigration
         let immigration_count = population_size.saturating_sub(immigration_start);
         for (offset, i) in (immigration_start..population_size).enumerate() {
-            self.population[i] = Chromosome::from_spread(offset, immigration_count, &self.config, self.max_threads);
+            self.population[i] = Chromosome::from_spread(offset, immigration_count, &self.bounds);
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
