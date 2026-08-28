@@ -87,9 +87,9 @@ impl Chromosome {
         };
 
         Self {
-            threads: self.threads.as_ref().map(|gene| gene.crossover(other.threads.as_ref().unwrap(), t)),
-            power: self.power.as_ref().map(|gene| gene.crossover(other.power.as_ref().unwrap(), t)),
-            pinning: self.pinning.as_ref().map(|gene| gene.crossover(other.pinning.as_ref().unwrap(), t)),
+            threads: self.threads.crossover(&other.threads, t),
+            pinning: self.pinning.crossover(&other.pinning, t),
+            power: self.power.crossover(&other.power, t),
             prev_score,
             global_thread_count: None,
         }
@@ -97,10 +97,9 @@ impl Chromosome {
 
     pub fn mutate(&mut self, strength: f32, immigration_similarity_threshold: f32) {
         let mut prev_score_reusable = true;
-        prev_score_reusable &= self.threads.as_mut().map(|gene| gene.mutate(strength, immigration_similarity_threshold)).unwrap_or(true);
-        prev_score_reusable &= self.power.as_mut().map(|gene| gene.mutate(strength, immigration_similarity_threshold)).unwrap_or(true);
-        prev_score_reusable &= self.pinning.as_mut().map(|gene| gene.mutate(strength, immigration_similarity_threshold)).unwrap_or(true);
-
+        prev_score_reusable &= self.threads.mutate(strength, immigration_similarity_threshold);
+        prev_score_reusable &= self.pinning.mutate(strength, immigration_similarity_threshold);
+        prev_score_reusable &= self.power.mutate(strength, immigration_similarity_threshold);
         if !prev_score_reusable {
             self.prev_score = None;
         }
@@ -108,9 +107,9 @@ impl Chromosome {
 
     pub fn is_similar_to(&self, other: &Self, immigration_similarity_threshold: f32) -> bool {
         let mut similar = true;
-        similar &= self.threads.as_ref().map(|gene| gene.is_similar_to(other.threads.as_ref().unwrap(), immigration_similarity_threshold)).unwrap_or(true);
-        similar &= self.pinning.as_ref().map(|gene| gene.is_similar_to(other.pinning.as_ref().unwrap(), immigration_similarity_threshold)).unwrap_or(true);
-        similar &= self.power.as_ref().map(|gene| gene.is_similar_to(other.power.as_ref().unwrap(), immigration_similarity_threshold)).unwrap_or(true);
+        similar &= self.threads.is_similar_to(&other.threads, immigration_similarity_threshold);
+        similar &= self.pinning.is_similar_to(&other.pinning, immigration_similarity_threshold);
+        similar &= self.power.is_similar_to(&other.power, immigration_similarity_threshold);
         similar
     }
 
