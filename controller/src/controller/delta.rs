@@ -3,13 +3,13 @@ use clap::Parser;
 use crate::*;
 
 pub struct DeltaController {
-    samples: Vec<Sample>,
+    letterbox: Letterbox,
+    filter: FilterFunction,
     max_threads: u16,
     cur_threads: f32,
     step_size: f32,
     step_dir: Direction,
     t_prev: f32,
-    config: DeltaConfig,
 }
 
 #[derive(Clone, Debug, Parser)]
@@ -22,14 +22,15 @@ pub struct DeltaConfig {
 
 impl DeltaController {
     pub fn new(config: DeltaConfig, capabilities: &Capabilities) -> Self {
+        let max_threads = capabilities.max_threads.max(1);
         Self {
-            samples: Vec::with_capacity(config.letterbox_size),
-            max_threads: capabilities.max_threads.max(1),
-            cur_threads: capabilities.max_threads.max(1) as f32,
+            letterbox: Letterbox::new(config.letterbox_size),
+            filter: config.filter,
+            max_threads,
+            cur_threads: max_threads as f32,
             step_size: 0.5,
             step_dir: Direction::Descending,
             t_prev: 0.0,
-            config,
         }
     }
 }
@@ -42,21 +43,21 @@ impl Controller for DeltaController {
         }
     }
 
-    fn push_sample(&mut self, sample: Sample) {
-        self.samples.push(sample);
-
-        if self.samples.len() >= self.config.letterbox_size {
-            self.evolve();
-            self.samples.clear();
+    fn push(&mut self, sample: Sample) {
+        if let Some(samples) = self.letterbox.push(sample) {
+            let score = self.score(samples);
+            self.evolve(score);
         }
     }
 }
 
 impl DeltaController {
-    fn evolve(&mut self) {
-        let scores = self.samples.iter().map(|s| s.energy).collect();
-        let tn = self.config.filter.select(scores);
+    fn score(&self, samples: Vec<Sample>) -> f32 {
+        let scores = samples.into_iter().map(|s| s.energy).collect();
+        self.filter.select(scores)
+    }
 
+    fn evolve(&mut self, tn: f32) {
         if tn > self.t_prev * 1.50 {
             self.reset();
         } else {

@@ -8,9 +8,10 @@ pub struct OscilatingController {
 
 impl OscilatingController {
     pub fn new(capabilities: &Capabilities) -> Self {
+        let max_threads = capabilities.max_threads.max(1);
         Self {
-            max_threads: capabilities.max_threads.max(1),
-            num_threads: capabilities.max_threads.max(1),
+            max_threads,
+            num_threads: max_threads,
             direction: Direction::Descending,
         }
     }
@@ -24,7 +25,7 @@ impl Controller for OscilatingController {
         }
     }
 
-    fn push_sample(&mut self, _: Sample) {
+    fn push(&mut self, _: Sample) {
         if self.direction == Direction::Ascending {
             self.num_threads = self.num_threads.saturating_add(1);
             if self.num_threads >= self.max_threads {

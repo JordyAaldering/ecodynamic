@@ -133,7 +133,7 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                             config.build_controller(&capabilities)
                         });
 
-                    controller.push_sample(sample);
+                    controller.push(sample);
                 } else if let Ok(request) = serde_json::from_str::<Request>(&line) {
                     log::trace!("GET: {:?}", request.region_uid);
 

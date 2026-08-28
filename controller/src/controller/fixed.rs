@@ -20,5 +20,5 @@ impl Controller for FixedController {
         }
     }
 
-    fn push_sample(&mut self, _: Sample) {}
+    fn push(&mut self, _: Sample) {}
 }

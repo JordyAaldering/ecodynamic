@@ -1,4 +1,4 @@
-use crate::{Capabilities, controller::genetic::chromosome::ChromosomeConfig};
+use crate::{Capabilities, Letterbox, controller::genetic::chromosome::ChromosomeConfig};
 
 use super::{Chromosome, GeneticConfig, GeneticController};
 
@@ -63,7 +63,7 @@ impl GeneticControllerBuilder {
         log::trace!("Init: {:?}", population);
 
         GeneticController {
-            samples: Vec::with_capacity(self.config.population_size),
+            letterbox: Letterbox::new(self.config.population_size),
             population,
             immigration_cooldown: self.config.immigration_cooldown_generations,
             sort_descending: !self.config.initial_population_descending,

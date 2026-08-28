@@ -11,7 +11,7 @@ use crate::{controller::genetic::chromosome::ChromosomeConfig, *};
 pub use builder::GeneticControllerBuilder;
 
 pub struct GeneticController {
-    samples: Vec<Sample>,
+    letterbox: Letterbox,
     population: Vec<Chromosome>,
     immigration_cooldown: usize,
     sort_descending: bool,
@@ -150,31 +150,34 @@ impl Controller for GeneticController {
     /// TODO: might want to extract the mutating behaviour to a new function `bookkeeping`
     /// Currently, this is only necessary for chromosomes to track the global thread count.
     fn get_demand(&mut self) -> Demand {
-        let chromosome = &mut self.population[self.samples.len()];
+        let chromosome = &mut self.population[self.letterbox.len()];
         chromosome.get_demand(&self.bounds)
     }
 
-    fn push_sample(&mut self, sample: Sample) {
+    fn push(&mut self, sample: Sample) {
         // Store the global thread count at the time this sample was taken, so we can use it to compute alignment later.
         // Before calling push_sample, the server has already subtracted this chromosome's thread count from the global count.
-        self.population[self.samples.len()].global_thread_count = Some(STATE.thread_utilization());
+        self.population[self.letterbox.len()].global_thread_count = Some(STATE.thread_utilization());
 
-        self.samples.push(sample);
-
-        if self.samples.len() >= self.config.population_size {
-            self.evolve();
-            self.samples.clear();
+        if let Some(samples) = self.letterbox.push(sample) {
+            let scores = self.score(samples);
+            self.evolve(scores);
         }
     }
 }
 
 impl GeneticController {
-    fn evolve(&mut self) {
+    fn score(&self, samples: Vec<Sample>) -> Vec<f32> {
+        let alpha = self.config.energy_preference;
+        samples.into_iter().map(|s| s.score(alpha)).collect()
+    }
+
+    fn evolve(&mut self, scores: Vec<f32>) {
         self.generation += 1;
         self.immigration_was_triggered = false;
 
         let GeneticConfig {
-            energy_preference,
+            population_size,
             survival_rate,
             survival_rate_decay,
             immigration_rate,
@@ -187,8 +190,6 @@ impl GeneticController {
             mutation_rate_min,
             ..
         } = self.config;
-
-        let scores = score(&self.samples, energy_preference);
 
         log::debug!("Generation {}: best_score={:.4}, worst_score={:.4}, median_score={:.4}",
             self.generation,
@@ -208,8 +209,6 @@ impl GeneticController {
             immigration_robustness_threshold,
             immigration_min_matched_scores,
         );
-
-        let population_size = self.population.len();
 
         // Ensure at least 1 survivor to avoid empty range panic in crossover selection.
         let survival_count = {

@@ -22,5 +22,5 @@ pub trait Controller {
     ///
     /// Either this directly results in an 'evolution' of the controller, or the sample is
     /// stored until enough samples have been collected to perform an evolution step.
-    fn push_sample(&mut self, sample: Sample);
+    fn push(&mut self, sample: Sample);
 }

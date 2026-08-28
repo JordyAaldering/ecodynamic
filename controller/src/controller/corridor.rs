@@ -5,14 +5,14 @@ use crate::*;
 const MIN_STEPSIZE: f32 = 0.1;
 
 pub struct CorridorController {
-    samples: Vec<Sample>,
+    letterbox: Letterbox,
+    filter: FilterFunction,
     max_threads: u16,
     cur_threads: f32,
     step_size: f32,
     step_dir: Direction,
     t_prev: f32,
     t1: f32,
-    config: CorridorConfig,
 }
 
 #[derive(Clone, Debug, Parser)]
@@ -25,15 +25,16 @@ pub struct CorridorConfig {
 
 impl CorridorController {
     pub fn new(config: CorridorConfig, capabilities: &Capabilities) -> Self {
+        let max_threads = capabilities.max_threads.max(1);
         Self {
-            samples: Vec::with_capacity(config.letterbox_size),
-            max_threads: capabilities.max_threads.max(1),
-            cur_threads: capabilities.max_threads.max(1) as f32,
-            step_size: capabilities.max_threads.max(1) as f32, // Will immediately be halved in the first iteration
+            letterbox: Letterbox::new(config.letterbox_size),
+            filter: config.filter,
+            max_threads,
+            cur_threads: max_threads as f32,
+            step_size: max_threads as f32, // Will immediately be halved in the first iteration
             step_dir: Direction::Descending,
             t_prev: f32::MAX,
             t1: f32::MAX,
-            config,
         }
     }
 }
@@ -46,20 +47,21 @@ impl Controller for CorridorController {
         }
     }
 
-    fn push_sample(&mut self, sample: Sample) {
-        self.samples.push(sample);
-        if self.samples.len() >= self.config.letterbox_size {
-            self.evolve();
-            self.samples.clear();
+    fn push(&mut self, sample: Sample) {
+        if let Some(samples) = self.letterbox.push(sample) {
+            let score = self.score(samples);
+            self.evolve(score);
         }
     }
 }
 
 impl CorridorController {
-    fn evolve(&mut self) {
-        let scores = self.samples.iter().map(|s| s.runtime).collect();
-        let tn = self.config.filter.select(scores);
+    fn score(&self, samples: Vec<Sample>) -> f32 {
+        let scores = samples.into_iter().map(|s| s.runtime).collect();
+        self.filter.select(scores)
+    }
 
+    fn evolve(&mut self, tn: f32) {
         let speedup = self.t1 / (tn + f32::EPSILON);
         if speedup < 0.5 * self.num_threads() as f32 {
             // We have fallen below the corridor; reset step size and direction
@@ -85,7 +87,6 @@ impl CorridorController {
         self.cur_threads = self.cur_threads.clamp(1.0, self.max_threads as f32);
     }
 
-    /// Get the actual number of threads to use.
     fn num_threads(&self) -> u16 {
         (self.cur_threads.round() as u16).clamp(1, self.max_threads)
     }
