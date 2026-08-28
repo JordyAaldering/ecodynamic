@@ -6,7 +6,6 @@ pub struct ChromosomeConfig {
     pub thread_control: bool,
     pub pinning_control: bool,
     pub power_control: bool,
-
     pub max_threads: u16,
     pub min_power: f32,
     pub max_power: f32,
@@ -28,11 +27,21 @@ pub struct Chromosome {
 }
 
 impl Chromosome {
-    pub fn random(config: &ChromosomeConfig) -> Self {
+    pub fn rand(config: &ChromosomeConfig) -> Self {
         Self {
-            threads: config.thread_control.then(|| ThreadGene::random(config)),
-            pinning: config.pinning_control.then(|| PinningGene::random(config)),
-            power: config.power_control.then(|| PowerGene::random(config)),
+            threads: config.thread_control.then(|| ThreadGene::new(config.max_threads).rand()),
+            pinning: config.pinning_control.then(|| PinningGene::new().rand()),
+            power: config.power_control.then(|| PowerGene::new(config.min_power, config.max_power).rand()),
+            prev_score: None,
+            global_thread_count: None,
+        }
+    }
+
+    pub fn lerp(config: &ChromosomeConfig, t: f32) -> Self {
+        Self {
+            threads: config.thread_control.then(|| ThreadGene::new(config.max_threads).lerp(t)),
+            pinning: config.pinning_control.then(|| PinningGene::new().lerp(t)),
+            power: config.power_control.then(|| PowerGene::new(config.min_power, config.max_power).lerp(t)),
             prev_score: None,
             global_thread_count: None,
         }
@@ -40,24 +49,14 @@ impl Chromosome {
 
     /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
     /// Otherwise, chromosomes are generated using an even spread over the valid search space.
-    pub fn from_spread(index: usize, count: usize, config: &ChromosomeConfig) -> Self {
+    pub fn immigrate(index: usize, count: usize, config: &ChromosomeConfig) -> Self {
         debug_assert_ne!(count, 0);
         if count <= 3 {
-            return Chromosome::random(config);
+            return Chromosome::rand(config);
         }
 
         let t = index as f32 / (count - 1) as f32;
-        Chromosome::spread(config, t)
-    }
-
-    pub fn spread(config: &ChromosomeConfig, t: f32) -> Self {
-        Self {
-            threads: config.thread_control.then(|| ThreadGene::spread(config, t)),
-            pinning: config.pinning_control.then(|| PinningGene::spread(config, t)),
-            power: config.power_control.then(|| PowerGene::spread(config, t)),
-            prev_score: None,
-            global_thread_count: None,
-        }
+        Chromosome::lerp(config, t)
     }
 
     pub fn get_demand(&self, config: &ChromosomeConfig) -> Demand {
@@ -96,11 +95,11 @@ impl Chromosome {
         }
     }
 
-    pub fn mutate(&mut self, config: &ChromosomeConfig, strength: f32, immigration_similarity_threshold: f32) {
+    pub fn mutate(&mut self, strength: f32, immigration_similarity_threshold: f32) {
         let mut prev_score_reusable = true;
-        prev_score_reusable &= self.threads.as_mut().map(|gene| gene.mutate(config, strength, immigration_similarity_threshold)).unwrap_or(true);
-        prev_score_reusable &= self.power.as_mut().map(|gene| gene.mutate(config, strength, immigration_similarity_threshold)).unwrap_or(true);
-        prev_score_reusable &= self.pinning.as_mut().map(|gene| gene.mutate(config, strength, immigration_similarity_threshold)).unwrap_or(true);
+        prev_score_reusable &= self.threads.as_mut().map(|gene| gene.mutate(strength, immigration_similarity_threshold)).unwrap_or(true);
+        prev_score_reusable &= self.power.as_mut().map(|gene| gene.mutate(strength, immigration_similarity_threshold)).unwrap_or(true);
+        prev_score_reusable &= self.pinning.as_mut().map(|gene| gene.mutate(strength, immigration_similarity_threshold)).unwrap_or(true);
 
         if !prev_score_reusable {
             self.prev_score = None;

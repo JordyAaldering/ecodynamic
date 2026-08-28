@@ -56,7 +56,7 @@ impl GeneticControllerBuilder {
                 }
 
                 let t = i as f32 / (self.config.population_size - 1) as f32;
-                Chromosome::spread(&bounds, t)
+                Chromosome::lerp(&bounds, t)
             })
             .collect();
 

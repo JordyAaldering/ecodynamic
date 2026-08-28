@@ -276,7 +276,7 @@ impl GeneticController {
             let parent2 = &self.population[rand::random_range(0..survival_count)];
             let mut child = parent1.crossover(parent2, self.config.immigration_similarity_threshold);
             if rand::random_bool(self.effective_mutation_rate as f64) {
-                child.mutate(&self.bounds, self.effective_mutation_rate, self.config.immigration_similarity_threshold);
+                child.mutate(self.effective_mutation_rate, self.config.immigration_similarity_threshold);
             }
 
             self.population[i] = child;
@@ -291,7 +291,7 @@ impl GeneticController {
         // Fill remaining chromosomes by immigration
         let immigration_count = population_size.saturating_sub(immigration_start);
         for (offset, i) in (immigration_start..population_size).enumerate() {
-            self.population[i] = Chromosome::from_spread(offset, immigration_count, &self.bounds);
+            self.population[i] = Chromosome::immigrate(offset, immigration_count, &self.bounds);
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
