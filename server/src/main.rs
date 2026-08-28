@@ -81,7 +81,7 @@ impl<'a> ControllerImpl<'a> {
     }
 }
 
-fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
+fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -> io::Result<()> {
     let mut lbs: HashMap<i32, ControllerImpl> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
     let mut line = String::new();
@@ -91,7 +91,7 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
     let app: AppCapabilities = serde_json::from_str(line.trim_end())
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
     log::debug!("Client capabilities: {:?}", app);
-    let capabilities = Capabilities::new(&app, &args.ctx);
+    let capabilities = Capabilities::new(&app, &args.ctx, &hw);
 
     let mut last_thread_count = 0;
 
@@ -234,8 +234,9 @@ fn main() {
     log::trace!("Args: {args:?}");
 
     // TODO: number of available cores assumed to be 8 for now
-    HARDWARE.available_cores.set(8).expect("available_cores initialized twice");
-    HARDWARE.max_power_uw.set(find_max_power_uw()).expect("max_power_uw initialized twice");
+    let available_threads = 8;
+    let max_power_uw = find_max_power_uw();
+    let hw = HardwareCapabilities::new(available_threads, max_power_uw);
 
     let listener = open_socket();
 
@@ -248,7 +249,7 @@ fn main() {
     if args.once {
         let stream = listener.incoming().next().unwrap();
         match stream {
-            Ok(stream) => handle_client(stream, args).unwrap(),
+            Ok(stream) => handle_client(stream, args, hw).unwrap(),
             Err(e) => log::error!("Connection failed: {}", e),
         }
     } else {
@@ -256,8 +257,9 @@ fn main() {
             match stream {
                 Ok(stream) => {
                     let args = args.clone();
+                    let hw = hw.clone();
                     thread::spawn(move || {
-                        handle_client(stream, args).unwrap()
+                        handle_client(stream, args, hw).unwrap()
                     });
                 }
                 Err(e) => log::error!("Connection failed: {}", e),

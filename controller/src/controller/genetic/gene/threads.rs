@@ -1,3 +1,5 @@
+use crate::STATE;
+
 use super::{Gene, lerp};
 
 #[derive(Debug)]
@@ -26,19 +28,18 @@ impl ThreadGene {
         self
     }
 
-    pub fn get_num_threads(&mut self, utilization: u16) -> u16 {
-        self.utilization = Some(utilization);
+    pub fn get_num_threads(&mut self) -> u16 {
+        self.utilization = Some(STATE.thread_utilization());
         self.num_threads
     }
 
-    pub fn alignment(&self, global_thread_count: u16) -> f32 {
-        let available_cores = crate::HARDWARE.available_cores();
-        let total_threads = self.num_threads + global_thread_count;
-        if total_threads <= available_cores {
+    pub fn alignment(&self, hw_available_threads: u16) -> f32 {
+        let total_threads = self.num_threads + self.utilization.unwrap();
+        if total_threads <= hw_available_threads {
             1.0
         } else {
-            let oversubscription = total_threads - available_cores;
-            1.0 - (oversubscription as f32 / available_cores as f32).clamp(0.0, 1.0)
+            let oversubscription = total_threads - hw_available_threads;
+            1.0 - (oversubscription as f32 / hw_available_threads as f32).clamp(0.0, 1.0)
         }
     }
 }

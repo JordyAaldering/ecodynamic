@@ -26,13 +26,6 @@ pub struct GeneticSettings {
     #[arg(short('s'), long, default_value_t = 20)]
     pub population_size: usize,
 
-    /// Describes the importance of optimising for energy efficiency over runtime performance.
-    /// A value of 1 means that only energy efficiency is optimised for, while a value of 0 means that only runtime performance is optimised for.
-    ///
-    /// Range: [0,1]
-    #[arg(long, default_value_t = 0.9)]
-    pub energy_preference: f32,
-
     /// Enable nudging of chromosomes towards secondary preferences, such as core sharing and power limit proportional to energy preference.
     #[arg(long("nudge"))]
     pub do_nudging: bool,
@@ -144,6 +137,9 @@ impl Controller for GeneticController<'_> {
     /// The population is reset every `population_size` iterations.
     /// In between, we want every chromosome to be applied once.
     ///
+    /// NOTE: This function is `mut`, because the ThreadGene reads the current
+    /// thread utilization from the global state and stores it.
+    ///
     /// TODO: might want to extract the mutating behaviour to a new function `bookkeeping`
     /// Currently, this is only necessary for chromosomes to track the global thread count.
     fn get_demand(&mut self) -> Demand {
@@ -152,10 +148,6 @@ impl Controller for GeneticController<'_> {
     }
 
     fn push(&mut self, sample: Sample) {
-        // Store the global thread count at the time this sample was taken, so we can use it to compute alignment later.
-        // Before calling push_sample, the server has already subtracted this chromosome's thread count from the global count.
-        self.population[self.letterbox.len()].global_thread_count = Some(STATE.thread_utilization());
-
         if let Some(samples) = self.letterbox.push(sample) {
             let scores = self.score(samples);
             self.evolve(scores);
@@ -196,7 +188,7 @@ impl<'a> GeneticController<'a> {
     }
 
     fn score(&self, samples: Vec<Sample>) -> Vec<f32> {
-        let alpha = self.settings.energy_preference;
+        let alpha = self.capabilities.energy_preference();
         samples.into_iter().map(|s| s.score(alpha)).collect()
     }
 
@@ -292,7 +284,7 @@ impl<'a> GeneticController<'a> {
 
             let nudged_scores: Vec<f32> = self.population.iter()
                 .zip(&scores)
-                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.settings.energy_preference))
+                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.capabilities.available_threads(), self.capabilities.energy_preference()))
                 .collect();
 
             sort_population_by_score(&mut self.population, nudged_scores);
