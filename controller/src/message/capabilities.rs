@@ -1,31 +1,29 @@
 use serde::{Deserialize, Serialize};
 
-/// Represents the capabilities of an application and the hardware.
+/// Contains the capabilities reported by the application through the socket.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Capabilities {
+pub struct CapabilitiesResp {
     /// The process ID of the application.
     pub pid: i32,
     /// Maximum number of threads the application may use.
     pub max_threads: u16,
+}
+
+/// Represents the configuration of the resource controller, the capabilities
+/// reported by the application, and the capabilities of the hardware.
+#[derive(Clone, Debug)]
+pub struct Capabilities {
+    pub pid: i32,
+    pub max_threads: u16,
+    pub thread_control: bool,
+    pub pinning_control: bool,
+    pub power_control: bool,
     /// Minimum allowed percentage of the powercap.
     ///
     /// Range: (0,1]
-    #[serde(skip)]
-    pub power_min: f32,
+    pub min_power: f32,
     /// Maximum allowed percentage of the powercap.
     ///
     /// Range: (0,1]
-    #[serde(skip)]
-    pub power_max: f32,
-}
-
-impl Default for Capabilities {
-    fn default() -> Self {
-        Self {
-            pid: 0,
-            max_threads: 1,
-            power_min: 0.1,
-            power_max: 1.0,
-        }
-    }
+    pub max_power: f32,
 }

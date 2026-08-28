@@ -13,7 +13,7 @@ pub struct DeltaController {
 }
 
 #[derive(Clone, Debug, Parser)]
-pub struct DeltaConfig {
+pub struct DeltaSettings {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
     #[arg(long, default_value = "median")]
@@ -21,7 +21,7 @@ pub struct DeltaConfig {
 }
 
 impl DeltaController {
-    pub fn new(config: DeltaConfig, capabilities: &Capabilities) -> Self {
+    pub fn new(config: &DeltaSettings, capabilities: &Capabilities) -> Self {
         let max_threads = capabilities.max_threads.max(1);
         Self {
             letterbox: Letterbox::new(config.letterbox_size),

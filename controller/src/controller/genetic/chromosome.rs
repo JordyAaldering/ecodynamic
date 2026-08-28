@@ -1,15 +1,6 @@
-use crate::Demand;
+use crate::{Capabilities, Demand};
 
 use super::gene::*;
-
-pub struct ChromosomeConfig {
-    pub thread_control: bool,
-    pub pinning_control: bool,
-    pub power_control: bool,
-    pub max_threads: u16,
-    pub min_power: f32,
-    pub max_power: f32,
-}
 
 #[derive(Debug)]
 pub struct Chromosome {
@@ -27,21 +18,21 @@ pub struct Chromosome {
 }
 
 impl Chromosome {
-    pub fn rand(config: &ChromosomeConfig) -> Self {
+    pub fn rand(capabilities: &Capabilities) -> Self {
         Self {
-            threads: config.thread_control.then(|| ThreadGene::new(config.max_threads).rand()),
-            pinning: config.pinning_control.then(|| PinningGene::new().rand()),
-            power: config.power_control.then(|| PowerGene::new(config.min_power, config.max_power).rand()),
+            threads: capabilities.thread_control.then(|| ThreadGene::new(capabilities.max_threads).rand()),
+            pinning: capabilities.pinning_control.then(|| PinningGene::new().rand()),
+            power: capabilities.power_control.then(|| PowerGene::new(capabilities.min_power, capabilities.max_power).rand()),
             prev_score: None,
             global_thread_count: None,
         }
     }
 
-    pub fn lerp(config: &ChromosomeConfig, t: f32) -> Self {
+    pub fn lerp(capabilities: &Capabilities, t: f32) -> Self {
         Self {
-            threads: config.thread_control.then(|| ThreadGene::new(config.max_threads).lerp(t)),
-            pinning: config.pinning_control.then(|| PinningGene::new().lerp(t)),
-            power: config.power_control.then(|| PowerGene::new(config.min_power, config.max_power).lerp(t)),
+            threads: capabilities.thread_control.then(|| ThreadGene::new(capabilities.max_threads).lerp(t)),
+            pinning: capabilities.pinning_control.then(|| PinningGene::new().lerp(t)),
+            power: capabilities.power_control.then(|| PowerGene::new(capabilities.min_power, capabilities.max_power).lerp(t)),
             prev_score: None,
             global_thread_count: None,
         }
@@ -49,22 +40,22 @@ impl Chromosome {
 
     /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
     /// Otherwise, chromosomes are generated using an even spread over the valid search space.
-    pub fn immigrate(index: usize, count: usize, config: &ChromosomeConfig) -> Self {
+    pub fn immigrate(index: usize, count: usize, capabilities: &Capabilities) -> Self {
         debug_assert_ne!(count, 0);
         if count <= 3 {
-            return Chromosome::rand(config);
+            return Chromosome::rand(capabilities);
         }
 
         let t = index as f32 / (count - 1) as f32;
-        Chromosome::lerp(config, t)
+        Chromosome::lerp(capabilities, t)
     }
 
-    pub fn get_demand(&mut self, config: &ChromosomeConfig) -> Demand {
+    pub fn get_demand(&mut self, capabilities: &Capabilities) -> Demand {
         let utilization = self.global_thread_count
             .expect("Thread utilisation must be set at this point");
         Demand {
-            num_threads: self.threads.as_mut().map_or(config.max_threads, |gene| gene.get_num_threads(utilization)),
-            powercap_pct: self.power.as_ref().map_or(config.max_power, |gene| gene.get_powercap()),
+            num_threads: self.threads.as_mut().map_or(capabilities.max_threads, |gene| gene.get_num_threads(utilization)),
+            powercap_pct: self.power.as_ref().map_or(capabilities.max_power, |gene| gene.get_powercap()),
         }
     }
 

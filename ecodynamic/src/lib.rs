@@ -22,7 +22,7 @@ pub struct EcoIterator<I: Iterator> {
 impl<I: Iterator> EcoIterator<I> {
     /// Create a new `EcoIterator` wrapping the given iterator and connecting to the controller with the given capabilities.
     /// It is allowed that no controller is running, in which case we simply ignore all controller interactions.
-    pub fn new(inner: I, capabilities: Capabilities) -> io::Result<Self> {
+    pub fn new(inner: I, capabilities: CapabilitiesResp) -> io::Result<Self> {
         let mut stream = UnixStream::connect("/tmp/mtd_letterbox")?;
         let reader = BufReader::new(stream.try_clone()?);
         write_json_line(&mut stream, &capabilities)?;

@@ -16,7 +16,7 @@ pub struct CorridorController {
 }
 
 #[derive(Clone, Debug, Parser)]
-pub struct CorridorConfig {
+pub struct CorridorSettings {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
     #[arg(long, default_value = "frequency-dist")]
@@ -24,7 +24,7 @@ pub struct CorridorConfig {
 }
 
 impl CorridorController {
-    pub fn new(config: CorridorConfig, capabilities: &Capabilities) -> Self {
+    pub fn new(config: &CorridorSettings, capabilities: &Capabilities) -> Self {
         let max_threads = capabilities.max_threads.max(1);
         Self {
             letterbox: Letterbox::new(config.letterbox_size),

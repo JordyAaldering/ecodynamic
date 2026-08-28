@@ -37,12 +37,12 @@ pub struct Args {
     ///
     /// Range: (0,1]
     #[arg(long, default_value_t = 0.1)]
-    pub power_min: f32,
+    pub min_power: f32,
     /// Maximum allowed percentage of the powercap.
     ///
     /// Range: (0,1]
     #[arg(long, default_value_t = 1.0)]
-    pub power_max: f32,
+    pub max_power: f32,
 
     /// Controller type.
     #[command(subcommand)]
@@ -52,32 +52,53 @@ pub struct Args {
 #[derive(Clone, Debug, Subcommand)]
 pub enum ControllerType {
     /// Genetic algorithm approach.
-    Genetic(GeneticConfig),
+    Genetic(GeneticSettings),
     /// Algorithm based on a performance corridor.
-    Corridor(CorridorConfig),
+    Corridor(CorridorSettings),
     /// Algorithm based on deltas between runs.
-    Delta(DeltaConfig),
-    /// Continuously oscillates between the zero-capabilities and the given capabilities.
+    Delta(DeltaSettings),
+    /// Continuously oscillates between configurations.
     Oscilating,
-    /// Always returns the given capabilities.
+    /// Always returns the same configuration.
     Fixed,
 }
 
-impl Args {
-    pub fn build_controller(&self, capabilities: &Capabilities) -> Box<dyn Controller> {
-        use ControllerType::*;
-        match &self.controller {
-            Genetic(config) => Box::new(
-                GeneticControllerBuilder::new(config.clone(), capabilities.clone())
-                    .thread_control(self.do_thread_control)
-                    .pinning_control(self.do_pinning_control)
-                    .power_control(self.do_power_control)
-                    .build(),
-            ),
-            Corridor(config) => Box::new(CorridorController::new(config.clone(), capabilities)),
-            Delta(config) => Box::new(DeltaController::new(config.clone(), capabilities)),
-            Oscilating => Box::new(OscilatingController::new(capabilities)),
-            Fixed => Box::new(FixedController::new(capabilities)),
+pub enum ControllerImpl<'a> {
+    Genetic(GeneticController<'a>),
+    Corridor(CorridorController),
+    Delta(DeltaController),
+    Oscilating(OscilatingController),
+    Fixed(FixedController),
+}
+
+impl<'a> ControllerImpl<'a> {
+    fn build(args: &'a Args, capabilities: &'a Capabilities) -> Self {
+        match &args.controller {
+            ControllerType::Genetic(settings) => Self::Genetic(GeneticController::new(settings, capabilities)),
+            ControllerType::Corridor(settings) => Self::Corridor(CorridorController::new(settings, capabilities)),
+            ControllerType::Delta(settings) => Self::Delta(DeltaController::new(settings, capabilities)),
+            ControllerType::Oscilating => Self::Oscilating(OscilatingController::new(capabilities)),
+            ControllerType::Fixed => Self::Fixed(FixedController::new(capabilities)),
+        }
+    }
+
+    fn get_demand(&mut self) -> Demand {
+        match self {
+            Self::Genetic(controller) => controller.get_demand(),
+            Self::Corridor(controller) => controller.get_demand(),
+            Self::Delta(controller) => controller.get_demand(),
+            Self::Oscilating(controller) => controller.get_demand(),
+            Self::Fixed(controller) => controller.get_demand(),
+        }
+    }
+
+    fn push(&mut self, sample: Sample) {
+        match self {
+            Self::Genetic(controller) => controller.push(sample),
+            Self::Corridor(controller) => controller.push(sample),
+            Self::Delta(controller) => controller.push(sample),
+            Self::Oscilating(controller) => controller.push(sample),
+            Self::Fixed(controller) => controller.push(sample),
         }
     }
 }
@@ -88,17 +109,24 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     rapl.map(Mutex::new)
 });
 
-fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
-    let mut lbs: HashMap<i32, Box<dyn Controller>> = HashMap::new();
+fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
+    let mut lbs: HashMap<i32, ControllerImpl> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
     let mut line = String::new();
 
     // First message must be a capabilities broadcast from the client
     rdr.read_line(&mut line)?;
-    let mut capabilities: Capabilities = serde_json::from_str(line.trim_end())
+    let app_capabilities: CapabilitiesResp = serde_json::from_str(line.trim_end())
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
-    capabilities.power_min = config.power_min;
-    capabilities.power_max = config.power_max;
+    let capabilities = Capabilities {
+        pid: app_capabilities.pid,
+        max_threads: app_capabilities.max_threads,
+        thread_control: args.do_thread_control,
+        pinning_control: args.do_pinning_control,
+        power_control: args.do_power_control,
+        min_power: args.min_power,
+        max_power: args.max_power,
+    };
     log::debug!("Client capabilities: {:?}", capabilities);
 
     let mut last_thread_count = 0;
@@ -123,24 +151,19 @@ fn handle_client(mut stream: UnixStream, config: Args) -> io::Result<()> {
                     last_thread_count = 0;
 
                     // Subtract idle energy
-                    sample.energy -= config.idle_power * sample.runtime;
+                    sample.energy -= args.idle_power * sample.runtime;
                     sample.energy = sample.energy.max(f32::EPSILON);
 
-                    let controller = lbs.entry(sample.region_uid)
-                        .or_insert_with(|| {
-                            // At this point a controller should already exist
-                            log::warn!("Generating controller for sample {}", sample.region_uid);
-                            config.build_controller(&capabilities)
-                        });
-
-                    controller.push(sample);
+                    lbs.get_mut(&sample.region_uid)
+                        .expect("Received sample for region that has not yet been instantiated")
+                        .push(sample);
                 } else if let Ok(request) = serde_json::from_str::<Request>(&line) {
                     log::trace!("GET: {:?}", request.region_uid);
 
                     let controller = lbs.entry(request.region_uid)
                         .or_insert_with(|| {
                             log::info!("Generating controller for request {}", request.region_uid);
-                            config.build_controller(&capabilities)
+                            ControllerImpl::build(&args, &capabilities)
                         });
 
                     let demand = controller.get_demand();

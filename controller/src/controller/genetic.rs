@@ -1,4 +1,3 @@
-mod builder;
 mod chromosome;
 mod gene;
 
@@ -6,26 +5,24 @@ use clap::Parser;
 
 use chromosome::Chromosome;
 
-use crate::{controller::genetic::chromosome::ChromosomeConfig, *};
+use crate::*;
 
-pub use builder::GeneticControllerBuilder;
-
-pub struct GeneticController {
+pub struct GeneticController<'a> {
     letterbox: Letterbox,
     population: Vec<Chromosome>,
     immigration_cooldown: usize,
     sort_descending: bool,
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
-    config: GeneticConfig,
-    bounds: ChromosomeConfig,
+    settings: &'a GeneticSettings,
+    capabilities: &'a Capabilities,
     // Debugging metadata
     pub generation: usize,
     pub immigration_was_triggered: bool,
 }
 
 #[derive(Clone, Debug, Parser)]
-pub struct GeneticConfig {
+pub struct GeneticSettings {
     #[arg(short('s'), long, default_value_t = 20)]
     pub population_size: usize,
 
@@ -142,7 +139,7 @@ pub struct GeneticConfig {
     pub immigration_cooldown_generations: usize,
 }
 
-impl Controller for GeneticController {
+impl Controller for GeneticController<'_> {
     /// Use the number of samples to determine the current index into the population.
     /// The population is reset every `population_size` iterations.
     /// In between, we want every chromosome to be applied once.
@@ -151,7 +148,7 @@ impl Controller for GeneticController {
     /// Currently, this is only necessary for chromosomes to track the global thread count.
     fn get_demand(&mut self) -> Demand {
         let chromosome = &mut self.population[self.letterbox.len()];
-        chromosome.get_demand(&self.bounds)
+        chromosome.get_demand(self.capabilities)
     }
 
     fn push(&mut self, sample: Sample) {
@@ -166,9 +163,40 @@ impl Controller for GeneticController {
     }
 }
 
-impl GeneticController {
+impl<'a> GeneticController<'a> {
+    /// Instead of randomly initialized values, use an even spread over valid thread
+    /// counts and power limits to reduce duplication and increase the chances of
+    /// finding an optimum immediately.
+    pub fn new(settings: &'a GeneticSettings, capabilities: &'a Capabilities) -> GeneticController<'a> {
+        let population = (0..settings.population_size)
+            .map(|mut i| {
+                if settings.initial_population_descending {
+                    i = settings.population_size - i - 1;
+                }
+
+                let t = i as f32 / (settings.population_size - 1) as f32;
+                Chromosome::lerp(capabilities, t)
+            })
+            .collect();
+
+        log::trace!("Init: {:?}", population);
+
+        GeneticController {
+            population,
+            letterbox: Letterbox::new(settings.population_size),
+            immigration_cooldown: settings.immigration_cooldown_generations,
+            sort_descending: !settings.initial_population_descending,
+            effective_survival_rate: settings.survival_rate,
+            effective_mutation_rate: settings.mutation_rate,
+            settings,
+            capabilities,
+            generation: 0,
+            immigration_was_triggered: false,
+        }
+    }
+
     fn score(&self, samples: Vec<Sample>) -> Vec<f32> {
-        let alpha = self.config.energy_preference;
+        let alpha = self.settings.energy_preference;
         samples.into_iter().map(|s| s.score(alpha)).collect()
     }
 
@@ -176,7 +204,7 @@ impl GeneticController {
         self.generation += 1;
         self.immigration_was_triggered = false;
 
-        let GeneticConfig {
+        let GeneticSettings {
             population_size,
             survival_rate,
             survival_rate_decay,
@@ -189,7 +217,7 @@ impl GeneticController {
             mutation_rate_decay,
             mutation_rate_min,
             ..
-        } = self.config;
+        } = *self.settings;
 
         log::debug!("Generation {}: best_score={:.4}, worst_score={:.4}, median_score={:.4}",
             self.generation,
@@ -257,14 +285,14 @@ impl GeneticController {
             }
         };
 
-        if self.config.do_nudging {
+        if self.settings.do_nudging {
             // Cap the nudge strength to a fraction of this generation's own relative score spread
-            let effective_nudge_strength = self.config.nudge_strength
-                .min(relative_score_spread(&scores) * self.config.nudge_relative_cap);
+            let effective_nudge_strength = self.settings.nudge_strength
+                .min(relative_score_spread(&scores) * self.settings.nudge_relative_cap);
 
             let nudged_scores: Vec<f32> = self.population.iter()
                 .zip(&scores)
-                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.config.energy_preference))
+                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.settings.energy_preference))
                 .collect();
 
             sort_population_by_score(&mut self.population, nudged_scores);
@@ -276,9 +304,9 @@ impl GeneticController {
         for i in survival_count..immigration_start {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
-            let mut child = parent1.crossover(parent2, self.config.immigration_similarity_threshold);
+            let mut child = parent1.crossover(parent2, self.settings.immigration_similarity_threshold);
             if rand::random_bool(self.effective_mutation_rate as f64) {
-                child.mutate(self.effective_mutation_rate, self.config.immigration_similarity_threshold);
+                child.mutate(self.effective_mutation_rate, self.settings.immigration_similarity_threshold);
             }
 
             self.population[i] = child;
@@ -293,7 +321,7 @@ impl GeneticController {
         // Fill remaining chromosomes by immigration
         let immigration_count = population_size.saturating_sub(immigration_start);
         for (offset, i) in (immigration_start..population_size).enumerate() {
-            self.population[i] = Chromosome::immigrate(offset, immigration_count, &self.bounds);
+            self.population[i] = Chromosome::immigrate(offset, immigration_count, self.capabilities);
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
