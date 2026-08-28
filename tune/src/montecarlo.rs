@@ -12,13 +12,11 @@ const CONVERGENCE_THRESHOLD_MULTIPLIER: f32 = 1.5;
 pub struct Args {
     #[arg(long, default_value_t = 100)]
     runs: usize,
-
     /// Measurement coefficient of variation.
     #[arg(long, default_value_t = 0.025)]
     energy_cv: f32,
     #[arg(long, default_value_t = 0.005)]
     runtime_cv: f32,
-
     #[command(flatten)]
     config: GeneticConfig,
 }
@@ -32,7 +30,9 @@ fn run(
     runtime_cv: f32,
     convergence_score_threshold: f32,
 ) -> Option<(f32, usize)> {
-    let mut controller = GeneticController::new(config.clone(), &Capabilities::default());
+    let mut controller = GeneticControllerBuilder::new(config.clone(), Capabilities::default())
+        .power_control(true)
+        .build();
     let mut recent_score_error_ratios = vec![f32::INFINITY; CONVERGENCE_WINDOW];
     let mut recent_score_error_index = 0;
 
@@ -49,7 +49,7 @@ fn run(
         recent_score_error_ratios[recent_score_error_index] = score_error_ratio;
         recent_score_error_index = (recent_score_error_index + 1) % CONVERGENCE_WINDOW;
 
-        controller.push_sample(sample);
+        controller.push(sample);
 
         if has_converged(&recent_score_error_ratios, convergence_score_threshold) {
             return Some((score, i));
@@ -66,10 +66,8 @@ fn main() {
         runs,
         energy_cv,
         runtime_cv,
-        mut config,
+        config,
     } = Args::parse();
-
-    config.do_thread_control = false;
 
     let convergence_score_threshold = derive_score_error_threshold(
         config.energy_preference,
@@ -91,8 +89,8 @@ fn main() {
             config.energy_preference,
             energy_curve,
             runtime_curve,
-            config.power_min,
-            config.power_max,
+            0.1,
+            1.0,
         );
 
         let mut run_scores = Vec::new();

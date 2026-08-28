@@ -4,4 +4,5 @@ members = [
     "controller",
     "ecodynamic",
     "server",
+    "tune",
 ]

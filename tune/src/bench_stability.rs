@@ -107,7 +107,9 @@ fn run(
     energy_cv: f32,
     runtime_cv: f32,
 ) -> usize {
-    let mut controller = GeneticController::new(config.clone(), &Capabilities::default());
+    let mut controller = GeneticControllerBuilder::new(config.clone(), Capabilities::default())
+        .power_control(true)
+        .build();
     let mut immigration_count = 0;
     let mut prev_generation = 0;
 
@@ -119,13 +121,13 @@ fn run(
         let runtime = runtime_curve.eval(t, runtime_cv);
         let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
 
-        controller.push_sample(sample);
+        controller.push(sample);
 
         // Detect immigration by checking if generation advanced and population was replaced
         // We use a simple proxy: track generation changes via the public interface
-        let current_generation = controller.generation();
+        let current_generation = controller.generation;
         if current_generation > prev_generation {
-            if controller.immigration_triggered() {
+            if controller.immigration_was_triggered {
                 immigration_count += 1;
             }
             prev_generation = current_generation;
@@ -142,10 +144,8 @@ fn main() {
         runs,
         energy_cv,
         runtime_cv,
-        mut config,
+        config,
     } = Args::parse();
-
-    config.do_thread_control = false;
 
     let cases = get_test_cases(energy_cv, runtime_cv);
 

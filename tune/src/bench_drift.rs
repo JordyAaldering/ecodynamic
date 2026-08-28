@@ -118,7 +118,9 @@ fn run(
     energy_cv: f32,
     runtime_cv: f32,
 ) -> RunResult {
-    let mut controller = GeneticController::new(config.clone(), &Capabilities::default());
+    let mut controller = GeneticControllerBuilder::new(config.clone(), Capabilities::default())
+        .power_control(true)
+        .build();
     let mut immigration_count = 0;
     let mut tracking_errors = Vec::new();
 
@@ -140,8 +142,8 @@ fn run(
             config.energy_preference,
             energy_curve,
             runtime_curve,
-            config.power_min,
-            config.power_max,
+            0.1,
+            1.0,
         );
 
         let score = sample.score(config.energy_preference);
@@ -152,9 +154,9 @@ fn run(
             tracking_errors.push(score_error);
         }
 
-        controller.push_sample(sample);
+        controller.push(sample);
 
-        if controller.immigration_triggered() {
+        if controller.immigration_was_triggered {
             immigration_count += 1;
         }
     }
@@ -178,10 +180,8 @@ fn main() {
         runs,
         energy_cv,
         runtime_cv,
-        mut config,
+        config,
     } = Args::parse();
-
-    config.do_thread_control = false;
 
     let cases = get_test_cases();
 
