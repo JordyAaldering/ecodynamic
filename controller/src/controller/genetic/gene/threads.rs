@@ -4,12 +4,16 @@ use super::{Gene, lerp};
 pub struct ThreadGene {
     num_threads: u16,
     max_threads: u16,
+    /// The number of threads that are already being used by other processes on the
+    /// system at the time this chromosome was sampled. This is used to calculate the
+    /// alignment of this chromosome with the system's current thread utilization.
+    utilization: Option<u16>,
 }
 
 impl ThreadGene {
     pub fn new(max_threads: u16) -> Self {
         let max_threads = max_threads.max(1);
-        Self { num_threads: max_threads, max_threads }
+        Self { num_threads: max_threads, max_threads, utilization: None }
     }
 
     pub fn rand(mut self) -> Self {
@@ -20,6 +24,11 @@ impl ThreadGene {
     pub fn lerp(mut self, t: f32) -> Self {
         self.num_threads = lerp(1.0, self.max_threads as f32, t).round() as u16;
         self
+    }
+
+    pub fn get_num_threads(&mut self, utilization: u16) -> u16 {
+        self.utilization = Some(utilization);
+        self.num_threads
     }
 
     pub fn alignment(&self, global_thread_count: u16) -> f32 {
@@ -37,20 +46,20 @@ impl ThreadGene {
 impl Gene for ThreadGene {
     fn crossover(&self, other: &Self, t: f32) -> Self {
         let num_threads = (self.num_threads as f32 * t + other.num_threads as f32 * (1.0 - t)).round() as u16;
-        Self { num_threads, max_threads: self.max_threads }
+        Self { num_threads, max_threads: self.max_threads, utilization: None }
     }
 
-    fn mutate(&mut self, strength: f32, _immigration_similarity_threshold: f32) -> bool {
+    fn mutate(&mut self, strength: f32) -> f32 {
         if rand::random_bool(strength as f64) {
             self.num_threads = if rand::random_bool(0.5) { self.num_threads.saturating_sub(1) } else { self.num_threads.saturating_add(1) };
             self.num_threads = self.num_threads.clamp(1, self.max_threads);
-            return false;
+            return 0.0;
         }
-        return true;
+        return 1.0;
     }
 
-    fn is_similar_to(&self, other: &Self, _immigration_similarity_threshold: f32) -> bool {
-        self.num_threads == other.num_threads
+    fn similarity(&self, other: &Self) -> f32 {
+        (self.num_threads == other.num_threads).into()
     }
 }
 
@@ -60,10 +69,8 @@ impl PartialEq for ThreadGene {
     }
 }
 
-impl std::ops::Deref for ThreadGene {
-    type Target = u16;
-
-    fn deref(&self) -> &Self::Target {
-        &self.num_threads
+impl PartialOrd for ThreadGene {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.num_threads.partial_cmp(&other.num_threads)
     }
 }

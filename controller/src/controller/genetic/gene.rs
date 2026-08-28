@@ -9,9 +9,9 @@ pub use power::PowerGene;
 pub trait Gene {
     fn crossover(&self, other: &Self, t: f32) -> Self;
 
-    fn mutate(&mut self, strength: f32, immigration_similarity_threshold: f32) -> bool;
+    fn mutate(&mut self, strength: f32) -> f32;
 
-    fn is_similar_to(&self, other: &Self, immigration_similarity_threshold: f32) -> bool;
+    fn similarity(&self, other: &Self) -> f32;
 }
 
 impl<G: Gene> Gene for Option<G> {
@@ -19,12 +19,12 @@ impl<G: Gene> Gene for Option<G> {
         self.as_ref().map(|gene| gene.crossover(other.as_ref().unwrap(), t))
     }
 
-    fn mutate(&mut self, strength: f32, immigration_similarity_threshold: f32) -> bool {
-        self.as_mut().map(|gene| gene.mutate(strength, immigration_similarity_threshold)).unwrap_or(true)
+    fn mutate(&mut self, strength: f32) -> f32 {
+        self.as_mut().map(|gene| gene.mutate(strength)).unwrap_or(1.0)
     }
 
-    fn is_similar_to(&self, other: &Self, immigration_similarity_threshold: f32) -> bool {
-        self.as_ref().map(|gene| gene.is_similar_to(other.as_ref().unwrap(), immigration_similarity_threshold)).unwrap_or(true)
+    fn similarity(&self, other: &Self) -> f32 {
+        self.as_ref().map(|gene| gene.similarity(other.as_ref().unwrap())).unwrap_or(1.0)
     }
 }
 

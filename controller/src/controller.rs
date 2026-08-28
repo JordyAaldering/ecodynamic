@@ -16,7 +16,7 @@ pub trait Controller {
     /// Gets the demand (e.g. power limit or thread count) for the current runtime conditions.
     ///
     /// Note that for the very first iteration, this will be called before any samples have been collected.
-    fn get_demand(&self) -> Demand;
+    fn get_demand(&mut self) -> Demand;
 
     /// A new sample was received.
     ///

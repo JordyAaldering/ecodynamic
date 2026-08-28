@@ -22,15 +22,19 @@ impl PinningGene {
 }
 
 impl Gene for PinningGene {
-    fn crossover(&self, _other: &Self, _t: f32) -> Self {
-        *self
+    fn crossover(&self, other: &Self, t: f32) -> Self {
+        if t < 0.5 {
+            *self
+        } else {
+            *other
+        }
     }
 
-    fn mutate(&mut self, _strength: f32, _immigration_similarity_threshold: f32) -> bool {
-        true
+    fn mutate(&mut self, _strength: f32) -> f32 {
+        1.0
     }
 
-    fn is_similar_to(&self, other: &Self, _immigration_similarity_threshold: f32) -> bool {
-        self == other
+    fn similarity(&self, other: &Self) -> f32 {
+        (self == other).into()
     }
 }

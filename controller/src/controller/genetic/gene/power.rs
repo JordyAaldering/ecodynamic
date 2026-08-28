@@ -22,6 +22,10 @@ impl PowerGene {
         self
     }
 
+    pub fn get_powercap(&self) -> f32 {
+        self.powercap
+    }
+
     /// How well this gene matches the secondary preference of a power limit proportional to `energy_preference`.
     ///
     /// Prefer power limits proportional to (1 - energy_preference / 2)
@@ -38,16 +42,14 @@ impl Gene for PowerGene {
         Self { powercap, min_power: self.min_power, max_power: self.max_power }
     }
 
-    fn mutate(&mut self, strength: f32, immigration_similarity_threshold: f32) -> bool {
-        let before = self.powercap;
-        self.powercap += rand::random_range(-strength..=strength);
-        self.powercap = self.powercap.max(self.min_power).min(self.max_power);
-
-        (before - self.powercap).abs() <= immigration_similarity_threshold
+    fn mutate(&mut self, strength: f32) -> f32 {
+        let delta = rand::random_range(-strength..=strength);
+        self.powercap = (self.powercap + delta).clamp(self.min_power, self.max_power);
+        delta
     }
 
-    fn is_similar_to(&self, other: &Self, immigration_similarity_threshold: f32) -> bool {
-        (self.powercap - other.powercap).abs() <= immigration_similarity_threshold
+    fn similarity(&self, other: &Self) -> f32 {
+        (self.powercap - other.powercap).abs()
     }
 }
 
@@ -57,10 +59,8 @@ impl PartialEq for PowerGene {
     }
 }
 
-impl std::ops::Deref for PowerGene {
-    type Target = f32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.powercap
+impl PartialOrd for PowerGene {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.powercap.partial_cmp(&other.powercap)
     }
 }

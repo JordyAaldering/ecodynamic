@@ -59,10 +59,12 @@ impl Chromosome {
         Chromosome::lerp(config, t)
     }
 
-    pub fn get_demand(&self, config: &ChromosomeConfig) -> Demand {
+    pub fn get_demand(&mut self, config: &ChromosomeConfig) -> Demand {
+        let utilization = self.global_thread_count
+            .expect("Thread utilisation must be set at this point");
         Demand {
-            num_threads: *self.threads.as_deref().unwrap_or(&config.max_threads),
-            powercap_pct: *self.power.as_deref().unwrap_or(&config.max_power),
+            num_threads: self.threads.as_mut().map_or(config.max_threads, |gene| gene.get_num_threads(utilization)),
+            powercap_pct: self.power.as_ref().map_or(config.max_power, |gene| gene.get_powercap()),
         }
     }
 
@@ -97,9 +99,9 @@ impl Chromosome {
 
     pub fn mutate(&mut self, strength: f32, immigration_similarity_threshold: f32) {
         let mut prev_score_reusable = true;
-        prev_score_reusable &= self.threads.mutate(strength, immigration_similarity_threshold);
-        prev_score_reusable &= self.pinning.mutate(strength, immigration_similarity_threshold);
-        prev_score_reusable &= self.power.mutate(strength, immigration_similarity_threshold);
+        prev_score_reusable &= self.threads.mutate(strength) >= (1.0 - immigration_similarity_threshold);
+        prev_score_reusable &= self.pinning.mutate(strength) >= (1.0 - immigration_similarity_threshold);
+        prev_score_reusable &= self.power.mutate(strength) >= (1.0 - immigration_similarity_threshold);
         if !prev_score_reusable {
             self.prev_score = None;
         }
@@ -107,9 +109,9 @@ impl Chromosome {
 
     pub fn is_similar_to(&self, other: &Self, immigration_similarity_threshold: f32) -> bool {
         let mut similar = true;
-        similar &= self.threads.is_similar_to(&other.threads, immigration_similarity_threshold);
-        similar &= self.pinning.is_similar_to(&other.pinning, immigration_similarity_threshold);
-        similar &= self.power.is_similar_to(&other.power, immigration_similarity_threshold);
+        similar &= self.threads.similarity(&other.threads) >= (1.0 - immigration_similarity_threshold);
+        similar &= self.pinning.similarity(&other.pinning) >= (1.0 - immigration_similarity_threshold);
+        similar &= self.power.similarity(&other.power) >= (1.0 - immigration_similarity_threshold);
         similar
     }
 
@@ -125,10 +127,8 @@ impl Chromosome {
     pub fn alignment(&self, energy_preference: f32) -> f32 {
         let global_thread_count = self.global_thread_count
             .expect("Thread utilisation must be set at this point");
-
         let thread_alignment = self.threads.as_ref().map(|gene| gene.alignment(global_thread_count)).unwrap_or(1.0);
         let power_alignment = self.power.as_ref().map(|gene| gene.alignment(energy_preference)).unwrap_or(1.0);
-
         (thread_alignment + power_alignment) / 2.0
     }
 }
@@ -143,7 +143,9 @@ impl PartialEq for Chromosome {
 
 impl PartialOrd for Chromosome {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.power.as_deref().unwrap_or(&0.0)
-            .partial_cmp(other.power.as_deref().unwrap_or(&0.0))
+        match (&self.power, &other.power) {
+            (Some(a), Some(b)) => a.partial_cmp(&b),
+            _ => Some(std::cmp::Ordering::Equal),
+        }
     }
 }
