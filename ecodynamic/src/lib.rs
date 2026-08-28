@@ -22,10 +22,12 @@ pub struct EcoIterator<I: Iterator> {
 impl<I: Iterator> EcoIterator<I> {
     /// Create a new `EcoIterator` wrapping the given iterator and connecting to the controller with the given capabilities.
     /// It is allowed that no controller is running, in which case we simply ignore all controller interactions.
-    pub fn new(inner: I, capabilities: CapabilitiesResp) -> io::Result<Self> {
+    pub fn new(inner: I, capabilities: AppCapabilities) -> io::Result<Self> {
         let mut stream = UnixStream::connect("/tmp/mtd_letterbox")?;
         let reader = BufReader::new(stream.try_clone()?);
-        write_json_line(&mut stream, &capabilities)?;
+        serde_json::to_writer(&mut stream, &capabilities).map_err(io::Error::other)?;
+        stream.write_all(b"\n")?;
+
         Ok(Self {
             inner,
             stream,
@@ -46,16 +48,16 @@ impl<I: Iterator> EcoIterator<I> {
 
     /// Send a signal to the controller that we are at the start of a parallel region.
     fn signal_start(&mut self) -> io::Result<Demand> {
-        write_json_line(&mut self.stream, &Request {
-            region_uid: self.region_uid,
-            problem_size: None,
-        })?;
+        let request = Request { region_uid: self.region_uid, problem_size: None };
+        serde_json::to_writer(&mut self.stream, &request).map_err(io::Error::other)?;
+        self.stream.write_all(b"\n")?;
         read_json_line(&mut self.reader)
     }
 
     /// Signal the end of the region and send runtime and energy results.
     fn signal_end(&mut self, sample: &Sample) -> io::Result<()> {
-        write_json_line(&mut self.stream, sample)
+        serde_json::to_writer(&mut self.stream, sample).map_err(io::Error::other)?;
+        self.stream.write_all(b"\n")
     }
 }
 
@@ -109,11 +111,6 @@ fn stop_measurements(region_uid: i32, (time, rapl): (Instant, Rapl)) -> Sample {
         energy: energy.values().sum(),
         usertime: None,
     }
-}
-
-fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) -> io::Result<()> {
-    serde_json::to_writer(&mut *stream, message).map_err(io::Error::other)?;
-    stream.write_all(b"\n")
 }
 
 fn read_json_line<T: serde::de::DeserializeOwned>(reader: &mut BufReader<UnixStream>) -> io::Result<T> {

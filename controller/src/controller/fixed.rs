@@ -5,9 +5,9 @@ pub struct FixedController {
 }
 
 impl FixedController {
-    pub fn new(capabilities: &Capabilities) -> Self {
+    pub fn new(capabilities: Capabilities) -> Self {
         Self {
-            num_threads: capabilities.max_threads.max(1),
+            num_threads: capabilities.max_threads(),
         }
     }
 }

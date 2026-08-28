@@ -35,7 +35,7 @@ fn main() {
     let y = Matrix::iota(400, 400);
 
     let pid = std::process::id() as i32;
-    let caps = ecodynamic::CapabilitiesResp { pid, max_threads: 4 };
+    let caps = ecodynamic::AppCapabilities::new(pid, 4);
     ecodynamic::EcoIterator::new(1.., caps).unwrap()
         .after_each_iteration(|s, _| println!("Sending sample: {:?}", s))
         .for_each(|(d, i)| {

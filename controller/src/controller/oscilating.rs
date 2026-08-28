@@ -7,8 +7,8 @@ pub struct OscilatingController {
 }
 
 impl OscilatingController {
-    pub fn new(capabilities: &Capabilities) -> Self {
-        let max_threads = capabilities.max_threads.max(1);
+    pub fn new(capabilities: Capabilities) -> Self {
+        let max_threads = capabilities.max_threads();
         Self {
             max_threads,
             num_threads: max_threads,

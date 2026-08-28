@@ -21,8 +21,8 @@ pub struct DeltaSettings {
 }
 
 impl DeltaController {
-    pub fn new(config: &DeltaSettings, capabilities: &Capabilities) -> Self {
-        let max_threads = capabilities.max_threads.max(1);
+    pub fn new(config: &DeltaSettings, capabilities: Capabilities) -> Self {
+        let max_threads = capabilities.max_threads();
         Self {
             letterbox: Letterbox::new(config.letterbox_size),
             filter: config.filter,

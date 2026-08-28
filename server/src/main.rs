@@ -1,49 +1,27 @@
-use std::{
-    collections::HashMap,
-    fs,
-    io::{self, BufRead, BufReader, Write},
-    os::unix::net::{UnixListener, UnixStream},
-    process,
-    sync::{LazyLock, Mutex},
-    thread,
-};
+use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex}, thread};
 
 use clap::{Parser, Subcommand};
-use controller::*;
 use rapl_energy::Rapl;
+
+use controller::*;
+
+static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
+    let rapl = Rapl::new(false);
+    log::trace!("RAPL interface: {:?}", rapl);
+    rapl.map(Mutex::new)
+});
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
     pub once: bool,
-
     /// Idle power draw of the processor.
     #[arg(short('w'), long("idle"), default_value_t = 0.0)]
     pub idle_power: f32,
-
-    /// Enable thread control.
-    #[arg(long("thread-control"))]
-    pub do_thread_control: bool,
-
-    /// Enable thread pinning control.
-    #[arg(long("pinning-control"))]
-    pub do_pinning_control: bool,
-
-    /// Enable power limit control.
-    #[arg(long("power-control"))]
-    pub do_power_control: bool,
-    /// Minimum allowed percentage of the powercap.
-    ///
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 0.1)]
-    pub min_power: f32,
-    /// Maximum allowed percentage of the powercap.
-    ///
-    /// Range: (0,1]
-    #[arg(long, default_value_t = 1.0)]
-    pub max_power: f32,
-
+    /// Controller and hardware capabilities.
+    #[clap(flatten)]
+    pub ctx: ServerCapabilities,
     /// Controller type.
     #[command(subcommand)]
     pub controller: ControllerType,
@@ -72,7 +50,7 @@ pub enum ControllerImpl<'a> {
 }
 
 impl<'a> ControllerImpl<'a> {
-    fn build(args: &'a Args, capabilities: &'a Capabilities) -> Self {
+    fn build(args: &'a Args, capabilities: Capabilities<'a>) -> Self {
         match &args.controller {
             ControllerType::Genetic(settings) => Self::Genetic(GeneticController::new(settings, capabilities)),
             ControllerType::Corridor(settings) => Self::Corridor(CorridorController::new(settings, capabilities)),
@@ -103,12 +81,6 @@ impl<'a> ControllerImpl<'a> {
     }
 }
 
-static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
-    let rapl = Rapl::new(false);
-    log::trace!("RAPL interface: {:?}", rapl);
-    rapl.map(Mutex::new)
-});
-
 fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, ControllerImpl> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
@@ -116,18 +88,10 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
 
     // First message must be a capabilities broadcast from the client
     rdr.read_line(&mut line)?;
-    let app_capabilities: CapabilitiesResp = serde_json::from_str(line.trim_end())
+    let app: AppCapabilities = serde_json::from_str(line.trim_end())
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
-    let capabilities = Capabilities {
-        pid: app_capabilities.pid,
-        max_threads: app_capabilities.max_threads,
-        thread_control: args.do_thread_control,
-        pinning_control: args.do_pinning_control,
-        power_control: args.do_power_control,
-        min_power: args.min_power,
-        max_power: args.max_power,
-    };
-    log::debug!("Client capabilities: {:?}", capabilities);
+    log::debug!("Client capabilities: {:?}", app);
+    let capabilities = Capabilities::new(&app, &args.ctx);
 
     let mut last_thread_count = 0;
 
@@ -163,7 +127,7 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
                     let controller = lbs.entry(request.region_uid)
                         .or_insert_with(|| {
                             log::info!("Generating controller for request {}", request.region_uid);
-                            ControllerImpl::build(&args, &capabilities)
+                            ControllerImpl::build(&args, capabilities)
                         });
 
                     let demand = controller.get_demand();
@@ -266,8 +230,8 @@ fn reset_default_power_limit() {
 fn main() {
     env_logger::init();
 
-    let config = Args::parse();
-    log::trace!("Config: {:?}", config);
+    let args = Args::parse();
+    log::trace!("Args: {args:?}");
 
     // TODO: number of available cores assumed to be 8 for now
     HARDWARE.available_cores.set(8).expect("available_cores initialized twice");
@@ -281,19 +245,19 @@ fn main() {
         process::exit(0);
     }).unwrap();
 
-    if config.once {
+    if args.once {
         let stream = listener.incoming().next().unwrap();
         match stream {
-            Ok(stream) => handle_client(stream, config).unwrap(),
+            Ok(stream) => handle_client(stream, args).unwrap(),
             Err(e) => log::error!("Connection failed: {}", e),
         }
     } else {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    let config_clone = config.clone();
+                    let args = args.clone();
                     thread::spawn(move || {
-                        handle_client(stream, config_clone).unwrap()
+                        handle_client(stream, args).unwrap()
                     });
                 }
                 Err(e) => log::error!("Connection failed: {}", e),
@@ -309,7 +273,6 @@ fn open_socket() -> UnixListener {
         log::warn!("Closing previous socket: {}", LETTERBOX_PATH);
         fs::remove_file(LETTERBOX_PATH).expect("Could not close socket");
     }
-
     log::info!("Creating socket: {}", LETTERBOX_PATH);
     UnixListener::bind(LETTERBOX_PATH).expect("Could not create socket")
 }

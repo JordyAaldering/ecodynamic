@@ -15,7 +15,7 @@ pub struct GeneticController<'a> {
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
     settings: &'a GeneticSettings,
-    capabilities: &'a Capabilities,
+    capabilities: Capabilities<'a>,
     // Debugging metadata
     pub generation: usize,
     pub immigration_was_triggered: bool,
@@ -167,7 +167,7 @@ impl<'a> GeneticController<'a> {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
     /// finding an optimum immediately.
-    pub fn new(settings: &'a GeneticSettings, capabilities: &'a Capabilities) -> GeneticController<'a> {
+    pub fn new(settings: &'a GeneticSettings, capabilities: Capabilities<'a>) -> Self {
         let population = (0..settings.population_size)
             .map(|mut i| {
                 if settings.initial_population_descending {
@@ -181,7 +181,7 @@ impl<'a> GeneticController<'a> {
 
         log::trace!("Init: {:?}", population);
 
-        GeneticController {
+        Self {
             population,
             letterbox: Letterbox::new(settings.population_size),
             immigration_cooldown: settings.immigration_cooldown_generations,
