@@ -1,6 +1,6 @@
 use super::{Gene, lerp};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ThreadGene {
     num_threads: u16,
     max_threads: u16,
@@ -50,7 +50,13 @@ impl Gene for ThreadGene {
     }
 
     fn is_similar_to(&self, other: &Self, _immigration_similarity_threshold: f32) -> bool {
-        self == other
+        self.num_threads == other.num_threads
+    }
+}
+
+impl PartialEq for ThreadGene {
+    fn eq(&self, other: &Self) -> bool {
+        self.num_threads == other.num_threads
     }
 }
 

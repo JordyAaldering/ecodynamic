@@ -11,7 +11,7 @@ pub struct ChromosomeConfig {
     pub max_power: f32,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Chromosome {
     threads: Option<ThreadGene>,
     pinning: Option<PinningGene>,
@@ -131,6 +131,14 @@ impl Chromosome {
         let power_alignment = self.power.as_ref().map(|gene| gene.alignment(energy_preference)).unwrap_or(1.0);
 
         (thread_alignment + power_alignment) / 2.0
+    }
+}
+
+impl PartialEq for Chromosome {
+    fn eq(&self, other: &Self) -> bool {
+        self.threads == other.threads
+            && self.pinning == other.pinning
+            && self.power == other.power
     }
 }
 

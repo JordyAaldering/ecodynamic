@@ -1,6 +1,6 @@
 use super::{Gene, lerp};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct PowerGene {
     powercap: f32,
     min_power: f32,
@@ -48,6 +48,12 @@ impl Gene for PowerGene {
 
     fn is_similar_to(&self, other: &Self, immigration_similarity_threshold: f32) -> bool {
         (self.powercap - other.powercap).abs() <= immigration_similarity_threshold
+    }
+}
+
+impl PartialEq for PowerGene {
+    fn eq(&self, other: &Self) -> bool {
+        self.powercap == other.powercap
     }
 }
 
