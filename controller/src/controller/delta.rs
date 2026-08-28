@@ -36,14 +36,14 @@ impl DeltaController {
 }
 
 impl Controller for DeltaController {
-    fn get_demand(&mut self) -> Demand {
+    fn get_demand(&self) -> Demand {
         Demand {
             num_threads: self.num_threads(),
             powercap_pct: 1.0,
         }
     }
 
-    fn push(&mut self, sample: Sample) {
+    fn push_sample(&mut self, sample: Sample) {
         if let Some(samples) = self.letterbox.push(sample) {
             let score = self.score(samples);
             self.evolve(score);

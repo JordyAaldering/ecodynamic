@@ -18,14 +18,14 @@ impl OscilatingController {
 }
 
 impl Controller for OscilatingController {
-    fn get_demand(&mut self) -> Demand {
+    fn get_demand(&self) -> Demand {
         Demand {
             num_threads: self.num_threads,
             powercap_pct: 1.0,
         }
     }
 
-    fn push(&mut self, _: Sample) {
+    fn push_sample(&mut self, _: Sample) {
         if self.direction == Direction::Ascending {
             self.num_threads = self.num_threads.saturating_add(1);
             if self.num_threads >= self.max_threads {

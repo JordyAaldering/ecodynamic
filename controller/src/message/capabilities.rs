@@ -1,5 +1,15 @@
 use serde::{Deserialize, Serialize};
 
+/// Global system state, shared across all clients and threads.
+pub struct State {
+    /// Track the total number of threads currently in use across all clients.
+    /// This can be used to steer configurations towards efficiently sharing available resources.
+    pub thread_utilization: u16,
+    /// Track the currently configured power limit.
+    /// This can be used to steer configurations towards using similar power limits.
+    pub powercap_uw: u64,
+}
+
 #[derive(Clone, Copy)]
 pub struct Capabilities<'a> {
     app: &'a AppCapabilities,

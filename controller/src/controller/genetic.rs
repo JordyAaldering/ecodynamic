@@ -142,12 +142,17 @@ impl Controller for GeneticController<'_> {
     ///
     /// TODO: might want to extract the mutating behaviour to a new function `bookkeeping`
     /// Currently, this is only necessary for chromosomes to track the global thread count.
-    fn get_demand(&mut self) -> Demand {
-        let chromosome = &mut self.population[self.letterbox.len()];
+    fn get_demand(&self) -> Demand {
+        let chromosome = &self.population[self.letterbox.len()];
         chromosome.get_demand(self.capabilities)
     }
 
-    fn push(&mut self, sample: Sample) {
+    fn store_state(&mut self, state: State) {
+        let chromosome = &mut self.population[self.letterbox.len()];
+        chromosome.store_state(state);
+    }
+
+    fn push_sample(&mut self, sample: Sample) {
         if let Some(samples) = self.letterbox.push(sample) {
             let scores = self.score(samples);
             self.evolve(scores);

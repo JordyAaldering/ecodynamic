@@ -1,4 +1,4 @@
-use crate::{Capabilities, Demand};
+use crate::{Capabilities, Demand, State};
 
 use super::gene::*;
 
@@ -44,11 +44,15 @@ impl Chromosome {
         Chromosome::lerp(capabilities, t)
     }
 
-    pub fn get_demand(&mut self, capabilities: Capabilities) -> Demand {
+    pub fn get_demand(&self, capabilities: Capabilities) -> Demand {
         Demand {
-            num_threads: self.threads.as_mut().map_or(capabilities.max_threads(), |gene| gene.get_num_threads()),
+            num_threads: self.threads.as_ref().map_or(capabilities.max_threads(), |gene| gene.get_num_threads()),
             powercap_pct: self.power.as_ref().map_or(capabilities.max_power(), |gene| gene.get_powercap()),
         }
+    }
+
+    pub fn store_state(&mut self, state: State) {
+        self.threads.as_mut().map(|gene| gene.store_state(state));
     }
 
     pub fn crossover(&self, other: &Self, immigration_similarity_threshold: f32) -> Self {

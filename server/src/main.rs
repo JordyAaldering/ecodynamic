@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex}, thread};
+use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex, atomic}, thread};
 
 use clap::{Parser, Subcommand};
 use rapl_energy::Rapl;
@@ -10,6 +10,8 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     log::trace!("RAPL interface: {:?}", rapl);
     rapl.map(Mutex::new)
 });
+
+static THREAD_UTILIZATION: atomic::AtomicU16 = atomic::AtomicU16::new(0);
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
@@ -60,7 +62,7 @@ impl<'a> ControllerImpl<'a> {
         }
     }
 
-    fn get_demand(&mut self) -> Demand {
+    fn get_demand(&self) -> Demand {
         match self {
             Self::Genetic(controller) => controller.get_demand(),
             Self::Corridor(controller) => controller.get_demand(),
@@ -70,13 +72,23 @@ impl<'a> ControllerImpl<'a> {
         }
     }
 
+    fn store_state(&mut self, state: State) {
+        match self {
+            Self::Genetic(controller) => controller.store_state(state),
+            Self::Corridor(controller) => controller.store_state(state),
+            Self::Delta(controller) => controller.store_state(state),
+            Self::Oscilating(controller) => controller.store_state(state),
+            Self::Fixed(controller) => controller.store_state(state),
+        }
+    }
+
     fn push(&mut self, sample: Sample) {
         match self {
-            Self::Genetic(controller) => controller.push(sample),
-            Self::Corridor(controller) => controller.push(sample),
-            Self::Delta(controller) => controller.push(sample),
-            Self::Oscilating(controller) => controller.push(sample),
-            Self::Fixed(controller) => controller.push(sample),
+            Self::Genetic(controller) => controller.push_sample(sample),
+            Self::Corridor(controller) => controller.push_sample(sample),
+            Self::Delta(controller) => controller.push_sample(sample),
+            Self::Oscilating(controller) => controller.push_sample(sample),
+            Self::Fixed(controller) => controller.push_sample(sample),
         }
     }
 }
@@ -111,7 +123,7 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
 
                     // The region is over, so we can subtract the thread count from the global count
                     // Must be run before push_sample, because the controller tracks the number of threads in use
-                    STATE.remove_threads(last_thread_count);
+                    THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
                     last_thread_count = 0;
 
                     // Subtract idle energy
@@ -131,17 +143,21 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                         });
 
                     let demand = controller.get_demand();
+                    controller.store_state(State {
+                        thread_utilization: THREAD_UTILIZATION.load(atomic::Ordering::Relaxed),
+                        powercap_uw: 0,
+                    });
                     log::trace!("PUT: {:?}", demand);
 
                     // Must be run after get_demand, because the controller tracks the number of threads in use
-                    STATE.add_threads(demand.num_threads);
+                    THREAD_UTILIZATION.fetch_add(demand.num_threads, atomic::Ordering::Relaxed);
                     last_thread_count = demand.num_threads;
 
                     set_power_limit(demand.powercap_pct);
                     write_json_line(&mut stream, &demand)?;
                 } else {
                     // If the program aborted, it could be that the thread count was not yet reset
-                    STATE.remove_threads(last_thread_count);
+                    THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
 
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -151,7 +167,7 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
             }
             Err(e) => {
                 // If the program aborted, it could be that the thread count was not yet reset
-                STATE.remove_threads(last_thread_count);
+                THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
 
                 log::info!("Client disconnected");
                 return Err(e);

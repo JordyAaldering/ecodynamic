@@ -10,10 +10,15 @@ pub use fixed::*;
 pub use genetic::*;
 pub use oscilating::*;
 
-use crate::{Demand, Sample};
+use crate::{Demand, Sample, State};
 
 pub trait Controller {
-    fn get_demand(&mut self) -> Demand;
+    /// Get the current configuration recommendation.
+    fn get_demand(&self) -> Demand;
 
-    fn push(&mut self, sample: Sample);
+    /// Remember the current state of the system.
+    fn store_state(&mut self, _state: State) { }
+
+    /// Push the results of the previous configuration.
+    fn push_sample(&mut self, sample: Sample);
 }

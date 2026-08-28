@@ -1,4 +1,4 @@
-use crate::STATE;
+use crate::State;
 
 use super::{Gene, lerp};
 
@@ -28,9 +28,12 @@ impl ThreadGene {
         self
     }
 
-    pub fn get_num_threads(&mut self) -> u16 {
-        self.utilization = Some(STATE.thread_utilization());
+    pub fn get_num_threads(&self) -> u16 {
         self.num_threads
+    }
+
+    pub fn store_state(&mut self, state: State) {
+        self.utilization = Some(state.thread_utilization);
     }
 
     pub fn alignment(&self, hw_available_threads: u16) -> f32 {
