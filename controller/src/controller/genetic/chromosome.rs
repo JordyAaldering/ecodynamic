@@ -44,11 +44,12 @@ impl Chromosome {
         Chromosome::lerp(capabilities, t)
     }
 
-    pub fn get_demand(&self, capabilities: Capabilities) -> Demand {
-        Demand {
-            num_threads: self.threads.as_ref().map_or(capabilities.max_threads(), |gene| gene.get_num_threads()),
-            powercap_pct: self.power.as_ref().map_or(capabilities.max_power(), |gene| gene.get_powercap()),
-        }
+    pub fn get_demand(&self) -> Demand {
+        let num_threads = self.threads.as_ref().map(|gene| gene.get_num_threads());
+        let powercap_pct = self.power.as_ref().map(|gene| gene.get_powercap());
+        Demand::new()
+            .with_threads(num_threads)
+            .with_powercap(powercap_pct)
     }
 
     pub fn store_state(&mut self, state: State) {

@@ -35,30 +35,28 @@ pub struct AppCapabilities {
 #[derive(Clone, Debug, clap::Parser)]
 pub struct ServerCapabilities {
     /// Describes the importance of optimising for energy efficiency over runtime performance.
-    /// A value of 1 means that only energy efficiency is optimised for, while a value of 0 means that only runtime performance is optimised for.
-    ///
-    /// Range: [0,1]
+    /// A value of 1 means that only energy efficiency is optimised for, while
+    /// a value of 0 means that only runtime performance is optimised for.
     #[clap(short('a'), long, default_value_t = 0.9)]
     energy_preference: f32,
 
+    /// Enable thread count control.
     #[clap(long)]
     thread_control: bool,
 
+    /// Enable thread placement control.
     #[clap(long)]
     pinning_control: bool,
 
+    /// Enable power limiting control.
     #[clap(long)]
     power_control: bool,
 
-    /// Minimum allowed percentage of the powercap.
-    ///
-    /// Range: (0,1]
+    /// Minimum allowed fraction of the maximum power limit.
     #[clap(long, default_value_t = 0.1)]
     min_power: f32,
 
-    /// Maximum allowed percentage of the powercap.
-    ///
-    /// Range: (0,1]
+    /// Maximum allowed fraction of the maximum power limit.
     #[clap(long, default_value_t = 1.0)]
     max_power: f32,
 }
@@ -98,16 +96,6 @@ impl AppCapabilities {
     pub fn new(pid: i32, max_threads: u16) -> Self {
         assert!(max_threads > 0);
         Self { pid, max_threads }
-    }
-}
-
-impl ServerCapabilities {
-    pub fn new(energy_preference: f32, thread_control: bool, pinning_control: bool, power_control: bool, min_power: f32, max_power: f32) -> Self {
-        assert!(energy_preference >= 0.0 && energy_preference <= 1.0);
-        assert!(min_power > 0.0 && min_power <= 1.0);
-        assert!(max_power > 0.0 && max_power <= 1.0);
-        assert!(min_power <= max_power);
-        Self { energy_preference, thread_control, pinning_control, power_control, min_power, max_power }
     }
 }
 

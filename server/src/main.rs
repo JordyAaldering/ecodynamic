@@ -150,10 +150,12 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                     log::trace!("PUT: {:?}", demand);
 
                     // Must be run after get_demand, because the controller tracks the number of threads in use
-                    THREAD_UTILIZATION.fetch_add(demand.num_threads, atomic::Ordering::Relaxed);
-                    last_thread_count = demand.num_threads;
+                    let num_threads = demand.num_threads(capabilities.max_threads());
+                    THREAD_UTILIZATION.fetch_add(num_threads, atomic::Ordering::Relaxed);
+                    last_thread_count = num_threads;
 
-                    set_power_limit(demand.powercap_pct);
+                    let powercap = demand.powercap(capabilities.max_power_uw());
+                    set_powercap(powercap);
                     write_json_line(&mut stream, &demand)?;
                 } else {
                     // If the program aborted, it could be that the thread count was not yet reset
@@ -199,7 +201,7 @@ fn find_max_power_uw() -> u64 {
     }
 }
 
-fn set_power_limit(power_limit_pct: f32) {
+fn set_powercap(powercap: u64) {
     if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
         for package in &mut rapl.packages {
             if package.constraints.is_empty() {
@@ -208,23 +210,18 @@ fn set_power_limit(power_limit_pct: f32) {
             }
 
             let long_term = &mut package.constraints[0];
-            let max_power_uw = long_term.max_power_uw.expect("long_term constraint must have max_power_uw");
-            let limit = (max_power_uw as f32 * power_limit_pct) as u64;
 
-            log::trace!("Setting power limit for {} to {}uW ({}% of max)",
-                long_term.name.as_deref().unwrap_or("<unknown>"), limit, power_limit_pct * 100.0);
-            if let Err(e) = long_term.set_power_limit_uw(limit) {
+            log::trace!("Setting power limit for {} to {}uW",
+                long_term.name.as_deref().unwrap_or("<unknown>"), powercap);
+            if let Err(e) = long_term.set_power_limit_uw(powercap) {
                 log::error!("Failed to set power limit for {}: {}",
                     long_term.name.as_deref().unwrap_or("<unknown>"), e);
             }
 
             if let Some(short_term) = package.constraints.get_mut(1) {
-                let max_power_uw = short_term.max_power_uw.map_or(max_power_uw, |c| if c > 0 { c } else { max_power_uw });
-                let limit = (max_power_uw as f32 * power_limit_pct) as u64;
-
-                log::trace!("Setting power limit for {} to {}uW ({}% of max)",
-                    short_term.name.as_deref().unwrap_or("<unknown>"), limit, power_limit_pct * 100.0);
-                if let Err(e) = short_term.set_power_limit_uw(limit) {
+                log::trace!("Setting power limit for {} to {}uW",
+                    short_term.name.as_deref().unwrap_or("<unknown>"), powercap);
+                if let Err(e) = short_term.set_power_limit_uw(powercap) {
                     log::error!("Failed to set power limit for {}: {}",
                         short_term.name.as_deref().unwrap_or("<unknown>"), e);
                 }

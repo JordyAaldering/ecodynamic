@@ -14,10 +14,8 @@ impl FixedController {
 
 impl Controller for FixedController {
     fn get_demand(&self) -> Demand {
-        Demand {
-            num_threads: self.num_threads,
-            powercap_pct: 1.0,
-        }
+        Demand::new()
+            .with_threads(Some(self.num_threads))
     }
 
     fn push_sample(&mut self, _: Sample) {}

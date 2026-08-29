@@ -144,7 +144,7 @@ impl Controller for GeneticController<'_> {
     /// Currently, this is only necessary for chromosomes to track the global thread count.
     fn get_demand(&self) -> Demand {
         let chromosome = &self.population[self.letterbox.len()];
-        chromosome.get_demand(self.capabilities)
+        chromosome.get_demand()
     }
 
     fn store_state(&mut self, state: State) {
