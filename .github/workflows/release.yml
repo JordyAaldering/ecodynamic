@@ -23,4 +23,5 @@ jobs:
         release_name: Release
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: target/release/server
+        asset_name: ecodynamic
         overwrite: true
