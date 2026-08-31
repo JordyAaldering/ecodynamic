@@ -136,12 +136,6 @@ impl Controller for GeneticController<'_> {
     /// Use the number of samples to determine the current index into the population.
     /// The population is reset every `population_size` iterations.
     /// In between, we want every chromosome to be applied once.
-    ///
-    /// NOTE: This function is `mut`, because the ThreadGene reads the current
-    /// thread utilization from the global state and stores it.
-    ///
-    /// TODO: might want to extract the mutating behaviour to a new function `bookkeeping`
-    /// Currently, this is only necessary for chromosomes to track the global thread count.
     fn get_demand(&self) -> Demand {
         let chromosome = &self.population[self.letterbox.len()];
         chromosome.get_demand()
