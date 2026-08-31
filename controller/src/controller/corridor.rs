@@ -6,7 +6,7 @@ const MIN_STEPSIZE: f32 = 0.1;
 
 pub struct CorridorController {
     letterbox: Letterbox,
-    filter: FilterFunction,
+    filter: ScoreSelection,
     max_threads: u16,
     cur_threads: f32,
     step_size: f32,
@@ -20,7 +20,7 @@ pub struct CorridorSettings {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
     #[arg(long, default_value = "frequency-dist")]
-    pub filter: FilterFunction,
+    pub filter: ScoreSelection,
 }
 
 impl CorridorController {

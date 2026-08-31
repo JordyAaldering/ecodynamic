@@ -4,7 +4,7 @@ use crate::*;
 
 pub struct DeltaController {
     letterbox: Letterbox,
-    filter: FilterFunction,
+    filter: ScoreSelection,
     max_threads: u16,
     cur_threads: f32,
     step_size: f32,
@@ -17,7 +17,7 @@ pub struct DeltaSettings {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
     #[arg(long, default_value = "median")]
-    pub filter: FilterFunction,
+    pub filter: ScoreSelection,
 }
 
 impl DeltaController {

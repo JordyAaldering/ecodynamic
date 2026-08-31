@@ -1,19 +1,18 @@
 #[derive(Copy, Clone, Debug, clap::ValueEnum)]
-pub enum FilterFunction {
+pub enum ScoreSelection {
     Min,
     Average,
     Median,
     FrequencyDist,
 }
 
-impl FilterFunction {
+impl ScoreSelection {
     pub fn select(self, mut scores: Vec<f32>) -> f32 {
-        use FilterFunction::*;
         match self {
-            Min => min(scores),
-            Average => average(scores),
-            Median => median(&mut scores),
-            FrequencyDist => frequency_dist(scores, 5),
+            Self::Min => min(scores),
+            Self::Average => average(scores),
+            Self::Median => median(&mut scores),
+            Self::FrequencyDist => frequency_dist(scores, 5),
         }
     }
 }
