@@ -16,18 +16,18 @@ pub struct Chromosome {
 impl Chromosome {
     pub fn rand(capabilities: Capabilities) -> Self {
         Self {
-            threads: capabilities.thread_control().then(|| ThreadCount::new(capabilities.max_threads()).rand()),
+            threads: capabilities.thread_control().then(|| ThreadCount::rand(capabilities.max_threads())),
             pinning: capabilities.pinning_control().then(|| PinningStrategy::Free),
-            power: capabilities.power_control().then(|| Powercap::new(capabilities.min_power(), capabilities.max_power()).rand()),
+            power: capabilities.power_control().then(|| Powercap::rand(capabilities.min_power(), capabilities.max_power())),
             prev_score: None,
         }
     }
 
     pub fn lerp(capabilities: Capabilities, t: f32) -> Self {
         Self {
-            threads: capabilities.thread_control().then(|| ThreadCount::new(capabilities.max_threads()).lerp(t)),
+            threads: capabilities.thread_control().then(|| ThreadCount::lerp(capabilities.max_threads(), t)),
             pinning: capabilities.pinning_control().then(|| PinningStrategy::Free),
-            power: capabilities.power_control().then(|| Powercap::new(capabilities.min_power(), capabilities.max_power()).lerp(t)),
+            power: capabilities.power_control().then(|| Powercap::lerp(capabilities.min_power(), capabilities.max_power(), t)),
             prev_score: None,
         }
     }

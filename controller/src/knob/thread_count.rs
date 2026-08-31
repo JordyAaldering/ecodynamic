@@ -11,23 +11,20 @@ pub struct ThreadCount {
 }
 
 impl ThreadCount {
-    pub fn new(max_threads: u16) -> Self {
-        let max_threads = max_threads.max(1);
+    pub fn rand(max_threads: u16) -> Self {
         Self {
-            num_threads: max_threads,
+            num_threads: rand::random_range(1..=max_threads),
             max_threads,
             utilization: None,
         }
     }
 
-    pub fn rand(mut self) -> Self {
-        self.num_threads = rand::random_range(1..=self.max_threads);
-        self
-    }
-
-    pub fn lerp(mut self, t: f32) -> Self {
-        self.num_threads = lerp(1.0, self.max_threads as f32, t).round() as u16;
-        self
+    pub fn lerp(max_threads: u16, t: f32) -> Self {
+        Self {
+            num_threads: lerp(1.0, max_threads as f32, t).round() as u16,
+            max_threads,
+            utilization: None,
+        }
     }
 
     pub fn get_num_threads(&self) -> u16 {

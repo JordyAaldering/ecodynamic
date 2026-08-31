@@ -8,18 +8,20 @@ pub struct Powercap {
 }
 
 impl Powercap {
-    pub fn new(min_power: f32, max_power: f32) -> Self {
-        Self { powercap: max_power, min_power, max_power }
+    pub fn rand(min_power: f32, max_power: f32) -> Self {
+        Self {
+            powercap: rand::random_range(min_power..=max_power),
+            min_power,
+            max_power,
+        }
     }
 
-    pub fn rand(mut self) -> Self {
-        self.powercap = rand::random_range(self.min_power..=self.max_power);
-        self
-    }
-
-    pub fn lerp(mut self, t: f32) -> Self {
-        self.powercap = lerp(self.min_power, self.max_power, t);
-        self
+    pub fn lerp(min_power: f32, max_power: f32, t: f32) -> Self {
+        Self {
+            powercap: lerp(min_power, max_power, t),
+            min_power,
+            max_power,
+        }
     }
 
     pub fn get_powercap(&self) -> f32 {
