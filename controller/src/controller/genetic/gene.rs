@@ -2,9 +2,9 @@ mod threads;
 mod pinning;
 mod power;
 
-pub use threads::ThreadGene;
-pub use pinning::PinningGene;
-pub use power::PowerGene;
+//pub use threads::ThreadGene;
+//pub use pinning::PinningGene;
+//pub use power::PowerGene;
 
 pub trait Gene {
     fn crossover(&self, other: &Self, t: f32) -> Self;
@@ -26,8 +26,4 @@ impl<G: Gene> Gene for Option<G> {
     fn similarity(&self, other: &Self) -> f32 {
         self.as_ref().map(|gene| gene.similarity(other.as_ref().unwrap())).unwrap_or(1.0)
     }
-}
-
-fn lerp(min: f32, max: f32, t: f32) -> f32 {
-	min + (max - min) * t
 }

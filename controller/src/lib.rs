@@ -1,12 +1,14 @@
 mod controller;
 mod direction;
 mod filter_functions;
+mod knob;
 mod letterbox;
 mod message;
 
 pub use controller::*;
 pub(crate) use direction::*;
 pub(crate) use filter_functions::*;
+pub(crate) use knob::*;
 pub(crate) use letterbox::*;
 pub use message::*;
 
