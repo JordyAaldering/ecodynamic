@@ -171,6 +171,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpufreq-epp"
+version = "0.1.0"
+source = "git+https://github.com/JordyAaldering/cpufreq-epp.git#f62b14f52e6423333511aa65d95a2d0c1780b387"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "ctrlc"
 version = "3.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -539,6 +547,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "controller",
+ "cpufreq-epp",
  "ctrlc",
  "env_logger",
  "log",
