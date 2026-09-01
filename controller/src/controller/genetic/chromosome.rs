@@ -20,7 +20,7 @@ impl Chromosome {
             threads: capabilities.thread_control().then(|| ThreadCount::rand(capabilities.max_threads())),
             pinning: capabilities.pinning_control().then(|| PinningStrategy::Free),
             power: capabilities.power_control().then(|| Powercap::rand(capabilities.min_power(), capabilities.max_power())),
-            epp: capabilities.cpufreq_epp_control().then(|| CPUFreqEpp { epp: rand::random_range(0..=255) }),
+            epp: capabilities.cpufreq_epp_control().then(|| CPUFreqEpp::rand(0, 255)),
             prev_score: None,
         }
     }
