@@ -8,11 +8,14 @@ pub struct Demand {
     /// Recommemded system-wide CPU power limit.
     #[serde(skip)]
     powercap_pct: Option<f32>,
+    /// Recommemded system-wide CPU energy--power preference.
+    #[serde(skip)]
+    cpufreq_epp: Option<u8>,
 }
 
 impl Demand {
     pub fn new() -> Self {
-        Self { num_threads: None, powercap_pct: None }
+        Self { num_threads: None, powercap_pct: None, cpufreq_epp: None }
     }
 
     pub fn with_threads(mut self, num_threads: Option<u16>) -> Self {
@@ -35,5 +38,14 @@ impl Demand {
         } else {
             max_power_uw
         }
+    }
+
+    pub fn with_cpufreq_epp(mut self, cpufreq_epp: Option<u8>) -> Self {
+        self.cpufreq_epp = cpufreq_epp;
+        self
+    }
+
+    pub fn cpufreq_epp(&self) -> Option<u8> {
+        self.cpufreq_epp
     }
 }

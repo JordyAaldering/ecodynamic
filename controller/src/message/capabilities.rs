@@ -49,8 +49,16 @@ pub struct ServerCapabilities {
     pinning_control: bool,
 
     /// Enable power limiting control.
+    ///
+    /// Should not be used in combination with [ServerCapabilities::cpufreq_epp_control].
     #[clap(long)]
     power_control: bool,
+
+    /// Enable CPUFreq EPP control.
+    ///
+    /// Should not be used in combination with [ServerCapabilities::power_control].
+    #[clap(long)]
+    cpufreq_epp_control: bool,
 
     /// Minimum allowed fraction of the maximum power limit.
     #[clap(long, default_value_t = 0.1)]
@@ -86,6 +94,7 @@ impl<'a> Capabilities<'a> {
     pub fn thread_control(&self) -> bool { self.ctx.thread_control }
     pub fn pinning_control(&self) -> bool { self.ctx.pinning_control }
     pub fn power_control(&self) -> bool { self.ctx.power_control }
+    pub fn cpufreq_epp_control(&self) -> bool { self.ctx.cpufreq_epp_control }
     pub fn min_power(&self) -> f32 { self.ctx.min_power }
     pub fn max_power(&self) -> f32 { self.ctx.max_power }
     pub fn available_threads(&self) -> u16 { self.hw.available_threads }

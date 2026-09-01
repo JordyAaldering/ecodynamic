@@ -1,4 +1,4 @@
-use crate::{PinningStrategy, Powercap, ThreadCount};
+use crate::{CPUFreqEpp, PinningStrategy, Powercap, ThreadCount};
 
 pub trait Gene {
     fn crossover(&self, other: &Self, t: f32) -> Self;
@@ -97,5 +97,25 @@ impl Gene for Powercap {
 
     fn similarity(&self, other: &Self) -> f32 {
         (self.powercap - other.powercap).abs()
+    }
+}
+
+impl Gene for CPUFreqEpp {
+    fn crossover(&self, other: &Self, t: f32) -> Self {
+        let epp = (self.epp as f32 * t + other.epp as f32 * (1.0 - t)).round() as u8;
+        Self { epp }
+    }
+
+    fn mutate(&mut self, strength: f32) -> f32 {
+        if rand::random_bool(strength as f64) {
+            let delta = rand::random_range(1..=5);
+            self.epp = if rand::random_bool(0.5) { self.epp.saturating_sub(delta) } else { self.epp.saturating_add(delta) };
+            return 0.0;
+        }
+        return 1.0;
+    }
+
+    fn similarity(&self, other: &Self) -> f32 {
+        (self.epp == other.epp).into()
     }
 }

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex, atomic}, thread};
 
 use clap::{Parser, Subcommand};
+use cpufreq_epp::CPUFreq;
 use rapl_energy::Rapl;
 
 use controller::*;
@@ -105,6 +106,15 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
     log::debug!("Client capabilities: {:?}", app);
     let capabilities = Capabilities::new(&app, &args.ctx, &hw);
 
+    let mut cpufreq = if capabilities.cpufreq_epp_control() {
+        Some(CPUFreq::new().map_err(|e| io::Error::new(
+            io::ErrorKind::Other,
+            format!("Failed to initialize CPUFreq: {e}"),
+        ))?)
+    } else {
+        None
+    };
+
     let mut last_thread_count = 0;
 
     loop {
@@ -156,6 +166,14 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
 
                     let powercap = demand.powercap(capabilities.max_power_uw());
                     set_powercap(powercap);
+
+                    if let Some(epp) = demand.cpufreq_epp() {
+                        log::info!("Setting CPUFreq EPP to {}", epp);
+                        if let Err(e) = cpufreq.as_mut().unwrap().set_epp(cpufreq_epp::EPP::Custom(epp)) {
+                            log::error!("Failed to set CPUFreq EPP: {}", e);
+                        }
+                    }
+
                     write_json_line(&mut stream, &demand)?;
                 } else {
                     // If the program aborted, it could be that the thread count was not yet reset
