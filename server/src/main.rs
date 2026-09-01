@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::net::{UnixListener, UnixStream}, process, sync::{LazyLock, Mutex, atomic}, thread};
+use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::{fs::PermissionsExt, net::{UnixListener, UnixStream}}, process, sync::{LazyLock, Mutex, atomic}, thread};
 
 use clap::{Parser, Subcommand};
 use cpufreq_epp::CPUFreq;
@@ -307,7 +307,11 @@ fn open_socket() -> UnixListener {
         fs::remove_file(LETTERBOX_PATH).expect("Could not close socket");
     }
     log::info!("Creating socket: {}", LETTERBOX_PATH);
-    UnixListener::bind(LETTERBOX_PATH).expect("Could not create socket")
+    let listener = UnixListener::bind(LETTERBOX_PATH)
+        .expect("Could not create socket");
+    fs::set_permissions(LETTERBOX_PATH, fs::Permissions::from_mode(0o666))
+        .expect("Failed to set socket permissions");
+    listener
 }
 
 fn close_socket() {
