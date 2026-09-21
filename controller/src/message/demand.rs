@@ -23,6 +23,12 @@ impl Demand {
         self
     }
 
+    pub fn ensure_threads(&mut self, max_theads: u16) {
+        if self.num_threads.is_none() {
+            self.num_threads = Some(max_theads);
+        }
+    }
+
     pub fn num_threads(&self, max_theads: u16) -> u16 {
         self.num_threads.unwrap_or(max_theads)
     }

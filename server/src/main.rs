@@ -152,11 +152,12 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                             ControllerImpl::build(&args, capabilities)
                         });
 
-                    let demand = controller.get_demand();
+                    let mut demand = controller.get_demand();
                     controller.store_state(State {
                         thread_utilization: THREAD_UTILIZATION.load(atomic::Ordering::Relaxed),
                         powercap_uw: 0,
                     });
+                    demand.ensure_threads(capabilities.max_threads());
                     log::trace!("PUT: {:?}", demand);
 
                     // Must be run after get_demand, because the controller tracks the number of threads in use
