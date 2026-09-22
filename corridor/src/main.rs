@@ -39,47 +39,28 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
     log::debug!("Client capabilities: {capabilities:?}");
 
     loop {
-        line.clear();
-        match rdr.read_line(&mut line) {
-            Ok(0) => {
-                log::info!("Client disconnected");
+        match socket::response(&mut rdr)? {
+            socket::Response::Request(request) => {
+                let controller = lbs.entry(request.region_uid)
+                    .or_insert_with(|| {
+                        log::info!("Generating controller for request {}", request.region_uid);
+                        CorridorController::new(&args.config, &capabilities)
+                    });
+
+                let demand = controller.get_demand();
+                socket::write(&mut stream, &demand)?;
+            }
+            socket::Response::Sample(mut sample) => {
+                // Subtract idle energy
+                sample.energy -= args.idle_power * sample.runtime;
+                sample.energy = sample.energy.max(f32::EPSILON);
+
+                lbs.get_mut(&sample.region_uid)
+                    .expect("Received sample for region that has not yet been instantiated")
+                    .push_sample(sample);
+            }
+            socket::Response::Disconnect => {
                 return Ok(());
-            }
-            Ok(_) => {
-                log::trace!("Received message: `{}`", line.trim_end());
-                // Note that we must check for <Sample> first, because otherwise the message may be seen as a <Request>,
-                // which happens when the request only contains the region, in which case the extra fields get ignored.
-                if let Ok(mut sample) = serde_json::from_str::<Sample>(&line) {
-                    log::trace!("POST: {:?}", sample);
-
-                    // Subtract idle energy
-                    sample.energy -= args.idle_power * sample.runtime;
-                    sample.energy = sample.energy.max(f32::EPSILON);
-
-                    lbs.get_mut(&sample.region_uid)
-                        .expect("Received sample for region that has not yet been instantiated")
-                        .push_sample(sample);
-                } else if let Ok(request) = serde_json::from_str::<Request>(&line) {
-                    log::trace!("GET: {:?}", request.region_uid);
-
-                    let controller = lbs.entry(request.region_uid)
-                        .or_insert_with(|| {
-                            log::info!("Generating controller for request {}", request.region_uid);
-                            CorridorController::new(&args.config, &capabilities)
-                        });
-
-                    let demand = controller.get_demand();
-                    socket::write(&mut stream, &demand)?;
-                } else {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("Invalid JSON message: {line}"))
-                    )
-                }
-            }
-            Err(e) => {
-                log::info!("Client disconnected");
-                return Err(e);
             }
         }
     }

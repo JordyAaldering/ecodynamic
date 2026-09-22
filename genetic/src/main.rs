@@ -61,72 +61,54 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
     let mut last_thread_count = 0;
 
     loop {
-        line.clear();
-        match rdr.read_line(&mut line) {
-            Ok(0) => {
-                log::info!("Client disconnected");
+        match socket::response(&mut rdr) {
+            Ok(socket::Response::Request(request)) => {
+                let controller = lbs.entry(request.region_uid)
+                    .or_insert_with(|| {
+                        log::info!("Generating controller for request {}", request.region_uid);
+                        GeneticController::new(&args.config, capabilities)
+                    });
+
+                let mut demand = controller.get_demand();
+                controller.store_state(State {
+                    thread_utilization: THREAD_UTILIZATION.load(atomic::Ordering::Relaxed),
+                    powercap_uw: 0,
+                });
+                demand.ensure_threads(capabilities.max_threads());
+
+                // Must be run after get_demand, because the controller tracks the number of threads in use
+                let num_threads = demand.num_threads(capabilities.max_threads());
+                THREAD_UTILIZATION.fetch_add(num_threads, atomic::Ordering::Relaxed);
+                last_thread_count = num_threads;
+
+                let powercap = demand.powercap(capabilities.max_power_uw());
+                set_powercap(powercap);
+
+                socket::write(&mut stream, &demand)?;
+            }
+            Ok(socket::Response::Sample(mut sample)) => {
+                // The region is over, so we can subtract the thread count from the global count
+                // Must be run before push_sample, because the controller tracks the number of threads in use
+                THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
+                last_thread_count = 0;
+
+                // Subtract idle energy
+                sample.energy -= args.idle_power * sample.runtime;
+                sample.energy = sample.energy.max(f32::EPSILON);
+
+                lbs.get_mut(&sample.region_uid)
+                    .expect("Received sample for region that has not yet been instantiated")
+                    .push_sample(sample);
+            }
+            Ok(socket::Response::Disconnect) => {
+                // Before exiting, ensure the thread utilization is reset
+                THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
                 return Ok(());
             }
-            Ok(_) => {
-                log::trace!("Received message: `{}`", line.trim_end());
-                // Note that we must check for <Sample> first, because otherwise the message may be seen as a <Request>,
-                // which happens when the request only contains the region, in which case the extra fields get ignored.
-                if let Ok(mut sample) = serde_json::from_str::<Sample>(&line) {
-                    log::trace!("POST: {:?}", sample);
-
-                    // The region is over, so we can subtract the thread count from the global count
-                    // Must be run before push_sample, because the controller tracks the number of threads in use
-                    THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
-                    last_thread_count = 0;
-
-                    // Subtract idle energy
-                    sample.energy -= args.idle_power * sample.runtime;
-                    sample.energy = sample.energy.max(f32::EPSILON);
-
-                    lbs.get_mut(&sample.region_uid)
-                        .expect("Received sample for region that has not yet been instantiated")
-                        .push_sample(sample);
-                } else if let Ok(request) = serde_json::from_str::<Request>(&line) {
-                    log::trace!("GET: {:?}", request.region_uid);
-
-                    let controller = lbs.entry(request.region_uid)
-                        .or_insert_with(|| {
-                            log::info!("Generating controller for request {}", request.region_uid);
-                            GeneticController::new(&args.config, capabilities)
-                        });
-
-                    let mut demand = controller.get_demand();
-                    controller.store_state(State {
-                        thread_utilization: THREAD_UTILIZATION.load(atomic::Ordering::Relaxed),
-                        powercap_uw: 0,
-                    });
-                    demand.ensure_threads(capabilities.max_threads());
-
-                    // Must be run after get_demand, because the controller tracks the number of threads in use
-                    let num_threads = demand.num_threads(capabilities.max_threads());
-                    THREAD_UTILIZATION.fetch_add(num_threads, atomic::Ordering::Relaxed);
-                    last_thread_count = num_threads;
-
-                    let powercap = demand.powercap(capabilities.max_power_uw());
-                    set_powercap(powercap);
-
-                    socket::write(&mut stream, &demand)?;
-                } else {
-                    // If the program aborted, it could be that the thread count was not yet reset
-                    THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
-
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("Invalid JSON message: {line}"))
-                    )
-                }
-            }
             Err(e) => {
-                // If the program aborted, it could be that the thread count was not yet reset
+                // Before exiting, ensure the thread utilization is reset
                 THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
-
-                log::info!("Client disconnected");
-                return Err(e);
+                return Err(e)
             }
         }
     }
