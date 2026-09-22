@@ -18,5 +18,5 @@ impl FixedController {
         Demand::new().with_threads(Some(self.num_threads))
     }
 
-    pub fn push_sample(&mut self, _: Sample) {}
+    pub fn push(&mut self, _: Sample) {}
 }

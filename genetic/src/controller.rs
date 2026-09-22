@@ -142,7 +142,7 @@ impl<'a> GeneticController<'a> {
         chromosome.store_state(state);
     }
 
-    pub fn push_sample(&mut self, sample: Sample) {
+    pub fn push(&mut self, sample: Sample) {
         if let Some(samples) = self.letterbox.push(sample) {
             let scores = self.score(samples);
             self.evolve(scores);

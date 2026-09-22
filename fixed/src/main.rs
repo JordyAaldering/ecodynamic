@@ -19,9 +19,6 @@ pub struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
     pub once: bool,
-    /// Idle power draw of the processor.
-    #[arg(short('w'), long("idle"), default_value_t = 0.0)]
-    pub idle_power: f32,
 }
 
 fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
@@ -43,14 +40,10 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
                 let demand = controller.get_demand();
                 socket::write(&mut stream, &demand)?;
             }
-            socket::Response::Sample(mut sample) => {
-                // Subtract idle energy
-                sample.energy -= args.idle_power * sample.runtime;
-                sample.energy = sample.energy.max(f32::EPSILON);
-
+            socket::Response::Sample(sample) => {
                 lbs.get_mut(&sample.region_uid)
                     .expect("Received sample for region that has not yet been instantiated")
-                    .push_sample(sample);
+                    .push(sample);
             }
             socket::Response::Disconnect => {
                 return Ok(());

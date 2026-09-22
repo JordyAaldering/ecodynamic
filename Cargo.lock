@@ -161,8 +161,6 @@ dependencies = [
  "ecodynamic-core",
  "env_logger",
  "log",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -226,8 +224,6 @@ dependencies = [
  "ecodynamic-core",
  "env_logger",
  "log",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -310,8 +306,6 @@ dependencies = [
  "ecodynamic-core",
  "env_logger",
  "log",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -326,8 +320,6 @@ dependencies = [
  "log",
  "rand",
  "rapl-energy",
- "serde",
- "serde_json",
 ]
 
 [[package]]

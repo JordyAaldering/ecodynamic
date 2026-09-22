@@ -39,7 +39,7 @@ impl DeltaController {
             .with_threads(Some(self.num_threads()))
     }
 
-    pub fn push_sample(&mut self, sample: Sample) {
+    pub fn push(&mut self, sample: Sample) {
         if let Some(samples) = self.letterbox.push(sample) {
             let score = self.score(samples);
             self.evolve(score);

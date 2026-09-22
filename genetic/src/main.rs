@@ -93,7 +93,7 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
 
                 lbs.get_mut(&sample.region_uid)
                     .expect("Received sample for region that has not yet been instantiated")
-                    .push_sample(sample);
+                    .push(sample);
             }
             Ok(socket::Response::Disconnect) => {
                 // Before exiting, ensure the thread utilization is reset
