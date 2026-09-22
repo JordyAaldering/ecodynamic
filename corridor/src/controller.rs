@@ -5,8 +5,8 @@ use crate::*;
 
 const MIN_STEPSIZE: f32 = 0.1;
 
-/// Corridor-based thread controller.
-pub struct Controller {
+/// Corridor-based, runtime-optimising thread controller.
+pub struct CorridorController {
     letterbox: Letterbox,
     max_threads: u16,
     cur_threads: f32,
@@ -22,7 +22,7 @@ pub struct Config {
     pub letterbox_size: usize,
 }
 
-impl Controller {
+impl CorridorController {
     pub fn new(config: &Config, capabilities: &AppCapabilities) -> Self {
         let max_threads = capabilities.max_threads;
         Self {
@@ -37,7 +37,7 @@ impl Controller {
     }
 }
 
-impl Controller {
+impl CorridorController {
     pub fn get_demand(&self) -> Demand {
         Demand::new()
             .with_threads(Some(self.num_threads()))

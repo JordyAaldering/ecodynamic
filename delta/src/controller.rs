@@ -2,9 +2,9 @@ use clap::Parser;
 
 use crate::*;
 
+/// Delta-based, energy-optimising thread controller.
 pub struct DeltaController {
     letterbox: Letterbox,
-    filter: ScoreSelection,
     max_threads: u16,
     cur_threads: f32,
     step_size: f32,
@@ -13,19 +13,16 @@ pub struct DeltaController {
 }
 
 #[derive(Clone, Debug, Parser)]
-pub struct DeltaSettings {
+pub struct Config {
     #[arg(short('s'), long, default_value_t = 20)]
     pub letterbox_size: usize,
-    #[arg(long, default_value = "median")]
-    pub filter: ScoreSelection,
 }
 
 impl DeltaController {
-    pub fn new(config: &DeltaSettings, capabilities: Capabilities) -> Self {
-        let max_threads = capabilities.max_threads();
+    pub fn new(config: &Config, capabilities: &AppCapabilities) -> Self {
+        let max_threads = capabilities.max_threads;
         Self {
             letterbox: Letterbox::new(config.letterbox_size),
-            filter: config.filter,
             max_threads,
             cur_threads: max_threads as f32,
             step_size: 0.5,
@@ -35,24 +32,22 @@ impl DeltaController {
     }
 }
 
-impl Controller for DeltaController {
-    fn get_demand(&self) -> Demand {
+impl DeltaController {
+    pub fn get_demand(&self) -> Demand {
         Demand::new()
             .with_threads(Some(self.num_threads()))
     }
 
-    fn push_sample(&mut self, sample: Sample) {
+    pub fn push_sample(&mut self, sample: Sample) {
         if let Some(samples) = self.letterbox.push(sample) {
             let score = self.score(samples);
             self.evolve(score);
         }
     }
-}
 
-impl DeltaController {
     fn score(&self, samples: Vec<Sample>) -> f32 {
         let scores = samples.into_iter().map(|s| s.energy).collect();
-        self.filter.select(scores)
+        median(scores)
     }
 
     fn evolve(&mut self, tn: f32) {
@@ -83,5 +78,15 @@ impl DeltaController {
 
     fn num_threads(&self) -> u16 {
         (self.cur_threads.round() as u16).clamp(1, self.max_threads)
+    }
+}
+
+pub fn median(mut xs: Vec<f32>) -> f32 {
+    xs.sort_unstable_by(f32::total_cmp);
+    let n = xs.len();
+    if n % 2 == 0 {
+        (xs[n / 2 - 1] + xs[n / 2]) * 0.5
+    } else {
+        xs[n / 2]
     }
 }

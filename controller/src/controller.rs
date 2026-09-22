@@ -1,9 +1,7 @@
-mod delta;
 mod fixed;
 mod genetic;
 mod oscilating;
 
-pub use delta::*;
 pub use fixed::*;
 pub use genetic::*;
 pub use oscilating::*;

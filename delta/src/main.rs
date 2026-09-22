@@ -32,7 +32,7 @@ pub struct Args {
 }
 
 fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
-    let mut lbs: HashMap<i32, CorridorController> = HashMap::new();
+    let mut lbs: HashMap<i32, DeltaController> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
     let mut line = String::new();
 
@@ -69,7 +69,7 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
                     let controller = lbs.entry(request.region_uid)
                         .or_insert_with(|| {
                             log::info!("Generating controller for request {}", request.region_uid);
-                            CorridorController::new(&args.config, &capabilities)
+                            DeltaController::new(&args.config, &capabilities)
                         });
 
                     let demand = controller.get_demand();
