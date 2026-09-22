@@ -1,7 +1,9 @@
 [workspace]
 resolver = "3"
 members = [
-    "controller",
     "ecodynamic",
+    "controller",
     "server",
+    "ecocore",
+    "corridor",
 ]

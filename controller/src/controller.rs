@@ -1,10 +1,8 @@
-mod corridor;
 mod delta;
 mod fixed;
 mod genetic;
 mod oscilating;
 
-pub use corridor::*;
 pub use delta::*;
 pub use fixed::*;
 pub use genetic::*;

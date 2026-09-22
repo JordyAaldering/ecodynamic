@@ -24,7 +24,7 @@ name = "montecarlo"
 path = "src/montecarlo.rs"
 
 [dependencies]
-clap = { version = "4.6.6", features = ["derive"] }
+clap = { version = "4.6.7", features = ["derive"] }
 controller = { path = "../controller" }
 env_logger = "0.11.11"
 log = "0.4.33"
