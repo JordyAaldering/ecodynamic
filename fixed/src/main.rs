@@ -2,7 +2,7 @@ mod controller;
 
 use std::{
     collections::HashMap,
-    io::{self, BufRead, BufReader, Write},
+    io::{self, BufRead, BufReader},
     os::unix::net::UnixStream,
     process,
     thread,
@@ -66,9 +66,7 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
                         });
 
                     let demand = controller.get_demand();
-                    log::trace!("PUT: {:?}", demand);
-
-                    write_json_line(&mut stream, &demand)?;
+                    socket::write(&mut stream, &demand)?;
                 } else {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -82,11 +80,6 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
             }
         }
     }
-}
-
-fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) -> io::Result<()> {
-    serde_json::to_writer(&mut *stream, message).map_err(io::Error::other)?;
-    stream.write_all(b"\n")
 }
 
 fn main() -> io::Result<()> {

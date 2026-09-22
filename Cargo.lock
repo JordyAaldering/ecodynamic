@@ -267,6 +267,8 @@ dependencies = [
  "clap",
  "ecodynamic-api",
  "log",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

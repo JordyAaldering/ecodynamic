@@ -6,7 +6,7 @@ pub(crate) mod knob;
 
 use std::{
     collections::HashMap,
-    io::{self, BufRead, BufReader, Write},
+    io::{self, BufRead, BufReader},
     os::unix::net::UnixStream,
     process,
     sync::{LazyLock, Mutex, atomic},
@@ -101,7 +101,6 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                         powercap_uw: 0,
                     });
                     demand.ensure_threads(capabilities.max_threads());
-                    log::trace!("PUT: {:?}", demand);
 
                     // Must be run after get_demand, because the controller tracks the number of threads in use
                     let num_threads = demand.num_threads(capabilities.max_threads());
@@ -111,7 +110,7 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                     let powercap = demand.powercap(capabilities.max_power_uw());
                     set_powercap(powercap);
 
-                    write_json_line(&mut stream, &demand)?;
+                    socket::write(&mut stream, &demand)?;
                 } else {
                     // If the program aborted, it could be that the thread count was not yet reset
                     THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
@@ -131,11 +130,6 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
             }
         }
     }
-}
-
-fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) -> io::Result<()> {
-    serde_json::to_writer(&mut *stream, message).map_err(io::Error::other)?;
-    stream.write_all(b"\n")
 }
 
 fn find_max_power_uw() -> u64 {
