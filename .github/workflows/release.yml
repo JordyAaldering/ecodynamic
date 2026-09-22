@@ -14,14 +14,14 @@ jobs:
       contents: write
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
     - name: Build
-      run: cargo build --release
+      run: cargo build --release --package genetic
     - name: Release
       uses: svenstaro/upload-release-action@v2
       with:
         release_name: Release
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: target/release/server
-        asset_name: ecodynamic
+        file: target/release/genetic
+        asset_name: genetic
         overwrite: true
