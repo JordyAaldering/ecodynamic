@@ -3,7 +3,7 @@ use std::{
     os::unix::net::UnixStream,
 };
 
-use controller::{AppCapabilities, LETTERBOX_PATH};
+use ecocore::{AppCapabilities, LETTERBOX_PATH};
 
 pub struct Connection {
     stream: UnixStream,

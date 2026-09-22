@@ -1,11 +1,6 @@
-mod chromosome;
-mod gene;
-
 use clap::Parser;
 
-use chromosome::Chromosome;
-
-use crate::*;
+use crate::{chromosome::Chromosome, *};
 
 pub struct GeneticController<'a> {
     letterbox: Letterbox,
@@ -14,7 +9,7 @@ pub struct GeneticController<'a> {
     sort_descending: bool,
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
-    settings: &'a GeneticSettings,
+    settings: &'a Config,
     capabilities: Capabilities<'a>,
     // Debugging metadata
     pub generation: usize,
@@ -22,7 +17,7 @@ pub struct GeneticController<'a> {
 }
 
 #[derive(Clone, Debug, Parser)]
-pub struct GeneticSettings {
+pub struct Config {
     #[arg(short('s'), long, default_value_t = 20)]
     pub population_size: usize,
 
@@ -132,33 +127,31 @@ pub struct GeneticSettings {
     pub immigration_cooldown_generations: usize,
 }
 
-impl Controller for GeneticController<'_> {
+impl<'a> GeneticController<'a> {
     /// Use the number of samples to determine the current index into the population.
     /// The population is reset every `population_size` iterations.
     /// In between, we want every chromosome to be applied once.
-    fn get_demand(&self) -> Demand {
+    pub fn get_demand(&self) -> Demand {
         let chromosome = &self.population[self.letterbox.len()];
         chromosome.get_demand()
     }
 
-    fn store_state(&mut self, state: State) {
+    pub fn store_state(&mut self, state: State) {
         let chromosome = &mut self.population[self.letterbox.len()];
         chromosome.store_state(state);
     }
 
-    fn push_sample(&mut self, sample: Sample) {
+    pub fn push_sample(&mut self, sample: Sample) {
         if let Some(samples) = self.letterbox.push(sample) {
             let scores = self.score(samples);
             self.evolve(scores);
         }
     }
-}
 
-impl<'a> GeneticController<'a> {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
     /// finding an optimum immediately.
-    pub fn new(settings: &'a GeneticSettings, capabilities: Capabilities<'a>) -> Self {
+    pub fn new(settings: &'a Config, capabilities: Capabilities<'a>) -> Self {
         let population = (0..settings.population_size)
             .map(|mut i| {
                 if settings.initial_population_descending {
@@ -195,7 +188,7 @@ impl<'a> GeneticController<'a> {
         self.generation += 1;
         self.immigration_was_triggered = false;
 
-        let GeneticSettings {
+        let Config {
             population_size,
             survival_rate,
             survival_rate_decay,

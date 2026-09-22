@@ -152,16 +152,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
-name = "controller"
-version = "0.1.0"
-dependencies = [
- "clap",
- "log",
- "rand",
- "serde",
-]
-
-[[package]]
 name = "corridor"
 version = "0.1.0"
 dependencies = [
@@ -181,14 +171,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ca28b0ae3115b884660db4118d803791fd6756b6e88f39c0f3f7859060d7566"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "cpufreq-epp"
-version = "0.1.0"
-source = "git+https://github.com/JordyAaldering/cpufreq-epp.git#f62b14f52e6423333511aa65d95a2d0c1780b387"
-dependencies = [
- "thiserror",
 ]
 
 [[package]]
@@ -270,7 +252,7 @@ dependencies = [
 name = "ecodynamic"
 version = "0.1.0"
 dependencies = [
- "controller",
+ "ecocore",
  "rapl-energy",
  "serde",
  "serde_json",
@@ -314,6 +296,21 @@ dependencies = [
  "ecocore",
  "env_logger",
  "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "genetic"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "ctrlc",
+ "ecocore",
+ "env_logger",
+ "log",
+ "rand",
+ "rapl-energy",
  "serde",
  "serde_json",
 ]
@@ -587,21 +584,6 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
-]
-
-[[package]]
-name = "server"
-version = "0.1.0"
-dependencies = [
- "clap",
- "controller",
- "cpufreq-epp",
- "ctrlc",
- "env_logger",
- "log",
- "rapl-energy",
- "serde",
- "serde_json",
 ]
 
 [[package]]

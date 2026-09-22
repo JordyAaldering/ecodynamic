@@ -1,3 +1,4 @@
+use ecocore::AppCapabilities;
 use serde::{Deserialize, Serialize};
 
 /// Global system state, shared across all clients and threads.
@@ -15,18 +16,6 @@ pub struct Capabilities<'a> {
     app: &'a AppCapabilities,
     ctx: &'a ServerCapabilities,
     hw: &'a HardwareCapabilities,
-}
-
-/// Represents the capabilities of an application.
-///
-/// These are provided by the application as JSON.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct AppCapabilities {
-    /// The process ID of the application.
-    pid: i32,
-
-    /// Maximum number of threads the application may use.
-    max_threads: u16,
 }
 
 /// Represents the configuration of the resource controller and the capabilities of the hardware.
@@ -53,12 +42,6 @@ pub struct ServerCapabilities {
     /// Should not be used in combination with [ServerCapabilities::cpufreq_epp_control].
     #[clap(long)]
     power_control: bool,
-
-    /// Enable CPUFreq EPP control.
-    ///
-    /// Should not be used in combination with [ServerCapabilities::power_control].
-    #[clap(long)]
-    cpufreq_epp_control: bool,
 
     /// Minimum allowed fraction of the maximum power limit.
     #[clap(long, default_value_t = 0.1)]
@@ -94,22 +77,15 @@ impl<'a> Capabilities<'a> {
     pub fn thread_control(&self) -> bool { self.ctx.thread_control }
     pub fn pinning_control(&self) -> bool { self.ctx.pinning_control }
     pub fn power_control(&self) -> bool { self.ctx.power_control }
-    pub fn cpufreq_epp_control(&self) -> bool { self.ctx.cpufreq_epp_control }
     pub fn min_power(&self) -> f32 { self.ctx.min_power }
     pub fn max_power(&self) -> f32 { self.ctx.max_power }
     pub fn available_threads(&self) -> u16 { self.hw.available_threads }
     pub fn max_power_uw(&self) -> u64 { self.hw.max_power_uw }
 }
 
-impl AppCapabilities {
-    pub fn new(pid: i32, max_threads: u16) -> Self {
-        assert!(max_threads > 0);
-        Self { pid, max_threads }
-    }
-}
-
 impl HardwareCapabilities {
     pub fn new(available_threads: u16, max_power_uw: u64) -> Self {
+        assert!(available_threads > 0);
         Self { available_threads, max_power_uw }
     }
 }

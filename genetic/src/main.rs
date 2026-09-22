@@ -1,10 +1,26 @@
-use std::{collections::HashMap, fs, io::{self, BufRead, BufReader, Write}, os::unix::{fs::PermissionsExt, net::{UnixListener, UnixStream}}, process, sync::{LazyLock, Mutex, atomic}, thread};
+mod capabilities;
+mod chromosome;
+mod controller;
+mod gene;
+pub(crate) mod knob;
 
-use clap::{Parser, Subcommand};
-use cpufreq_epp::CPUFreq;
+use std::{
+    collections::HashMap,
+    fs,
+    io::{self, BufRead, BufReader, Write},
+    os::unix::{fs::PermissionsExt, net::{UnixListener, UnixStream}},
+    process,
+    sync::{LazyLock, Mutex, atomic},
+    thread,
+};
+
+use clap::Parser;
+use ecocore::*;
 use rapl_energy::Rapl;
 
 use controller::*;
+
+use crate::capabilities::{Capabilities, HardwareCapabilities, ServerCapabilities, State};
 
 static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     let rapl = Rapl::new(false);
@@ -26,48 +42,12 @@ pub struct Args {
     #[clap(flatten)]
     pub ctx: ServerCapabilities,
     /// Controller type.
-    #[command(subcommand)]
-    pub controller: ControllerType,
-}
-
-#[derive(Clone, Debug, Subcommand)]
-pub enum ControllerType {
-    /// Genetic algorithm approach.
-    Genetic(GeneticSettings),
-}
-
-pub enum ControllerImpl<'a> {
-    Genetic(GeneticController<'a>),
-}
-
-impl<'a> ControllerImpl<'a> {
-    fn build(args: &'a Args, capabilities: Capabilities<'a>) -> Self {
-        match &args.controller {
-            ControllerType::Genetic(settings) => Self::Genetic(GeneticController::new(settings, capabilities)),
-        }
-    }
-
-    fn get_demand(&self) -> Demand {
-        match self {
-            Self::Genetic(controller) => controller.get_demand(),
-        }
-    }
-
-    fn store_state(&mut self, state: State) {
-        match self {
-            Self::Genetic(controller) => controller.store_state(state),
-        }
-    }
-
-    fn push(&mut self, sample: Sample) {
-        match self {
-            Self::Genetic(controller) => controller.push_sample(sample),
-        }
-    }
+    #[command(flatten)]
+    pub config: Config,
 }
 
 fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -> io::Result<()> {
-    let mut lbs: HashMap<i32, ControllerImpl> = HashMap::new();
+    let mut lbs: HashMap<i32, GeneticController> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
     let mut line = String::new();
 
@@ -77,15 +57,6 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
     log::debug!("Client capabilities: {:?}", app);
     let capabilities = Capabilities::new(&app, &args.ctx, &hw);
-
-    let mut cpufreq = if capabilities.cpufreq_epp_control() {
-        Some(CPUFreq::new().map_err(|e| io::Error::new(
-            io::ErrorKind::Other,
-            format!("Failed to initialize CPUFreq: {e}"),
-        ))?)
-    } else {
-        None
-    };
 
     let mut last_thread_count = 0;
 
@@ -114,14 +85,14 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
 
                     lbs.get_mut(&sample.region_uid)
                         .expect("Received sample for region that has not yet been instantiated")
-                        .push(sample);
+                        .push_sample(sample);
                 } else if let Ok(request) = serde_json::from_str::<Request>(&line) {
                     log::trace!("GET: {:?}", request.region_uid);
 
                     let controller = lbs.entry(request.region_uid)
                         .or_insert_with(|| {
                             log::info!("Generating controller for request {}", request.region_uid);
-                            ControllerImpl::build(&args, capabilities)
+                            GeneticController::new(&args.config, capabilities)
                         });
 
                     let mut demand = controller.get_demand();
@@ -139,13 +110,6 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
 
                     let powercap = demand.powercap(capabilities.max_power_uw());
                     set_powercap(powercap);
-
-                    if let Some(epp) = demand.cpufreq_epp() {
-                        log::info!("Setting CPUFreq EPP to {}", epp);
-                        if let Err(e) = cpufreq.as_mut().unwrap().set_epp(cpufreq_epp::EPP::Custom(epp)) {
-                            log::error!("Failed to set CPUFreq EPP: {}", e);
-                        }
-                    }
 
                     write_json_line(&mut stream, &demand)?;
                 } else {

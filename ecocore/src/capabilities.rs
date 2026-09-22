@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AppCapabilities {
     /// The process ID of the application.
-    pid: i32,
+    pub pid: i32,
 
     /// Maximum number of threads the application may use.
     pub max_threads: u16,

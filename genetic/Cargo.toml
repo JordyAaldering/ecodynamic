@@ -1,15 +1,15 @@
 [package]
-name = "server"
+name = "genetic"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
-controller = { path = "../controller" }
-cpufreq-epp = { git = "https://github.com/JordyAaldering/cpufreq-epp.git", version = "0.1.0" }
+ecocore = { path = "../ecocore" }
 ctrlc = "3.5.2"
 env_logger = "0.11.11"
 log = "0.4.34"
+rand = "0.10.3"
 rapl-energy = "0.2.2"
 serde = "1.0.229"
 serde_json = "1.0.151"
