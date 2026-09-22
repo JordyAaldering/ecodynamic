@@ -6,7 +6,7 @@ pub(crate) mod knob;
 
 use std::{
     collections::HashMap,
-    io::{self, BufRead, BufReader},
+    io::{self, BufReader},
     os::unix::net::UnixStream,
     process,
     sync::{LazyLock, Mutex, atomic},
@@ -14,7 +14,6 @@ use std::{
 };
 
 use clap::Parser;
-use ecodynamic_api::*;
 use ecodynamic_core::*;
 use rapl_energy::Rapl;
 
@@ -49,23 +48,19 @@ pub struct Args {
 fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -> io::Result<()> {
     let mut lbs: HashMap<i32, GeneticController> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
-    let mut line = String::new();
 
-    // First message must be a capabilities broadcast from the client
-    rdr.read_line(&mut line)?;
-    let app: AppCapabilities = serde_json::from_str(line.trim_end())
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
-    log::debug!("Client capabilities: {:?}", app);
+    // First message must be the application's capabilities
+    let app = socket::accept(&mut rdr)?;
     let capabilities = Capabilities::new(&app, &args.ctx, &hw);
 
     let mut last_thread_count = 0;
 
     loop {
-        match socket::response(&mut rdr) {
+        match socket::read(&mut rdr) {
             Ok(socket::Response::Request(request)) => {
                 let controller = lbs.entry(request.region_uid)
                     .or_insert_with(|| {
-                        log::info!("Generating controller for request {}", request.region_uid);
+                        log::debug!("Generating controller for request {}", request.region_uid);
                         GeneticController::new(&args.config, capabilities)
                     });
 
@@ -120,7 +115,7 @@ fn find_max_power_uw() -> u64 {
             .and_then(|p| p.constraints.first())
             .and_then(|c| c.max_power_uw);
         if let Some(max_power_uw) = max_power_uw {
-            log::info!("Max power: {}uW", max_power_uw);
+            log::debug!("Max power: {}uW", max_power_uw);
             max_power_uw
         } else {
             log::warn!("RAPL does not provide max_power_uw; using 0uW");

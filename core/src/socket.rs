@@ -18,22 +18,34 @@ pub fn open() -> io::Result<UnixListener> {
         log::warn!("Closing previous socket: {LETTERBOX_PATH}");
         fs::remove_file(LETTERBOX_PATH)?;
     }
-    log::info!("Creating socket: {LETTERBOX_PATH}");
+    log::debug!("Creating socket: {LETTERBOX_PATH}");
     let listener = UnixListener::bind(LETTERBOX_PATH)?;
     fs::set_permissions(LETTERBOX_PATH, fs::Permissions::from_mode(0o666))?;
     Ok(listener)
 }
 
 pub fn close() -> io::Result<()> {
-    log::info!("Closing socket: {LETTERBOX_PATH}");
+    log::debug!("Closing socket: {LETTERBOX_PATH}");
     fs::remove_file(LETTERBOX_PATH)
 }
 
-pub fn response(rdr: &mut BufReader<UnixStream>) -> io::Result<Response> {
+pub fn accept(rdr: &mut BufReader<UnixStream>) -> io::Result<AppCapabilities> {
+    let mut line = String::new();
+    rdr.read_line(&mut line)?;
+    let capabilities: AppCapabilities = serde_json::from_str(line.trim_end())
+        .map_err(|e| io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("Invalid JSON capabilities: {e}"),
+        ))?;
+    log::debug!("Client accepted: {capabilities:?}");
+    Ok(capabilities)
+}
+
+pub fn read(rdr: &mut BufReader<UnixStream>) -> io::Result<Response> {
     let mut line = String::new();
     let bytes_read = rdr.read_line(&mut line)?;
     if bytes_read == 0 {
-        log::info!("Client disconnected");
+        log::debug!("Client disconnected");
         Ok(Response::Disconnect)
     } else {
         // Note that we must check for `Sample` first, as a `Request` may be seen as a `Sample` if it only contains `region`.
@@ -46,8 +58,8 @@ pub fn response(rdr: &mut BufReader<UnixStream>) -> io::Result<Response> {
         } else {
             Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("Invalid JSON response: {line}"))
-            )
+                format!("Invalid JSON response: {line}"),
+            ))
         }
     }
 }

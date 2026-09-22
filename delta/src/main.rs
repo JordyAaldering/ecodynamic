@@ -2,14 +2,13 @@ mod controller;
 
 use std::{
     collections::HashMap,
-    io::{self, BufRead, BufReader},
+    io::{self, BufReader},
     os::unix::net::UnixStream,
     process,
     thread,
 };
 
 use clap::Parser;
-use ecodynamic_api::*;
 use ecodynamic_core::*;
 
 use crate::controller::{DeltaController, Config};
@@ -31,19 +30,15 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
     let mut lbs: HashMap<i32, DeltaController> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
 
-    // First message must be a capabilities broadcast from the client
-    let mut line = String::new();
-    rdr.read_line(&mut line)?;
-    let capabilities: AppCapabilities = serde_json::from_str(line.trim_end())
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Expected capabilities: {e}")))?;
-    log::debug!("Client capabilities: {capabilities:?}");
+    // First message must be the application's capabilities
+    let capabilities = socket::accept(&mut rdr)?;
 
     loop {
-        match socket::response(&mut rdr)? {
+        match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
                 let controller = lbs.entry(request.region_uid)
                     .or_insert_with(|| {
-                        log::info!("Generating controller for request {}", request.region_uid);
+                        log::debug!("Generating controller for request {}", request.region_uid);
                         DeltaController::new(&args.config, &capabilities)
                     });
 

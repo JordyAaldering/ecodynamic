@@ -247,7 +247,7 @@ impl<'a> GeneticController<'a> {
 
             if do_immigration {
                 self.immigration_was_triggered = true;
-                log::info!("Generation {}: immigration triggered, replacing population with spread individuals", self.generation);
+                log::debug!("Generation {}: immigration triggered, replacing population with spread individuals", self.generation);
 
                 self.effective_survival_rate = survival_rate;
                 self.effective_mutation_rate = mutation_rate;
@@ -374,7 +374,7 @@ fn update_prev_scores_and_check_for_shift(
     let mad = median(&mut deviations);
     let ratio = median_delta / (mad + f32::EPSILON);
     if ratio >= robustness_threshold {
-        log::info!("Shift detected: change={:.2}%, robustness={:.2}", median_delta * 100.0, ratio);
+        log::debug!("Shift detected: change={:.2}%, robustness={:.2}", median_delta * 100.0, ratio);
         true
     } else {
         false
