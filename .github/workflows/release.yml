@@ -16,7 +16,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
     - name: Build
-      run: cargo build --release --package genetic
+      run: cargo build --release
     - name: Release
       uses: svenstaro/upload-release-action@v2
       with:
