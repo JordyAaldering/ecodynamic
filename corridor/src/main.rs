@@ -75,22 +75,14 @@ fn main() -> io::Result<()> {
     }).unwrap();
 
     if args.once {
-        let stream = listener.incoming().next().unwrap();
-        match stream {
-            Ok(stream) => handle_client(stream, args)?,
-            Err(e) => log::error!("Connection failed: {}", e),
-        }
+        let stream = listener.incoming().next().unwrap()?;
+        handle_client(stream, args)?;
     } else {
-        for stream in listener.incoming() {
-            match stream {
-                Ok(stream) => {
-                    let args = args.clone();
-                    thread::spawn(move || {
-                        handle_client(stream, args).unwrap()
-                    });
-                }
-                Err(e) => log::error!("Connection failed: {}", e),
-            }
+        for stream in listener.incoming().map_while(Result::ok) {
+            let args = args.clone();
+            thread::spawn(move || {
+                handle_client(stream, args).unwrap()
+            });
         }
     }
 
