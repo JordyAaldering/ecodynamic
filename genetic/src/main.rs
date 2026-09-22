@@ -6,9 +6,8 @@ pub(crate) mod knob;
 
 use std::{
     collections::HashMap,
-    fs,
     io::{self, BufRead, BufReader, Write},
-    os::unix::{fs::PermissionsExt, net::{UnixListener, UnixStream}},
+    os::unix::net::UnixStream,
     process,
     sync::{LazyLock, Mutex, atomic},
     thread,
@@ -207,11 +206,12 @@ fn main() {
     let max_power_uw = find_max_power_uw();
     let hw = HardwareCapabilities::new(available_threads, max_power_uw);
 
-    let listener = open_socket();
+    let listener = socket::open();
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(|| {
-        close_socket();
+        reset_default_power_limit();
+        socket::close();
         process::exit(0);
     }).unwrap();
 
@@ -236,24 +236,6 @@ fn main() {
         }
     }
 
-    close_socket();
-}
-
-fn open_socket() -> UnixListener {
-    if fs::metadata(LETTERBOX_PATH).is_ok() {
-        log::warn!("Closing previous socket: {}", LETTERBOX_PATH);
-        fs::remove_file(LETTERBOX_PATH).expect("Could not close socket");
-    }
-    log::info!("Creating socket: {}", LETTERBOX_PATH);
-    let listener = UnixListener::bind(LETTERBOX_PATH)
-        .expect("Could not create socket");
-    fs::set_permissions(LETTERBOX_PATH, fs::Permissions::from_mode(0o666))
-        .expect("Failed to set socket permissions");
-    listener
-}
-
-fn close_socket() {
     reset_default_power_limit();
-    log::info!("Closing socket: {}", LETTERBOX_PATH);
-    fs::remove_file(LETTERBOX_PATH).expect("Could not close socket");
+    socket::close();
 }
