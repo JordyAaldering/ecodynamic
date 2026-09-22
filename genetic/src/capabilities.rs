@@ -7,6 +7,7 @@ pub struct State {
     pub thread_utilization: u16,
     /// Track the currently configured power limit.
     /// This can be used to steer configurations towards using similar power limits.
+    #[allow(unused)]
     pub powercap_uw: u64,
 }
 

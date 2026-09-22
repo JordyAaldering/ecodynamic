@@ -1,3 +1,5 @@
+use std::ops;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Direction {
     Ascending,
@@ -14,7 +16,7 @@ impl From<bool> for Direction {
     }
 }
 
-impl std::ops::Not for Direction {
+impl ops::Not for Direction {
     type Output = Direction;
 
     fn not(self) -> Direction {
@@ -25,7 +27,7 @@ impl std::ops::Not for Direction {
     }
 }
 
-impl std::ops::Mul<i32> for Direction {
+impl ops::Mul<i32> for Direction {
     type Output = i32;
 
     fn mul(self, rhs: i32) -> i32 {
@@ -36,7 +38,7 @@ impl std::ops::Mul<i32> for Direction {
     }
 }
 
-impl std::ops::Mul<f32> for Direction {
+impl ops::Mul<f32> for Direction {
     type Output = f32;
 
     fn mul(self, rhs: f32) -> f32 {

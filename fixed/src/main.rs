@@ -12,7 +12,7 @@ use std::{
 use clap::Parser;
 use ecodynamic_api::*;
 
-use crate::{controller::FixedController};
+use crate::controller::FixedController;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {

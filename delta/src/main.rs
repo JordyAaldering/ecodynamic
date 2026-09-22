@@ -1,5 +1,4 @@
 mod controller;
-mod direction;
 
 use std::{
     collections::HashMap,
@@ -14,10 +13,7 @@ use clap::Parser;
 use ecodynamic_api::*;
 use ecodynamic_core::*;
 
-use crate::{
-    controller::*,
-    direction::*,
-};
+use crate::controller::{DeltaController, Config};
 
 #[derive(Clone, Debug, Parser)]
 pub struct Args {
