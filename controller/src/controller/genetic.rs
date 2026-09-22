@@ -400,3 +400,13 @@ fn relative_score_spread(xs: &[f32]) -> f32 {
         .collect();
     median(&mut relative_devs)
 }
+
+fn median(xs: &mut Vec<f32>) -> f32 {
+    xs.sort_unstable_by(f32::total_cmp);
+    let n = xs.len();
+    if n % 2 == 0 {
+        (xs[n / 2 - 1] + xs[n / 2]) * 0.5
+    } else {
+        xs[n / 2]
+    }
+}

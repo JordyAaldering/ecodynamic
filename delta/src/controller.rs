@@ -81,7 +81,7 @@ impl DeltaController {
     }
 }
 
-pub fn median(mut xs: Vec<f32>) -> f32 {
+fn median(mut xs: Vec<f32>) -> f32 {
     xs.sort_unstable_by(f32::total_cmp);
     let n = xs.len();
     if n % 2 == 0 {
