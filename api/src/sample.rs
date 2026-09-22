@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Sample {
-    /// A unique identifier of the parallel region we are controlling.
+    /// A unique identifier of the parallel task we are controlling.
     pub region_uid: i32,
     /// Total energy consumption of the previous iteration.
     pub energy: f32,

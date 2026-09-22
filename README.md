@@ -17,6 +17,7 @@ In addition, this enables more complicated communication patterns in the future,
 
 - `api`: the communication protocol between the controller and applications.
 - `core`: internal logic shared between controllers.
+- `ecodynamic`: Rust library for some convenience functions for communicating with a controller.
 - `delta`: delta-based, energy-optimising thread controller.
 - `corridor`: corridor-based, runtime-optimising thread controller.
 - `genetic`: genetic algorithm, EDT-optimising, thread and powercap controller.

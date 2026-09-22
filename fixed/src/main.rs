@@ -14,14 +14,14 @@ use ecodynamic_core::*;
 
 use crate::controller::FixedController;
 
-#[derive(Clone, Debug, Parser)]
+#[derive(Parser)]
 pub struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
     pub once: bool,
 }
 
-fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
+fn handle_client(mut stream: UnixStream) -> io::Result<()> {
     let mut lbs: HashMap<i32, FixedController> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
 
@@ -42,7 +42,7 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
             }
             socket::Response::Sample(sample) => {
                 lbs.get_mut(&sample.region_uid)
-                    .expect("Received sample for region that has not yet been instantiated")
+                    .expect("Received sample for a task that has not yet been instantiated")
                     .push(sample);
             }
             socket::Response::Disconnect => {
@@ -56,7 +56,6 @@ fn main() -> io::Result<()> {
     env_logger::init();
 
     let args = Args::parse();
-    log::trace!("Args: {args:?}");
 
     let listener = socket::open()?;
 
@@ -68,14 +67,13 @@ fn main() -> io::Result<()> {
 
     if args.once {
         let stream = listener.incoming().next().unwrap()?;
-        handle_client(stream, args)?
+        handle_client(stream)?
     } else {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    let args = args.clone();
                     thread::spawn(move || {
-                        handle_client(stream, args).unwrap()
+                        handle_client(stream).unwrap()
                     });
                 }
                 Err(e) => log::error!("Connection failed: {}", e),

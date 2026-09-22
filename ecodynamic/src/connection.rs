@@ -13,7 +13,7 @@ pub struct Connection {
 impl Connection {
     pub fn connect(max_threads: u16) -> io::Result<Self> {
         let pid = std::process::id() as i32;
-        let capabilities = AppCapabilities::new(pid, max_threads);
+        let capabilities = AppCapabilities { pid, max_threads };
 
         let mut stream = UnixStream::connect(LETTERBOX_PATH)?;
         let reader = BufReader::new(stream.try_clone()?);

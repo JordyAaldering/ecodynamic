@@ -29,7 +29,7 @@ static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
 
 static THREAD_UTILIZATION: atomic::AtomicU16 = atomic::AtomicU16::new(0);
 
-#[derive(Clone, Debug, Parser)]
+#[derive(Clone, Parser)]
 pub struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
@@ -82,7 +82,7 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                 socket::write(&mut stream, &demand)?;
             }
             Ok(socket::Response::Sample(mut sample)) => {
-                // The region is over, so we can subtract the thread count from the global count
+                // The task is over, so we can subtract the thread count from the global count
                 // Must be run before push_sample, because the controller tracks the number of threads in use
                 THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
                 last_thread_count = 0;
@@ -92,7 +92,7 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                 sample.energy = sample.energy.max(f32::EPSILON);
 
                 lbs.get_mut(&sample.region_uid)
-                    .expect("Received sample for region that has not yet been instantiated")
+                    .expect("Received sample for a task that has not yet been instantiated")
                     .push(sample);
             }
             Ok(socket::Response::Disconnect) => {
@@ -169,7 +169,6 @@ fn main() -> io::Result<()> {
     env_logger::init();
 
     let args = Args::parse();
-    log::trace!("Args: {args:?}");
 
     // TODO: number of available cores assumed to be 8 for now
     let available_threads = 8;

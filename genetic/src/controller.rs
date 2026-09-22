@@ -352,7 +352,7 @@ fn update_prev_scores_and_check_for_shift(
 
     for (chromosome, &score) in population.iter_mut().zip(scores.iter()) {
         if let Some(prev_score) = chromosome.prev_score {
-            // Use a relative change metric to normalize across regions with different absolute scales.
+            // Use a relative change metric to normalize across tasks with different absolute scales.
             let ratio = score / (prev_score + f32::EPSILON);
             deltas.push((ratio - 1.0).abs());
         }

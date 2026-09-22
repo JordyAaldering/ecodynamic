@@ -13,7 +13,7 @@ use ecodynamic_core::*;
 
 use crate::controller::{DeltaController, Config};
 
-#[derive(Clone, Debug, Parser)]
+#[derive(Clone, Parser)]
 pub struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
@@ -51,7 +51,7 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
                 sample.energy = sample.energy.max(f32::EPSILON);
 
                 lbs.get_mut(&sample.region_uid)
-                    .expect("Received sample for region that has not yet been instantiated")
+                    .expect("Received sample for a task that has not yet been instantiated")
                     .push(sample);
             }
             socket::Response::Disconnect => {
@@ -65,7 +65,6 @@ fn main() -> io::Result<()> {
     env_logger::init();
 
     let args = Args::parse();
-    log::trace!("Args: {args:?}");
 
     let listener = socket::open()?;
 

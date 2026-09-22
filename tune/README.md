@@ -1,3 +1,6 @@
+
+TODO: super outdated. move into /genetic and convert to new API
+
 # Genetic Algorithm Parameter Tuning
 
 This document explains the default parameters chosen for the genetic algorithm

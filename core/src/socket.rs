@@ -48,7 +48,7 @@ pub fn read(rdr: &mut BufReader<UnixStream>) -> io::Result<Response> {
         log::debug!("Client disconnected");
         Ok(Response::Disconnect)
     } else {
-        // Note that we must check for `Sample` first, as a `Request` may be seen as a `Sample` if it only contains `region`.
+        // Note that we must check for `Sample` first, as a `Request` may be seen as a `Sample` if it only contains a task identifier.
         if let Ok(sample) = serde_json::from_str::<Sample>(&line) {
             log::trace!("POST: {sample:?}");
             Ok(Response::Sample(sample))
