@@ -1,10 +1,6 @@
-mod fixed;
 mod genetic;
-mod oscilating;
 
-pub use fixed::*;
 pub use genetic::*;
-pub use oscilating::*;
 
 use crate::{Demand, Sample, State};
 

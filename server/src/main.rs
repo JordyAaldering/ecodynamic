@@ -34,48 +34,34 @@ pub struct Args {
 pub enum ControllerType {
     /// Genetic algorithm approach.
     Genetic(GeneticSettings),
-    /// Continuously oscillates between configurations.
-    Oscilating,
-    /// Always returns the same configuration.
-    Fixed,
 }
 
 pub enum ControllerImpl<'a> {
     Genetic(GeneticController<'a>),
-    Oscilating(OscilatingController),
-    Fixed(FixedController),
 }
 
 impl<'a> ControllerImpl<'a> {
     fn build(args: &'a Args, capabilities: Capabilities<'a>) -> Self {
         match &args.controller {
             ControllerType::Genetic(settings) => Self::Genetic(GeneticController::new(settings, capabilities)),
-            ControllerType::Oscilating => Self::Oscilating(OscilatingController::new(capabilities)),
-            ControllerType::Fixed => Self::Fixed(FixedController::new(capabilities)),
         }
     }
 
     fn get_demand(&self) -> Demand {
         match self {
             Self::Genetic(controller) => controller.get_demand(),
-            Self::Oscilating(controller) => controller.get_demand(),
-            Self::Fixed(controller) => controller.get_demand(),
         }
     }
 
     fn store_state(&mut self, state: State) {
         match self {
             Self::Genetic(controller) => controller.store_state(state),
-            Self::Oscilating(controller) => controller.store_state(state),
-            Self::Fixed(controller) => controller.store_state(state),
         }
     }
 
     fn push(&mut self, sample: Sample) {
         match self {
             Self::Genetic(controller) => controller.push_sample(sample),
-            Self::Oscilating(controller) => controller.push_sample(sample),
-            Self::Fixed(controller) => controller.push_sample(sample),
         }
     }
 }

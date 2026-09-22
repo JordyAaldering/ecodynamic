@@ -7,4 +7,5 @@ members = [
     "ecocore",
     "corridor",
     "delta",
+    "fixed",
 ]
