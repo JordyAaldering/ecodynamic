@@ -3,7 +3,7 @@ use std::{
     os::unix::net::UnixStream,
 };
 
-use ecocore::{AppCapabilities, LETTERBOX_PATH};
+use ecodynamic_api::*;
 
 pub struct Connection {
     stream: UnixStream,

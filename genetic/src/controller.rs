@@ -1,4 +1,5 @@
 use clap::Parser;
+use ecodynamic_api::*;
 
 use crate::{chromosome::Chromosome, *};
 

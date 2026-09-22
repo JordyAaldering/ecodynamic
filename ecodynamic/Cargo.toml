@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ecocore = { path = "../ecocore" }
+ecodynamic-core = { path = "../core" }
+ecodynamic-api = { path = "../api" }
 rapl-energy = "0.2.2"
 serde = "1.0.229"
 serde_json = "1.0.151"

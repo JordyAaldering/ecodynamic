@@ -1,5 +1,4 @@
-use ecocore::AppCapabilities;
-use serde::{Deserialize, Serialize};
+use ecodynamic_api::AppCapabilities;
 
 /// Global system state, shared across all clients and threads.
 pub struct State {
@@ -71,7 +70,6 @@ impl<'a> Capabilities<'a> {
         Self { app, ctx, hw }
     }
 
-    pub fn pid(&self) -> i32 { self.app.pid }
     pub fn max_threads(&self) -> u16 { self.app.max_threads }
     pub fn energy_preference(&self) -> f32 { self.ctx.energy_preference }
     pub fn thread_control(&self) -> bool { self.ctx.thread_control }

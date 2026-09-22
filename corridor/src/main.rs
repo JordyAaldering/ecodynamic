@@ -11,7 +11,7 @@ use std::{
 };
 
 use clap::Parser;
-use ecocore::*;
+use ecodynamic_api::*;
 
 use crate::{
     controller::*,

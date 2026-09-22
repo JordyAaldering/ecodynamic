@@ -157,7 +157,8 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "ctrlc",
- "ecocore",
+ "ecodynamic-api",
+ "ecodynamic-core",
  "env_logger",
  "log",
  "serde",
@@ -221,7 +222,8 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "ctrlc",
- "ecocore",
+ "ecodynamic-api",
+ "ecodynamic-core",
  "env_logger",
  "log",
  "serde",
@@ -241,21 +243,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecocore"
+name = "ecodynamic"
 version = "0.1.0"
 dependencies = [
- "clap",
+ "ecodynamic-api",
+ "ecodynamic-core",
+ "rapl-energy",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "ecodynamic-api"
+version = "0.1.0"
+dependencies = [
  "serde",
 ]
 
 [[package]]
-name = "ecodynamic"
+name = "ecodynamic-core"
 version = "0.1.0"
 dependencies = [
- "ecocore",
- "rapl-energy",
- "serde",
- "serde_json",
+ "clap",
+ "ecodynamic-api",
 ]
 
 [[package]]
@@ -293,7 +303,8 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "ctrlc",
- "ecocore",
+ "ecodynamic-api",
+ "ecodynamic-core",
  "env_logger",
  "log",
  "serde",
@@ -306,7 +317,8 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "ctrlc",
- "ecocore",
+ "ecodynamic-api",
+ "ecodynamic-core",
  "env_logger",
  "log",
  "rand",

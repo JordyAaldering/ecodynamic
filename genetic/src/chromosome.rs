@@ -1,4 +1,6 @@
-use crate::{Capabilities, Demand, knob::*, State};
+use ecodynamic_api::Demand;
+
+use crate::{Capabilities, knob::*, State};
 
 use super::gene::*;
 

@@ -12,3 +12,12 @@ Internally, the controller also tracks a power limit, which is adjusted system-w
 
 A text-based JSON protocol is used intentionally so new fields can be added by the controller without breaking backward compatibility with older runtime versions by ignoring unknown keys.
 In addition, this enables more complicated communication patterns in the future, such as pinning strategies, or even broadcasting different implementation of the same algorithm to then dynamically find the best one.
+
+---
+
+- `api`: the communication protocol between the controller and applications.
+- `core`: internal logic shared between controllers.
+- `delta`: delta-based, energy-optimising thread controller.
+- `corridor`: corridor-based, runtime-optimising thread controller.
+- `genetic`: genetic algorithm, EDT-optimising, thread and powercap controller.
+- `fixed`: Template controller that always returns the same configuration.

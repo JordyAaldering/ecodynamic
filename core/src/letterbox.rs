@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::Sample;
+use ecodynamic_api::Sample;
 
 pub struct Letterbox {
     size: usize,

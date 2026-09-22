@@ -5,8 +5,9 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
-ecocore = { path = "../ecocore" }
 ctrlc = "3.5.2"
+ecodynamic-core = { path = "../core" }
+ecodynamic-api = { path = "../api" }
 env_logger = "0.11.11"
 log = "0.4.34"
 serde = "1.0.229"

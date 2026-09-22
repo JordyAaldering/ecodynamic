@@ -1,5 +1,6 @@
 use clap::Parser;
-use ecocore::*;
+use ecodynamic_api::*;
+use ecodynamic_core::*;
 
 use crate::*;
 

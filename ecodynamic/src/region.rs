@@ -1,6 +1,6 @@
 use std::{hash::{DefaultHasher, Hash, Hasher}, io, time::Instant};
 
-use ecocore::{Demand, Request, Sample};
+use ecodynamic_api::*;
 use rapl_energy::Rapl;
 
 use crate::Connection;
