@@ -185,17 +185,16 @@ fn set_powercap(powercap: u64) {
     }
 }
 
-fn reset_default_power_limit() {
+fn reset_default_power_limit() -> io::Result<()> {
     if let Some(x) = RAPL.as_ref() {
         if let Ok(mut rapl) = x.lock() {
-            if let Err(e) = rapl.reset_power_limits(false) {
-                log::error!("Failed to reset power limits: {}", e);
-            }
+            rapl.reset_power_limits(false)?;
         }
     }
+    Ok(())
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     env_logger::init();
 
     let args = Args::parse();
@@ -206,12 +205,12 @@ fn main() {
     let max_power_uw = find_max_power_uw();
     let hw = HardwareCapabilities::new(available_threads, max_power_uw);
 
-    let listener = socket::open();
+    let listener = socket::open()?;
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(|| {
-        reset_default_power_limit();
-        socket::close();
+        reset_default_power_limit().unwrap();
+        socket::close().unwrap();
         process::exit(0);
     }).unwrap();
 
@@ -236,6 +235,6 @@ fn main() {
         }
     }
 
-    reset_default_power_limit();
-    socket::close();
+    reset_default_power_limit()?;
+    socket::close()
 }

@@ -92,24 +92,24 @@ fn write_json_line<T: serde::Serialize>(stream: &mut UnixStream, message: &T) ->
     stream.write_all(b"\n")
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     env_logger::init();
 
     let args = Args::parse();
     log::trace!("Args: {args:?}");
 
-    let listener = socket::open();
+    let listener = socket::open()?;
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(|| {
-        socket::close();
+        socket::close().unwrap();
         process::exit(0);
     }).unwrap();
 
     if args.once {
         let stream = listener.incoming().next().unwrap();
         match stream {
-            Ok(stream) => handle_client(stream, args).unwrap(),
+            Ok(stream) => handle_client(stream, args)?,
             Err(e) => log::error!("Connection failed: {}", e),
         }
     } else {
@@ -126,5 +126,5 @@ fn main() {
         }
     }
 
-    socket::close();
+    socket::close()
 }
