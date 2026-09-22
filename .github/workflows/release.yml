@@ -22,6 +22,6 @@ jobs:
       with:
         release_name: Release
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: target/release/genetic
-        asset_name: genetic
+        file: target/release/{corridor,delta,genetic}
+        file_glob: true
         overwrite: true
