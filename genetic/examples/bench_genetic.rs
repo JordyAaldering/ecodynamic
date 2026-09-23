@@ -128,7 +128,7 @@ fn run(
     let mut recent_score_error_index = 0;
 
     for iteration in 1..=MAX_ITERATIONS {
-        let demand = controller.get_demand(letterbox.len());
+        let demand = controller.request(letterbox.len());
         let t = demand.powercap_pct;
 
         let energy = energy_curve.eval(t, energy_cv);

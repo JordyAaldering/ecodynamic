@@ -127,7 +127,7 @@ fn run(
     let mut prev_generation = 0;
 
     for _ in 0..NUM_ITERATIONS {
-        let demand = controller.get_demand(letterbox.len());
+        let demand = controller.request(letterbox.len());
         let t = demand.powercap_pct;
 
         let energy = energy_curve.eval(t, energy_cv);

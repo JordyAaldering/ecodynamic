@@ -124,7 +124,7 @@ pub struct GeneticConfig {
 }
 
 impl<'a> Controller for GeneticController<'a> {
-    fn get_demand(&self, index: usize) -> Demand {
+    fn request(&self, index: usize) -> Demand {
         debug_assert!(index < self.population.len());
         let chromosome = &self.population[index];
         chromosome.get_demand(self.capabilities)

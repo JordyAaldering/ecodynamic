@@ -44,7 +44,7 @@ where
                 (letterbox, controller)
             });
         let index = letterbox.len();
-        controller.get_demand(index)
+        controller.request(index)
     }
 
     pub fn push(&mut self, sample: Sample) {

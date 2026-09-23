@@ -143,7 +143,7 @@ fn run(
         let energy_curve = case.energy_base.at_time(progress, case.drift_amount);
         let runtime_curve = case.runtime_base.at_time(progress, case.drift_amount);
 
-        let demand = controller.get_demand(letterbox.len());
+        let demand = controller.request(letterbox.len());
         let t = demand.powercap_pct;
 
         let energy = energy_curve.eval(t, energy_cv);

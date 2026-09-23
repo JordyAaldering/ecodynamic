@@ -14,7 +14,7 @@ impl FixedController {
 }
 
 impl Controller for FixedController {
-    fn get_demand(&self, _index: usize) -> Demand {
+    fn request(&self, _index: usize) -> Demand {
         Demand {
             num_threads: self.num_threads,
             powercap_pct: 1.0,
