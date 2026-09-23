@@ -19,7 +19,7 @@ use genetic::*;
 const NUM_ITERATIONS: usize = 1000;
 
 #[derive(Clone, Debug, Parser)]
-pub struct Args {
+struct Args {
     #[arg(short('i'), long, default_value_t = 100)]
     runs: usize,
     /// Coefficient of variation for energy measurements.

@@ -13,13 +13,13 @@ static RAPL: LazyLock<Mutex<Rapl>> = LazyLock::new(|| {
 });
 
 /// Global system state, shared across all clients and threads.
-pub static THREAD_UTILIZATION: atomic::AtomicU16 = atomic::AtomicU16::new(0);
+static THREAD_UTILIZATION: atomic::AtomicU16 = atomic::AtomicU16::new(0);
 
 // /// Global system state, shared across all clients and threads.
-// pub static CURRENT_POWERCAP: atomic::AtomicU64 = atomic::AtomicU64::new(0);
+// static CURRENT_POWERCAP: atomic::AtomicU64 = atomic::AtomicU64::new(0);
 
 #[derive(Clone, Parser)]
-pub struct Args {
+struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
     once: bool,

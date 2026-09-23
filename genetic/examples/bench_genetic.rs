@@ -16,7 +16,7 @@ const CONVERGENCE_THRESHOLD_MULTIPLIER: f32 = 1.5;
 /// Comprehensive benchmark of the genetic algorithm across many workload shapes.
 /// Outputs a summary table suitable for inclusion in documentation or papers.
 #[derive(Clone, Debug, Parser)]
-pub struct Args {
+struct Args {
     /// Coefficient of variation for energy measurements.
     #[arg(long, default_value_t = 0.025)]
     energy_cv: f32,

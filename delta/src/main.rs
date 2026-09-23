@@ -8,16 +8,16 @@ use ecodynamic_core::*;
 use crate::controller::DeltaController;
 
 #[derive(Clone, Parser)]
-pub struct Args {
+struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
-    pub once: bool,
+    once: bool,
     /// Idle power draw of the processor.
     #[arg(short('w'), long("idle"), default_value_t = 0.0)]
-    pub idle_power: f32,
+    idle_power: f32,
     /// Size of the letterbox for each task.
     #[arg(short('s'), long, default_value_t = 20)]
-    pub letterbox_size: usize,
+    letterbox_size: usize,
 }
 
 fn handle_client(mut stream: UnixStream, idle_power: f32, letterbox_size: usize) -> io::Result<()> {

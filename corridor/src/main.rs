@@ -8,13 +8,13 @@ use ecodynamic_core::*;
 use crate::controller::CorridorController;
 
 #[derive(Parser)]
-pub struct Args {
+struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
-    pub once: bool,
+    once: bool,
     /// Size of the letterbox for each task.
     #[arg(short('s'), long, default_value_t = 20)]
-    pub letterbox_size: usize,
+    letterbox_size: usize,
 }
 
 fn handle_client(mut stream: UnixStream, letterbox_size: usize) -> io::Result<()> {

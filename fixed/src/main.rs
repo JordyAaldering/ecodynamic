@@ -9,10 +9,10 @@ use ecodynamic_core::*;
 use crate::controller::FixedController;
 
 #[derive(Parser)]
-pub struct Args {
+struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
-    pub once: bool,
+    once: bool,
 }
 
 fn handle_client(mut stream: UnixStream) -> io::Result<()> {
