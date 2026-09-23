@@ -1,6 +1,6 @@
 use clap::Parser;
 use ecodynamic_api::*;
-use ecodynamic_core::Letterbox;
+use ecodynamic_core::{Letterbox, median};
 
 use crate::{chromosome::Chromosome, *};
 
@@ -394,14 +394,4 @@ fn relative_score_spread(xs: &[f32]) -> f32 {
         .map(|&s| (s - median_score).abs() / median_score)
         .collect();
     median(&mut relative_devs)
-}
-
-fn median(xs: &mut Vec<f32>) -> f32 {
-    xs.sort_unstable_by(f32::total_cmp);
-    let n = xs.len();
-    if n % 2 == 0 {
-        (xs[n / 2 - 1] + xs[n / 2]) * 0.5
-    } else {
-        xs[n / 2]
-    }
 }

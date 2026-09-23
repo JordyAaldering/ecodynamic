@@ -15,7 +15,12 @@ impl Letterbox {
         }
     }
 
-    /// Push a sample into the letterbox. If this fills the letterbox, return the samples and clear the letterbox.
+    pub fn len(&self) -> usize {
+        self.samples.len()
+    }
+
+    /// Push a sample into the letterbox.
+    /// If this fills the letterbox, returns the samples and clears the letterbox.
     pub fn push(&mut self, sample: Sample) -> Option<Vec<Sample>> {
         debug_assert!(self.samples.len() < self.size);
 
@@ -26,9 +31,5 @@ impl Letterbox {
         } else {
             None
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.samples.len()
     }
 }

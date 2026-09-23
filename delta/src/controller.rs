@@ -49,8 +49,8 @@ impl DeltaController {
     }
 
     fn score(&self, samples: Vec<Sample>) -> f32 {
-        let scores = samples.into_iter().map(|s| s.energy).collect();
-        median(scores)
+        let mut scores = samples.into_iter().map(|s| s.energy).collect();
+        median(&mut scores)
     }
 
     fn evolve(&mut self, tn: f32) {
@@ -81,15 +81,5 @@ impl DeltaController {
 
     fn num_threads(&self) -> u16 {
         (self.cur_threads.round() as u16).clamp(1, self.max_threads)
-    }
-}
-
-fn median(mut xs: Vec<f32>) -> f32 {
-    xs.sort_unstable_by(f32::total_cmp);
-    let n = xs.len();
-    if n % 2 == 0 {
-        (xs[n / 2 - 1] + xs[n / 2]) * 0.5
-    } else {
-        xs[n / 2]
     }
 }

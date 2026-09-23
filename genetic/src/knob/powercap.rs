@@ -1,4 +1,4 @@
-use super::lerp;
+use ecodynamic_core::lerp;
 
 #[derive(Debug)]
 pub struct Powercap {

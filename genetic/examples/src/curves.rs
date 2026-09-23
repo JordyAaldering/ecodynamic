@@ -3,6 +3,7 @@
 use std::{io, str::FromStr};
 
 use ecodynamic_api::Sample;
+use ecodynamic_core::lerp;
 use rand::distr::Distribution;
 use rand_distr::Normal;
 
@@ -109,10 +110,6 @@ fn sample_normal_value(mean: f32, cv: f32) -> f32 {
 	let mut rng = rand::rng();
 	let normal = Normal::new(mean, std).unwrap();
 	normal.sample(&mut rng)
-}
-
-fn lerp(min: f32, max: f32, t: f32) -> f32 {
-	min + (max - min) * t
 }
 
 pub fn quartiles(mut xs: Vec<usize>) -> (usize, usize, usize) {

@@ -86,26 +86,3 @@ impl CorridorController {
         (self.cur_threads.round() as u16).clamp(1, self.max_threads)
     }
 }
-
-fn frequency_dist(mut xs: Vec<f32>, num_ranges: usize) -> f32 {
-    xs.sort_unstable_by(f32::total_cmp);
-
-    let min = xs[0];
-    let max = xs[xs.len() - 1];
-    let dist_size = (max - min) / num_ranges as f32;
-    let mut dist_max = (1..=num_ranges).map(|i| min + dist_size * i as f32).collect::<Vec<f32>>();
-    dist_max[num_ranges - 1] = max;
-
-    let mut dist = vec![Vec::new(); num_ranges];
-    let mut dist_index = 0;
-    for x in xs {
-        while x > dist_max[dist_index] {
-            dist_index += 1;
-        }
-
-        dist[dist_index].push(x);
-    }
-
-    let biggest_dist = dist.into_iter().max_by_key(Vec::len).unwrap();
-    biggest_dist[0]
-}
