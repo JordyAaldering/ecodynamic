@@ -4,6 +4,7 @@ use curves::*;
 
 use clap::Parser;
 use ecodynamic_api::{AppCapabilities, Sample};
+
 use genetic::*;
 
 const BENCHMARK_RUNS: usize = 500;

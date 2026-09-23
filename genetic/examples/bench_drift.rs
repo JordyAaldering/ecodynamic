@@ -3,6 +3,9 @@ mod curves;
 use curves::*;
 
 use clap::Parser;
+use ecodynamic_api::{AppCapabilities, Sample};
+
+use genetic::*;
 
 /// Benchmark to verify that the genetic algorithm can track a monotonically
 /// shifting workload via mutations (without triggering immigration).
@@ -19,15 +22,18 @@ const NUM_ITERATIONS: usize = 1000;
 pub struct Args {
     #[arg(short('i'), long, default_value_t = 100)]
     runs: usize,
-
     /// Coefficient of variation for energy measurements.
     #[arg(long, default_value_t = 0.025)]
     energy_cv: f32,
+    /// Coefficient of variation for runtime measurements.
     #[arg(long, default_value_t = 0.005)]
     runtime_cv: f32,
-
+    /// Controller and hardware capabilities.
+    #[clap(flatten)]
+    pub ctx: ServerCapabilities,
+    /// Genetic controller configuration.
     #[command(flatten)]
-    config: Config,
+    pub config: GeneticConfig,
 }
 
 struct TestCase {
@@ -116,13 +122,12 @@ struct RunResult {
 
 fn run(
     config: &GeneticConfig,
+    capabilities: Capabilities<'_>,
     case: &TestCase,
     energy_cv: f32,
     runtime_cv: f32,
 ) -> RunResult {
-    let mut controller = GeneticControllerBuilder::new(config.clone(), Capabilities::default())
-        .power_control(true)
-        .build();
+    let mut controller = GeneticController::new(config, capabilities);
     let mut immigration_count = 0;
     let mut tracking_errors = Vec::new();
 
@@ -141,14 +146,14 @@ fn run(
 
         // Compute optimal score for the current (drifted) curves
         let (best_score, _, _, _) = find_optimal_powercap(
-            config.energy_preference,
+            capabilities.ctx.energy_preference,
             energy_curve,
             runtime_curve,
             0.1,
             1.0,
         );
 
-        let score = sample.score(config.energy_preference);
+        let score = sample.score(capabilities.ctx.energy_preference);
         let score_error = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
 
         // Track errors in the second half of the run (after initial convergence)
@@ -183,7 +188,12 @@ fn main() {
         energy_cv,
         runtime_cv,
         config,
+        ctx,
     } = Args::parse();
+
+    let app = AppCapabilities { pid: 0, max_threads: 8  };
+    let hw = HardwareCapabilities { available_threads: 8, max_power_uw: 125_000_000 };
+    let capabilities = Capabilities { app: &app, ctx: &ctx, hw: &hw };
 
     let cases = get_test_cases();
 
@@ -191,7 +201,7 @@ fn main() {
     println!("===========================================================");
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, decay={}, e_pref={}",
         config.population_size, config.survival_rate, config.mutation_rate,
-        config.mutation_strength, config.mutation_rate_decay, config.energy_preference);
+        config.mutation_strength, config.mutation_rate_decay, ctx.energy_preference);
     println!("Iterations per run: {}, Runs per case: {}", NUM_ITERATIONS, runs);
     println!();
     println!("┌─────────────────────────────────┬──────────────┬──────────────┬──────────────┐");
@@ -204,7 +214,14 @@ fn main() {
         let mut runs_with_immigration = 0;
 
         for _ in 0..runs {
-            let result = run(&config, case, energy_cv, runtime_cv);
+            let result = run(
+                &config,
+                capabilities,
+                case,
+                energy_cv,
+                runtime_cv,
+            );
+
             total_tracking_error += result.avg_tracking_error;
             total_immigrations += result.immigration_count;
             if result.immigration_count > 0 {

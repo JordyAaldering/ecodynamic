@@ -3,8 +3,9 @@ mod curves;
 use curves::*;
 
 use clap::Parser;
-use controller::*;
-use prelude::*;
+use ecodynamic_api::{AppCapabilities, Sample};
+
+use genetic::*;
 
 /// Benchmark to verify that immigration does NOT trigger under stable workloads
 /// with normal measurement noise. This tests for false positives in the shift
@@ -20,15 +21,18 @@ const NUM_ITERATIONS: usize = 500;
 pub struct Args {
     #[arg(short('i'), long, default_value_t = 200)]
     runs: usize,
-
     /// Coefficient of variation for energy measurements.
     #[arg(long, default_value_t = 0.025)]
     energy_cv: f32,
+    /// Coefficient of variation for runtime measurements.
     #[arg(long, default_value_t = 0.005)]
     runtime_cv: f32,
-
+    /// Controller and hardware capabilities.
+    #[clap(flatten)]
+    pub ctx: ServerCapabilities,
+    /// Genetic controller configuration.
     #[command(flatten)]
-    config: GeneticConfig,
+    pub config: GeneticConfig,
 }
 
 struct TestCase {
@@ -106,14 +110,13 @@ fn get_test_cases(default_energy_cv: f32, default_runtime_cv: f32) -> Vec<TestCa
 /// Run a single trial and return the number of immigration events observed.
 fn run(
     config: &GeneticConfig,
+    capabilities: Capabilities<'_>,
     energy_curve: Curve,
     runtime_curve: Curve,
     energy_cv: f32,
     runtime_cv: f32,
 ) -> usize {
-    let mut controller = GeneticControllerBuilder::new(config.clone(), Capabilities::default())
-        .power_control(true)
-        .build();
+    let mut controller = GeneticController::new(config, capabilities);
     let mut immigration_count = 0;
     let mut prev_generation = 0;
 
@@ -148,8 +151,13 @@ fn main() {
         runs,
         energy_cv,
         runtime_cv,
+        ctx,
         config,
     } = Args::parse();
+
+    let app = AppCapabilities { pid: 0, max_threads: 8  };
+    let hw = HardwareCapabilities { available_threads: 8, max_power_uw: 125_000_000 };
+    let capabilities = Capabilities { app: &app, ctx: &ctx, hw: &hw };
 
     let cases = get_test_cases(energy_cv, runtime_cv);
 
@@ -157,7 +165,7 @@ fn main() {
     println!("=========================================================");
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, e_pref={}",
         config.population_size, config.survival_rate, config.mutation_rate,
-        config.mutation_strength, config.energy_preference);
+        config.mutation_strength, ctx.energy_preference);
     println!("Iterations per run: {}, Runs per case: {}", NUM_ITERATIONS, runs);
     println!();
     println!("┌─────────────────────────────────┬──────────────┬──────────────┬──────────────┐");
@@ -170,7 +178,15 @@ fn main() {
         let mut max_triggers = 0;
 
         for _ in 0..runs {
-            let triggers = run(&config, case.energy_curve, case.runtime_curve, case.energy_cv, case.runtime_cv);
+            let triggers = run(
+                &config,
+                capabilities,
+                case.energy_curve,
+                case.runtime_curve,
+                case.energy_cv,
+                case.runtime_cv,
+            );
+
             total_triggers += triggers;
             if triggers > 0 {
                 runs_with_triggers += 1;
