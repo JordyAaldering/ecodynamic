@@ -1,4 +1,4 @@
-use ecodynamic_api::{AppCapabilities, Demand};
+use ecodynamic_api::{Properties, Demand};
 
 use crate::{HardwareCapabilities, gene::*, knob::*};
 
@@ -14,7 +14,7 @@ pub struct Chromosome {
 }
 
 impl Chromosome {
-    pub fn rand(app: &AppCapabilities, env: &HardwareCapabilities) -> Self {
+    pub fn rand(app: &Properties, env: &HardwareCapabilities) -> Self {
         Self {
             threads: env.do_thread_control.then(|| ThreadCount::rand(app.max_threads)),
             pinning: env.do_pinning_control.then(|| PinningStrategy::Free),
@@ -23,7 +23,7 @@ impl Chromosome {
         }
     }
 
-    pub fn lerp(app: &AppCapabilities, env: &HardwareCapabilities, t: f32) -> Self {
+    pub fn lerp(app: &Properties, env: &HardwareCapabilities, t: f32) -> Self {
         Self {
             threads: env.do_thread_control.then(|| ThreadCount::lerp(app.max_threads, t)),
             pinning: env.do_pinning_control.then(|| PinningStrategy::Free),
@@ -34,7 +34,7 @@ impl Chromosome {
 
     /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
     /// Otherwise, chromosomes are generated using an even spread over the valid search space.
-    pub fn immigrate(app: &AppCapabilities, env: &HardwareCapabilities, index: usize, count: usize) -> Self {
+    pub fn immigrate(app: &Properties, env: &HardwareCapabilities, index: usize, count: usize) -> Self {
         debug_assert_ne!(count, 0);
         if count <= 3 {
             return Chromosome::rand(app, env);
@@ -44,7 +44,7 @@ impl Chromosome {
         Chromosome::lerp(app, env, t)
     }
 
-    pub fn get_demand(&self, app: &AppCapabilities, env: &HardwareCapabilities) -> Demand {
+    pub fn get_demand(&self, app: &Properties, env: &HardwareCapabilities) -> Demand {
         let num_threads = self.threads.as_ref()
             .map_or(app.max_threads, |gene| gene.get_num_threads());
         let powercap_pct = self.power.as_ref()

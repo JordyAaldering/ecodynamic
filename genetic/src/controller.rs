@@ -11,7 +11,7 @@ pub struct GeneticController<'a> {
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
     config: &'a GeneticConfig,
-    app: &'a AppCapabilities,
+    app: &'a Properties,
     env: &'a HardwareCapabilities,
     // Debugging metadata
     pub generation: usize,
@@ -286,7 +286,7 @@ impl<'a> GeneticController<'a> {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
     /// finding an optimum immediately.
-    pub fn new(letterbox_size: usize, config: &'a GeneticConfig, app: &'a AppCapabilities, env: &'a HardwareCapabilities) -> Self {
+    pub fn new(letterbox_size: usize, config: &'a GeneticConfig, app: &'a Properties, env: &'a HardwareCapabilities) -> Self {
         let population = (0..letterbox_size)
             .map(|mut i| {
                 if config.initial_population_descending {

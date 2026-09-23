@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-/// Represents the capabilities of an application.
+/// Represents the properties of an application.
 ///
 /// These are provided by the application as JSON upon establishing a connection with the server.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct AppCapabilities {
+pub struct Properties {
     /// The process ID of the application.
     pub pid: i32,
     /// Maximum number of threads the application may use.

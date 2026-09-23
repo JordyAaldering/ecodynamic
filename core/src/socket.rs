@@ -29,10 +29,10 @@ pub fn close() -> io::Result<()> {
     fs::remove_file(LETTERBOX_PATH)
 }
 
-pub fn accept(rdr: &mut BufReader<UnixStream>) -> io::Result<AppCapabilities> {
+pub fn accept(rdr: &mut BufReader<UnixStream>) -> io::Result<Properties> {
     let mut line = String::new();
     rdr.read_line(&mut line)?;
-    let capabilities: AppCapabilities = serde_json::from_str(line.trim_end())
+    let capabilities: Properties = serde_json::from_str(line.trim_end())
         .map_err(|e| io::Error::new(
             io::ErrorKind::InvalidData,
             format!("Invalid JSON capabilities: {e}"),

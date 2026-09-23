@@ -3,9 +3,9 @@
 External resource controller that communicates with applications through a Unix domain socket.
 
 The runtime sends JSON objects containing bookkeeping information and measurements:
-- capabilities (e.g. maximum number of threads),
-- code task identifiers (e.g. a repeated loop), and
-- measurement samples (e.g. runtime, usertime, energy).
+- properties (process identifier and the maximum number of threads),
+- task identifier (e.g. a unique identifier of a repeated loop), and
+- measurement samples (e.g. runtime, energy).
 
 The controller replies with JSON messages, containing the desired number of threads for the next iteration of a task.
 Internally, the controller also tracks a power limit, which is adjusted system-wide.
