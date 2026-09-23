@@ -78,10 +78,8 @@ pub struct GeneticConfig {
     /// This allows faster convergence when there is a wide range of good configurations,
     /// which would otherwise cause high variability in the selected chromosomes.
     ///
-    /// No survival rate decay happens by default.
-    ///
     /// Range: [0,1]
-    #[arg(long, default_value_t = 0.0)]
+    #[arg(long, default_value_t = 0.01)]
     pub survival_rate_decay: f32,
 
     /// Mutation strength: maximum magnitude of a random perturbation applied to each gene.
