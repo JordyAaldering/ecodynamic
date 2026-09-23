@@ -128,8 +128,6 @@ fn main() -> io::Result<()> {
         env,
     } = Args::parse();
 
-    log::debug!("{env:?}");
-
     let listener = socket::open()?;
 
     // Ensure the socket is closed when a control-C occurs
