@@ -61,7 +61,7 @@ impl<'a> Task<'a> {
 
     fn build_request(&self) -> Request {
         Request {
-            region_uid: self.task,
+            task_id: self.task,
             problem_size: None,
         }
     }

@@ -18,18 +18,18 @@ pub struct Chromosome {
 impl Chromosome {
     pub fn rand(capabilities: Capabilities) -> Self {
         Self {
-            threads: capabilities.thread_control().then(|| ThreadCount::rand(capabilities.max_threads())),
-            pinning: capabilities.pinning_control().then(|| PinningStrategy::Free),
-            power: capabilities.power_control().then(|| Powercap::rand(capabilities.min_power(), capabilities.max_power())),
+            threads: capabilities.ctx.thread_control.then(|| ThreadCount::rand(capabilities.app.max_threads)),
+            pinning: capabilities.ctx.pinning_control.then(|| PinningStrategy::Free),
+            power: capabilities.ctx.power_control.then(|| Powercap::rand(capabilities.ctx.min_power, capabilities.ctx.max_power)),
             prev_score: None,
         }
     }
 
     pub fn lerp(capabilities: Capabilities, t: f32) -> Self {
         Self {
-            threads: capabilities.thread_control().then(|| ThreadCount::lerp(capabilities.max_threads(), t)),
-            pinning: capabilities.pinning_control().then(|| PinningStrategy::Free),
-            power: capabilities.power_control().then(|| Powercap::lerp(capabilities.min_power(), capabilities.max_power(), t)),
+            threads: capabilities.ctx.thread_control.then(|| ThreadCount::lerp(capabilities.app.max_threads, t)),
+            pinning: capabilities.ctx.pinning_control.then(|| PinningStrategy::Free),
+            power: capabilities.ctx.power_control.then(|| Powercap::lerp(capabilities.ctx.min_power, capabilities.ctx.max_power, t)),
             prev_score: None,
         }
     }
@@ -46,12 +46,15 @@ impl Chromosome {
         Chromosome::lerp(capabilities, t)
     }
 
-    pub fn get_demand(&self) -> Demand {
-        let num_threads = self.threads.as_ref().map(|gene| gene.get_num_threads());
-        let powercap_pct = self.power.as_ref().map(|gene| gene.get_powercap());
-        Demand::new()
-            .with_threads(num_threads)
-            .with_powercap(powercap_pct)
+    pub fn get_demand(&self, capabilities: Capabilities) -> Demand {
+        let num_threads = self.threads.as_ref()
+            .map_or(capabilities.app.max_threads, |gene| gene.get_num_threads());
+        let powercap_pct = self.power.as_ref()
+            .map_or(capabilities.ctx.max_power, |gene| gene.get_powercap());
+        Demand {
+            num_threads,
+            powercap_pct,
+        }
     }
 
     pub fn store_state(&mut self, state: State) {

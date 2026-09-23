@@ -51,33 +51,30 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
 
     // First message must be the application's capabilities
     let app = socket::accept(&mut rdr)?;
-    let capabilities = Capabilities::new(&app, &args.ctx, &hw);
+    let capabilities = Capabilities { app: &app, ctx: &args.ctx, hw: &hw };
 
     let mut last_thread_count = 0;
 
     loop {
         match socket::read(&mut rdr) {
             Ok(socket::Response::Request(request)) => {
-                let controller = lbs.entry(request.region_uid)
+                let controller = lbs.entry(request.task_id)
                     .or_insert_with(|| {
-                        log::debug!("Generating controller for request {}", request.region_uid);
+                        log::debug!("Generating controller for request {}", request.task_id);
                         GeneticController::new(&args.config, capabilities)
                     });
 
-                let mut demand = controller.get_demand();
+                let demand = controller.get_demand();
                 controller.store_state(State {
                     thread_utilization: THREAD_UTILIZATION.load(atomic::Ordering::Relaxed),
                     powercap_uw: 0,
                 });
-                demand.ensure_threads(capabilities.max_threads());
 
                 // Must be run after get_demand, because the controller tracks the number of threads in use
-                let num_threads = demand.num_threads(capabilities.max_threads());
-                THREAD_UTILIZATION.fetch_add(num_threads, atomic::Ordering::Relaxed);
-                last_thread_count = num_threads;
+                THREAD_UTILIZATION.fetch_add(demand.num_threads, atomic::Ordering::Relaxed);
+                last_thread_count = demand.num_threads;
 
-                let powercap = demand.powercap(capabilities.max_power_uw());
-                set_powercap(powercap);
+                set_powercap(demand.powercap_pct, hw.max_power_uw);
 
                 socket::write(&mut stream, &demand)?;
             }
@@ -127,8 +124,9 @@ fn find_max_power_uw() -> u64 {
     }
 }
 
-fn set_powercap(powercap: u64) {
+fn set_powercap(powercap_pct: f32, max_power_uw: u64) {
     if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
+        let powercap = (powercap_pct * max_power_uw as f32).round() as u64;
         for package in &mut rapl.packages {
             if package.constraints.is_empty() {
                 log::warn!("Skipping package {} without power constraints", package.name);
@@ -173,7 +171,7 @@ fn main() -> io::Result<()> {
     // TODO: number of available cores assumed to be 8 for now
     let available_threads = 8;
     let max_power_uw = find_max_power_uw();
-    let hw = HardwareCapabilities::new(available_threads, max_power_uw);
+    let hw = HardwareCapabilities { available_threads, max_power_uw };
 
     let listener = socket::open()?;
 

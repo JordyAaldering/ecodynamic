@@ -6,16 +6,19 @@ pub struct FixedController {
 }
 
 impl FixedController {
-    pub fn new(capabilities: &AppCapabilities) -> Self {
+    pub fn new(num_threads: u16) -> Self {
         Self {
-            num_threads: capabilities.max_threads,
+            num_threads,
         }
     }
 }
 
 impl FixedController {
     pub fn get_demand(&self) -> Demand {
-        Demand::new().with_threads(Some(self.num_threads))
+        Demand {
+            num_threads: self.num_threads,
+            powercap_pct: 1.0,
+        }
     }
 
     pub fn push(&mut self, _: Sample) {}

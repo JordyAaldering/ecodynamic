@@ -35,8 +35,10 @@ impl DeltaController {
 
 impl DeltaController {
     pub fn get_demand(&self) -> Demand {
-        Demand::new()
-            .with_threads(Some(self.num_threads()))
+        Demand {
+            num_threads: self.num_threads(),
+            powercap_pct: 1.0,
+        }
     }
 
     pub fn push(&mut self, sample: Sample) {

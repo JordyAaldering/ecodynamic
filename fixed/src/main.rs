@@ -31,10 +31,10 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
     loop {
         match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
-                let controller = lbs.entry(request.region_uid)
+                let controller = lbs.entry(request.task_id)
                     .or_insert_with(|| {
-                        log::debug!("Generating controller for request {}", request.region_uid);
-                        FixedController::new(&capabilities)
+                        log::debug!("Generating controller for request {}", request.task_id);
+                        FixedController::new(capabilities.max_threads)
                     });
 
                 let demand = controller.get_demand();

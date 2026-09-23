@@ -36,9 +36,9 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
     loop {
         match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
-                let controller = lbs.entry(request.region_uid)
+                let controller = lbs.entry(request.task_id)
                     .or_insert_with(|| {
-                        log::debug!("Generating controller for request {}", request.region_uid);
+                        log::debug!("Generating controller for request {}", request.task_id);
                         CorridorController::new(&args.config, &capabilities)
                     });
 

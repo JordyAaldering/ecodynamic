@@ -134,7 +134,7 @@ impl<'a> GeneticController<'a> {
     /// In between, we want every chromosome to be applied once.
     pub fn get_demand(&self) -> Demand {
         let chromosome = &self.population[self.letterbox.len()];
-        chromosome.get_demand()
+        chromosome.get_demand(self.capabilities)
     }
 
     pub fn store_state(&mut self, state: State) {
@@ -181,7 +181,7 @@ impl<'a> GeneticController<'a> {
     }
 
     fn score(&self, samples: Vec<Sample>) -> Vec<f32> {
-        let alpha = self.capabilities.energy_preference();
+        let alpha = self.capabilities.ctx.energy_preference;
         samples.into_iter().map(|s| s.score(alpha)).collect()
     }
 
@@ -277,7 +277,7 @@ impl<'a> GeneticController<'a> {
 
             let nudged_scores: Vec<f32> = self.population.iter()
                 .zip(&scores)
-                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.capabilities.available_threads(), self.capabilities.energy_preference()))
+                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.capabilities.hw.available_threads, self.capabilities.ctx.energy_preference))
                 .collect();
 
             sort_population_by_score(&mut self.population, nudged_scores);
