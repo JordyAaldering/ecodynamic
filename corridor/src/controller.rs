@@ -1,4 +1,3 @@
-use clap::Parser;
 use ecodynamic_api::*;
 use ecodynamic_core::*;
 
@@ -6,7 +5,6 @@ const MIN_STEPSIZE: f32 = 0.1;
 
 /// Corridor-based, runtime-optimising thread controller.
 pub struct CorridorController {
-    letterbox: Letterbox,
     max_threads: u16,
     cur_threads: f32,
     step_size: f32,
@@ -15,17 +13,9 @@ pub struct CorridorController {
     t1: f32,
 }
 
-#[derive(Clone, Debug, Parser)]
-pub struct CorridorConfig {
-    #[arg(short('s'), long, default_value_t = 20)]
-    pub letterbox_size: usize,
-}
-
 impl CorridorController {
-    pub fn new(config: &CorridorConfig, capabilities: &AppCapabilities) -> Self {
-        let max_threads = capabilities.max_threads;
+    pub fn new(max_threads: u16) -> Self {
         Self {
-            letterbox: Letterbox::new(config.letterbox_size),
             max_threads,
             cur_threads: max_threads as f32,
             step_size: max_threads as f32, // Will immediately be halved in the first iteration
@@ -36,28 +26,19 @@ impl CorridorController {
     }
 }
 
-impl CorridorController {
-    pub fn get_demand(&self) -> Demand {
+impl Controller for CorridorController {
+    fn get_demand(&self, _index: usize) -> Demand {
         Demand {
             num_threads: self.num_threads(),
             powercap_pct: 1.0,
         }
     }
 
-    pub fn push(&mut self, sample: Sample) {
-        if let Some(samples) = self.letterbox.push(sample) {
-            let score = self.score(samples);
-            self.evolve(score);
-        }
-    }
+    fn evolve(&mut self, samples: Vec<Sample>) {
+        let tn = self.score(samples);
 
-    fn score(&self, samples: Vec<Sample>) -> f32 {
-        let scores = samples.into_iter().map(|s| s.runtime).collect();
-        frequency_dist(scores, 5)
-    }
-
-    fn evolve(&mut self, tn: f32) {
         let speedup = self.t1 / (tn + f32::EPSILON);
+
         if speedup < 0.5 * self.num_threads() as f32 {
             // We have fallen below the corridor; reset step size and direction
             self.step_size = (0.5 * self.cur_threads).max(MIN_STEPSIZE);
@@ -80,6 +61,13 @@ impl CorridorController {
         self.t_prev = tn;
         self.cur_threads += self.step_dir * self.step_size;
         self.cur_threads = self.cur_threads.clamp(1.0, self.max_threads as f32);
+    }
+}
+
+impl CorridorController {
+    fn score(&self, samples: Vec<Sample>) -> f32 {
+        let scores = samples.into_iter().map(|s| s.runtime).collect();
+        frequency_dist(scores, 5)
     }
 
     fn num_threads(&self) -> u16 {

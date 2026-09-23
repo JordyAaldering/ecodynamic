@@ -153,14 +153,14 @@ impl<'a> GeneticController<'a> {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
     /// finding an optimum immediately.
-    pub fn new(settings: &'a GeneticConfig, capabilities: Capabilities<'a>) -> Self {
-        let population = (0..settings.population_size)
+    pub fn new(config: &'a GeneticConfig, capabilities: Capabilities<'a>) -> Self {
+        let population = (0..config.population_size)
             .map(|mut i| {
-                if settings.initial_population_descending {
-                    i = settings.population_size - i - 1;
+                if config.initial_population_descending {
+                    i = config.population_size - i - 1;
                 }
 
-                let t = i as f32 / (settings.population_size - 1) as f32;
+                let t = i as f32 / (config.population_size - 1) as f32;
                 Chromosome::lerp(capabilities, t)
             })
             .collect();
@@ -169,12 +169,12 @@ impl<'a> GeneticController<'a> {
 
         Self {
             population,
-            letterbox: Letterbox::new(settings.population_size),
-            immigration_cooldown: settings.immigration_cooldown_generations,
-            sort_descending: !settings.initial_population_descending,
-            effective_survival_rate: settings.survival_rate,
-            effective_mutation_rate: settings.mutation_rate,
-            settings,
+            letterbox: Letterbox::new(config.population_size),
+            immigration_cooldown: config.immigration_cooldown_generations,
+            sort_descending: !config.initial_population_descending,
+            effective_survival_rate: config.survival_rate,
+            effective_mutation_rate: config.mutation_rate,
+            settings: config,
             capabilities,
             generation: 0,
             immigration_was_triggered: false,

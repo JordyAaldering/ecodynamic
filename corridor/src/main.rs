@@ -1,58 +1,41 @@
 mod controller;
 
-use std::{
-    collections::HashMap,
-    io::{self, BufReader},
-    os::unix::net::UnixStream,
-    process,
-    thread,
-};
+use std::{io::{self, BufReader}, os::unix::net::UnixStream, process, thread};
 
 use clap::Parser;
-use ecodynamic_core::socket;
+use ecodynamic_core::{ApplicationContext, socket};
 
-use crate::controller::{CorridorController, CorridorConfig};
+use crate::controller::CorridorController;
 
-#[derive(Clone, Parser)]
+#[derive(Parser)]
 pub struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
     pub once: bool,
-    /// Idle power draw of the processor.
-    #[arg(short('w'), long("idle"), default_value_t = 0.0)]
-    pub idle_power: f32,
-    /// Corridor-controller configuration.
-    #[command(flatten)]
-    pub config: CorridorConfig,
+    /// Size of the letterbox for each task.
+    #[arg(short('s'), long, default_value_t = 20)]
+    pub letterbox_size: usize,
 }
 
-fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
-    let mut lbs: HashMap<i32, CorridorController> = HashMap::new();
+fn handle_client(mut stream: UnixStream, letterbox_size: usize) -> io::Result<()> {
     let mut rdr = BufReader::new(stream.try_clone()?);
 
     // First message must be the application's capabilities
     let capabilities = socket::accept(&mut rdr)?;
 
+    let mut tasks = ApplicationContext::new(
+        letterbox_size,
+        || CorridorController::new(capabilities.max_threads),
+    );
+
     loop {
         match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
-                let controller = lbs.entry(request.task_id)
-                    .or_insert_with(|| {
-                        log::debug!("Generating controller for request {}", request.task_id);
-                        CorridorController::new(&args.config, &capabilities)
-                    });
-
-                let demand = controller.get_demand();
+                let demand = tasks.request(request);
                 socket::write(&mut stream, &demand)?;
             }
-            socket::Response::Sample(mut sample) => {
-                // Subtract idle energy
-                sample.energy -= args.idle_power * sample.runtime;
-                sample.energy = sample.energy.max(f32::EPSILON);
-
-                lbs.get_mut(&sample.region_uid)
-                    .expect("Received sample for a task that has not yet been instantiated")
-                    .push(sample);
+            socket::Response::Sample(sample) => {
+                tasks.push(sample);
             }
             socket::Response::Disconnect => {
                 return Ok(());
@@ -64,7 +47,10 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
 fn main() -> io::Result<()> {
     env_logger::init();
 
-    let args = Args::parse();
+    let Args {
+        once,
+        letterbox_size,
+    } = Args::parse();
 
     let listener = socket::open()?;
 
@@ -74,14 +60,13 @@ fn main() -> io::Result<()> {
         process::exit(0);
     }).unwrap();
 
-    if args.once {
+    if once {
         let stream = listener.incoming().next().unwrap()?;
-        handle_client(stream, args)?;
+        handle_client(stream, letterbox_size)?;
     } else {
         for stream in listener.incoming().map_while(Result::ok) {
-            let args = args.clone();
             thread::spawn(move || {
-                handle_client(stream, args).unwrap()
+                handle_client(stream, letterbox_size).unwrap()
             });
         }
     }

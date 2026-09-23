@@ -1,12 +1,6 @@
 mod controller;
 
-use std::{
-    collections::HashMap,
-    io::{self, BufReader},
-    os::unix::net::UnixStream,
-    process,
-    thread,
-};
+use std::{io::{self, BufReader}, os::unix::net::UnixStream, process, thread};
 
 use clap::Parser;
 use ecodynamic_api::*;
@@ -22,28 +16,24 @@ pub struct Args {
 }
 
 fn handle_client(mut stream: UnixStream) -> io::Result<()> {
-    let mut lbs: HashMap<i32, FixedController> = HashMap::new();
     let mut rdr = BufReader::new(stream.try_clone()?);
 
     // First message must be the application's capabilities
     let capabilities = socket::accept(&mut rdr)?;
 
+    let mut tasks = ApplicationContext::new(
+        1,
+        || FixedController::new(capabilities.max_threads),
+    );
+
     loop {
         match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
-                let controller = lbs.entry(request.task_id)
-                    .or_insert_with(|| {
-                        log::debug!("Generating controller for request {}", request.task_id);
-                        FixedController::new(capabilities.max_threads)
-                    });
-
-                let demand = controller.get_demand();
+                let demand = tasks.request(request);
                 socket::write(&mut stream, &demand)?;
             }
             socket::Response::Sample(sample) => {
-                lbs.get_mut(&sample.region_uid)
-                    .expect("Received sample for a task that has not yet been instantiated")
-                    .push(sample);
+                tasks.push(sample);
             }
             socket::Response::Disconnect => {
                 return Ok(());
@@ -55,7 +45,9 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
 fn main() -> io::Result<()> {
     env_logger::init();
 
-    let args = Args::parse();
+    let Args {
+        once,
+    } = Args::parse();
 
     let listener = socket::open()?;
 
@@ -65,7 +57,7 @@ fn main() -> io::Result<()> {
         process::exit(0);
     }).unwrap();
 
-    if args.once {
+    if once {
         let stream = listener.incoming().next().unwrap()?;
         handle_client(stream)?;
     } else {

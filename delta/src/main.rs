@@ -1,17 +1,11 @@
 mod controller;
 
-use std::{
-    collections::HashMap,
-    io::{self, BufReader},
-    os::unix::net::UnixStream,
-    process,
-    thread,
-};
+use std::{io::{self, BufReader}, os::unix::net::UnixStream, process, thread};
 
 use clap::Parser;
 use ecodynamic_core::*;
 
-use crate::controller::{DeltaController, DeltaConfig};
+use crate::controller::DeltaController;
 
 #[derive(Clone, Parser)]
 pub struct Args {
@@ -21,38 +15,33 @@ pub struct Args {
     /// Idle power draw of the processor.
     #[arg(short('w'), long("idle"), default_value_t = 0.0)]
     pub idle_power: f32,
-    /// Delta-controller configuration.
-    #[command(flatten)]
-    pub config: DeltaConfig,
+    /// Size of the letterbox for each task.
+    #[arg(short('s'), long, default_value_t = 20)]
+    pub letterbox_size: usize,
 }
 
-fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
-    let mut lbs: HashMap<i32, DeltaController> = HashMap::new();
+fn handle_client(mut stream: UnixStream, idle_power: f32, letterbox_size: usize) -> io::Result<()> {
     let mut rdr = BufReader::new(stream.try_clone()?);
 
     // First message must be the application's capabilities
     let capabilities = socket::accept(&mut rdr)?;
 
+    let mut tasks = ApplicationContext::new(
+        letterbox_size,
+        || DeltaController::new(capabilities.max_threads),
+    );
+
     loop {
         match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
-                let controller = lbs.entry(request.task_id)
-                    .or_insert_with(|| {
-                        log::debug!("Generating controller for request {}", request.task_id);
-                        DeltaController::new(&args.config, &capabilities)
-                    });
-
-                let demand = controller.get_demand();
+                let demand = tasks.request(request);
                 socket::write(&mut stream, &demand)?;
             }
             socket::Response::Sample(mut sample) => {
                 // Subtract idle energy
-                sample.energy -= args.idle_power * sample.runtime;
+                sample.energy -= idle_power * sample.runtime;
                 sample.energy = sample.energy.max(f32::EPSILON);
-
-                lbs.get_mut(&sample.region_uid)
-                    .expect("Received sample for a task that has not yet been instantiated")
-                    .push(sample);
+                tasks.push(sample);
             }
             socket::Response::Disconnect => {
                 return Ok(());
@@ -64,7 +53,11 @@ fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {
 fn main() -> io::Result<()> {
     env_logger::init();
 
-    let args = Args::parse();
+    let Args {
+        once,
+        idle_power,
+        letterbox_size,
+    } = Args::parse();
 
     let listener = socket::open()?;
 
@@ -74,14 +67,13 @@ fn main() -> io::Result<()> {
         process::exit(0);
     }).unwrap();
 
-    if args.once {
+    if once {
         let stream = listener.incoming().next().unwrap()?;
-        handle_client(stream, args)?;
+        handle_client(stream, idle_power, letterbox_size)?;
     } else {
         for stream in listener.incoming().map_while(Result::ok) {
-            let args = args.clone();
             thread::spawn(move || {
-                handle_client(stream, args).unwrap()
+                handle_client(stream, idle_power, letterbox_size).unwrap()
             });
         }
     }

@@ -13,13 +13,13 @@ impl FixedController {
     }
 }
 
-impl FixedController {
-    pub fn get_demand(&self) -> Demand {
+impl Controller for FixedController {
+    fn get_demand(&self, _index: usize) -> Demand {
         Demand {
             num_threads: self.num_threads,
             powercap_pct: 1.0,
         }
     }
 
-    pub fn push(&mut self, _: Sample) {}
+    fn evolve(&mut self, _: Vec<Sample>) {}
 }
