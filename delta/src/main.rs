@@ -11,7 +11,7 @@ use std::{
 use clap::Parser;
 use ecodynamic_core::*;
 
-use crate::controller::{DeltaController, Config};
+use crate::controller::{DeltaController, DeltaConfig};
 
 #[derive(Clone, Parser)]
 pub struct Args {
@@ -21,9 +21,9 @@ pub struct Args {
     /// Idle power draw of the processor.
     #[arg(short('w'), long("idle"), default_value_t = 0.0)]
     pub idle_power: f32,
-    /// Controller type.
+    /// Delta-controller configuration.
     #[command(flatten)]
-    pub config: Config,
+    pub config: DeltaConfig,
 }
 
 fn handle_client(mut stream: UnixStream, args: Args) -> io::Result<()> {

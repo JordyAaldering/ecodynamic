@@ -1,3 +1,7 @@
+#[path = "src/curves.rs"]
+mod curves;
+use curves::*;
+
 use clap::Parser;
 use controller::*;
 use prelude::*;

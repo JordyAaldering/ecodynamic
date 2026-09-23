@@ -1,6 +1,10 @@
+#[path = "src/curves.rs"]
+mod curves;
+use curves::*;
+
 use clap::Parser;
-use controller::*;
-use prelude::*;
+use ecodynamic_api::{AppCapabilities, Sample};
+use genetic::*;
 
 const BENCHMARK_RUNS: usize = 500;
 const MAX_ITERATIONS: usize = 200;
@@ -15,14 +19,15 @@ pub struct Args {
     /// Coefficient of variation for energy measurements.
     #[arg(long, default_value_t = 0.025)]
     energy_cv: f32,
+    /// Coefficient of variation for runtime measurements.
     #[arg(long, default_value_t = 0.005)]
     runtime_cv: f32,
-
-    #[arg(long)]
-    tikz: bool,
-
+    /// Controller and hardware capabilities.
+    #[clap(flatten)]
+    pub ctx: ServerCapabilities,
+    /// Genetic controller configuration.
     #[command(flatten)]
-    config: GeneticConfig,
+    pub config: GeneticConfig,
 }
 
 struct TestCase {
@@ -104,15 +109,14 @@ fn get_test_cases() -> Vec<TestCase> {
 fn run(
     best_score: f32,
     config: &GeneticConfig,
+    capabilities: Capabilities<'_>,
     energy_curve: Curve,
     runtime_curve: Curve,
     energy_cv: f32,
     runtime_cv: f32,
     convergence_score_threshold: f32,
 ) -> Option<usize> {
-    let mut controller = GeneticControllerBuilder::new(config.clone(), Capabilities::default())
-        .power_control(true)
-        .build();
+    let mut controller = GeneticController::new(&config, capabilities);
     let mut recent_score_error_ratios = vec![f32::INFINITY; CONVERGENCE_WINDOW];
     let mut recent_score_error_index = 0;
 
@@ -124,7 +128,7 @@ fn run(
         let runtime = runtime_curve.eval(t, runtime_cv);
         let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
 
-        let score = sample.score(config.energy_preference);
+        let score = sample.score(capabilities.ctx.energy_preference);
         let score_error_ratio = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
         recent_score_error_ratios[recent_score_error_index] = score_error_ratio;
         recent_score_error_index = (recent_score_error_index + 1) % CONVERGENCE_WINDOW;
@@ -145,62 +149,18 @@ fn main() {
     let Args {
         energy_cv,
         runtime_cv,
-        tikz,
+        ctx,
         config,
     } = Args::parse();
 
-    HARDWARE.available_cores.set(8).unwrap();
-    HARDWARE.max_power_uw.set(125000000).unwrap();
+    let app = AppCapabilities { pid: 0, max_threads: 8  };
+    let hw = HardwareCapabilities { available_threads: 8, max_power_uw: 125_000_000 };
+    let capabilities = Capabilities { app: &app, ctx: &ctx, hw: &hw };
 
     let cases = get_test_cases();
 
-    if tikz {
-        println!("\\documentclass{{paper}}");
-        println!("\\usepackage{{xcolor}}");
-        println!("\\definecolor{{energycolor}}{{RGB}}{{2,158,115}}");
-        println!("\\definecolor{{runtimecolor}}{{RGB}}{{5,121,153}}");
-        println!("\\definecolor{{escorecolor}}{{RGB}}{{222,143,5}}");
-        println!("\\usepackage{{pgfplots}}");
-        println!("\\usetikzlibrary{{patterns,external}}");
-        println!("\\begin{{document}}");
-        println!();
-
-        for case in &cases {
-
-            println!("{}", case.name);
-            println!();
-
-            println!("\\begin{{tikzpicture}}[scale=0.8]");
-            println!("\\begin{{axis}}[");
-            println!("declare function={{");
-
-            println!("f(\\x) = {};", case.energy_curve.to_tikz());
-            println!("g(\\x) = {};", case.runtime_curve.to_tikz());
-
-            println!("score(\\x,\\alpha) = f(\\x)^\\alpha * g(\\x)^(1 - \\alpha);");
-
-            println!("}}]");
-
-            println!("\\addplot[domain=0:1,samples=50,color=energycolor] {{f(x)}};");
-            println!("\\addplot[domain=0:1,samples=50,color=runtimecolor] {{g(x)}};");
-
-            println!("\\addplot[domain=0:1,samples=50,color=escorecolor,dashed] {{score(x,0.1)}};");
-            println!("\\addplot[domain=0:1,samples=50,color=escorecolor,dash pattern={{on 2pt off 2pt}}] {{score(x,0.5)}};");
-            println!("\\addplot[domain=0:1,samples=50,color=escorecolor,dash pattern={{on 7pt off 2pt on 1pt off 2pt}}] {{score(x,0.9)}};");
-
-            println!("\\end{{axis}}");
-            println!("\\end{{tikzpicture}}");
-
-            println!();
-        }
-
-        println!("\\end{{document}}");
-
-        return;
-    }
-
     let convergence_score_threshold = derive_score_error_threshold(
-        config.energy_preference,
+        ctx.energy_preference,
         energy_cv,
         runtime_cv,
         CONVERGENCE_THRESHOLD_MULTIPLIER,
@@ -223,7 +183,7 @@ fn main() {
 
     for case in &cases {
         let (best_score, _, _, best_powercap) = find_optimal_powercap(
-            config.energy_preference,
+            ctx.energy_preference,
             case.energy_curve,
             case.runtime_curve,
             0.1,
@@ -239,6 +199,7 @@ fn main() {
             let converged = run(
                 best_score,
                 &config,
+                capabilities,
                 case.energy_curve,
                 case.runtime_curve,
                 energy_cv,
@@ -291,7 +252,7 @@ fn main() {
     println!();
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, e_pref={}",
         config.population_size, config.survival_rate, config.mutation_rate,
-        config.mutation_strength, config.energy_preference);
+        config.mutation_strength, ctx.energy_preference);
     println!("Convergence: {}/{} within {:.2}% of optimal over {} runs (max {} iters)",
         CONVERGENCE_REQUIRED, CONVERGENCE_WINDOW, convergence_score_threshold * 100.0, BENCHMARK_RUNS, MAX_ITERATIONS);
 }

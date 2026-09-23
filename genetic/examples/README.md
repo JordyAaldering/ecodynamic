@@ -1,6 +1,10 @@
 
 TODO: super outdated. move into /genetic and convert to new API
 
+```bash
+cargo run --example bench_genetic -- --power-control --energy-preference 0.9
+```
+
 # Genetic Algorithm Parameter Tuning
 
 This document explains the default parameters chosen for the genetic algorithm

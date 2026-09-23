@@ -1,6 +1,8 @@
+#[path = "src/curves.rs"]
+mod curves;
+use curves::*;
+
 use clap::Parser;
-use controller::*;
-use prelude::*;
 
 /// Benchmark to verify that the genetic algorithm can track a monotonically
 /// shifting workload via mutations (without triggering immigration).
@@ -25,7 +27,7 @@ pub struct Args {
     runtime_cv: f32,
 
     #[command(flatten)]
-    config: GeneticConfig,
+    config: Config,
 }
 
 struct TestCase {

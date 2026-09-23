@@ -1,9 +1,3 @@
-mod capabilities;
-mod chromosome;
-mod controller;
-mod gene;
-pub(crate) mod knob;
-
 use std::{
     collections::HashMap,
     io::{self, BufReader},
@@ -17,9 +11,7 @@ use clap::Parser;
 use ecodynamic_core::*;
 use rapl_energy::Rapl;
 
-use controller::*;
-
-use crate::capabilities::{Capabilities, HardwareCapabilities, ServerCapabilities, State};
+use genetic::*;
 
 static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
     let rapl = Rapl::new(false);
@@ -40,9 +32,9 @@ pub struct Args {
     /// Controller and hardware capabilities.
     #[clap(flatten)]
     pub ctx: ServerCapabilities,
-    /// Controller type.
+    /// Genetic controller configuration.
     #[command(flatten)]
-    pub config: Config,
+    pub config: GeneticConfig,
 }
 
 fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -> io::Result<()> {

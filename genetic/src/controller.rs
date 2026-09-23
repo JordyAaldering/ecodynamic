@@ -1,5 +1,6 @@
 use clap::Parser;
 use ecodynamic_api::*;
+use ecodynamic_core::Letterbox;
 
 use crate::{chromosome::Chromosome, *};
 
@@ -10,7 +11,7 @@ pub struct GeneticController<'a> {
     sort_descending: bool,
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
-    settings: &'a Config,
+    settings: &'a GeneticConfig,
     capabilities: Capabilities<'a>,
     // Debugging metadata
     pub generation: usize,
@@ -18,7 +19,7 @@ pub struct GeneticController<'a> {
 }
 
 #[derive(Clone, Debug, Parser)]
-pub struct Config {
+pub struct GeneticConfig {
     #[arg(short('s'), long, default_value_t = 20)]
     pub population_size: usize,
 
@@ -152,7 +153,7 @@ impl<'a> GeneticController<'a> {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
     /// finding an optimum immediately.
-    pub fn new(settings: &'a Config, capabilities: Capabilities<'a>) -> Self {
+    pub fn new(settings: &'a GeneticConfig, capabilities: Capabilities<'a>) -> Self {
         let population = (0..settings.population_size)
             .map(|mut i| {
                 if settings.initial_population_descending {
@@ -189,7 +190,7 @@ impl<'a> GeneticController<'a> {
         self.generation += 1;
         self.immigration_was_triggered = false;
 
-        let Config {
+        let GeneticConfig {
             population_size,
             survival_rate,
             survival_rate_decay,
