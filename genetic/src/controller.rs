@@ -10,8 +10,9 @@ pub struct GeneticController<'a> {
     sort_descending: bool,
     effective_survival_rate: f32,
     effective_mutation_rate: f32,
-    settings: &'a GeneticConfig,
-    capabilities: Capabilities<'a>,
+    config: &'a GeneticConfig,
+    app: &'a AppCapabilities,
+    env: &'a HardwareCapabilities,
     // Debugging metadata
     pub generation: usize,
     pub immigration_was_triggered: bool,
@@ -19,6 +20,12 @@ pub struct GeneticController<'a> {
 
 #[derive(Clone, Debug, Parser)]
 pub struct GeneticConfig {
+    /// Describes the importance of optimising for energy efficiency over runtime performance.
+    /// A value of 1 means that only energy efficiency is optimised for, while
+    /// a value of 0 means that only runtime performance is optimised for.
+    #[clap(short('a'), long, default_value_t = 0.9)]
+    pub energy_preference: f32,
+
     /// Enable nudging of chromosomes towards secondary preferences, such as core sharing and power limit proportional to energy preference.
     #[arg(long("nudge"))]
     pub do_nudging: bool,
@@ -127,7 +134,7 @@ impl<'a> Controller for GeneticController<'a> {
     fn request(&self, index: usize) -> Demand {
         debug_assert!(index < self.population.len());
         let chromosome = &self.population[index];
-        chromosome.get_demand(self.capabilities)
+        chromosome.get_demand(self.app, self.env)
     }
 
     fn evolve(&mut self, samples: Vec<Sample>) {
@@ -148,7 +155,7 @@ impl<'a> Controller for GeneticController<'a> {
             mutation_rate_decay,
             mutation_rate_min,
             ..
-        } = *self.settings;
+        } = *self.config;
 
         let population_size = self.population.len();
 
@@ -218,14 +225,14 @@ impl<'a> Controller for GeneticController<'a> {
             }
         };
 
-        if self.settings.do_nudging {
+        if self.config.do_nudging {
             // Cap the nudge strength to a fraction of this generation's own relative score spread
-            let effective_nudge_strength = self.settings.nudge_strength
-                .min(relative_score_spread(&scores) * self.settings.nudge_relative_cap);
+            let effective_nudge_strength = self.config.nudge_strength
+                .min(relative_score_spread(&scores) * self.config.nudge_relative_cap);
 
             let nudged_scores: Vec<f32> = self.population.iter()
                 .zip(&scores)
-                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.capabilities.hw.available_threads, self.capabilities.ctx.energy_preference))
+                .map(|(chromosome, &score)| chromosome.nudged_score(score, effective_nudge_strength, self.env.thread_count, self.config.energy_preference))
                 .collect();
 
             sort_population_by_score(&mut self.population, nudged_scores);
@@ -237,9 +244,9 @@ impl<'a> Controller for GeneticController<'a> {
         for i in survival_count..immigration_start {
             let parent1 = &self.population[rand::random_range(0..survival_count)];
             let parent2 = &self.population[rand::random_range(0..survival_count)];
-            let mut child = parent1.crossover(parent2, self.settings.immigration_similarity_threshold);
+            let mut child = parent1.crossover(parent2, self.config.immigration_similarity_threshold);
             if rand::random_bool(self.effective_mutation_rate as f64) {
-                child.mutate(self.effective_mutation_rate, self.settings.immigration_similarity_threshold);
+                child.mutate(self.effective_mutation_rate, self.config.immigration_similarity_threshold);
             }
 
             self.population[i] = child;
@@ -254,7 +261,7 @@ impl<'a> Controller for GeneticController<'a> {
         // Fill remaining chromosomes by immigration
         let immigration_count = population_size.saturating_sub(immigration_start);
         for (offset, i) in (immigration_start..population_size).enumerate() {
-            self.population[i] = Chromosome::immigrate(offset, immigration_count, self.capabilities);
+            self.population[i] = Chromosome::immigrate(self.app, self.env, offset, immigration_count);
         }
 
         // To minimise changes in the runtime we sort by the recommended power limit
@@ -279,7 +286,7 @@ impl<'a> GeneticController<'a> {
     /// Instead of randomly initialized values, use an even spread over valid thread
     /// counts and power limits to reduce duplication and increase the chances of
     /// finding an optimum immediately.
-    pub fn new(letterbox_size: usize, config: &'a GeneticConfig, capabilities: Capabilities<'a>) -> Self {
+    pub fn new(letterbox_size: usize, config: &'a GeneticConfig, app: &'a AppCapabilities, env: &'a HardwareCapabilities) -> Self {
         let population = (0..letterbox_size)
             .map(|mut i| {
                 if config.initial_population_descending {
@@ -287,7 +294,7 @@ impl<'a> GeneticController<'a> {
                 }
 
                 let t = i as f32 / (letterbox_size - 1) as f32;
-                Chromosome::lerp(capabilities, t)
+                Chromosome::lerp(app, env, t)
             })
             .collect();
 
@@ -299,15 +306,16 @@ impl<'a> GeneticController<'a> {
             sort_descending: !config.initial_population_descending,
             effective_survival_rate: config.survival_rate,
             effective_mutation_rate: config.mutation_rate,
-            settings: config,
-            capabilities,
+            config,
+            app,
+            env,
             generation: 0,
             immigration_was_triggered: false,
         }
     }
 
     fn score(&self, samples: Vec<Sample>) -> Vec<f32> {
-        let alpha = self.capabilities.ctx.energy_preference;
+        let alpha = self.config.energy_preference;
         samples.into_iter().map(|s| s.score(alpha)).collect()
     }
 }

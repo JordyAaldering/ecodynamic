@@ -31,9 +31,6 @@ pub struct Args {
     /// Size of the letterbox for each task.
     #[arg(short('s'), long, default_value_t = 20)]
     letterbox_size: usize,
-    /// Controller and hardware capabilities.
-    #[clap(flatten)]
-    ctx: ServerCapabilities,
     /// Genetic controller configuration.
     #[command(flatten)]
     config: GeneticConfig,
@@ -125,13 +122,13 @@ struct RunResult {
 
 fn run(
     config: &GeneticConfig,
-    capabilities: Capabilities<'_>,
     case: &TestCase,
     energy_cv: f32,
     runtime_cv: f32,
     letterbox_size: usize,
 ) -> RunResult {
-    let mut controller = GeneticController::new(letterbox_size, config, capabilities);
+    let (app, env) = capabilities();
+    let mut controller = GeneticController::new(letterbox_size, config, &app, &env);
     let mut letterbox = Letterbox::new(letterbox_size);
 
     let mut immigration_count = 0;
@@ -152,14 +149,14 @@ fn run(
 
         // Compute optimal score for the current (drifted) curves
         let (best_score, _, _, _) = find_optimal_powercap(
-            capabilities.ctx.energy_preference,
+            config.energy_preference,
             energy_curve,
             runtime_curve,
             0.1,
             1.0,
         );
 
-        let score = sample.score(capabilities.ctx.energy_preference);
+        let score = sample.score(config.energy_preference);
         let score_error = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
 
         // Track errors in the second half of the run (after initial convergence)
@@ -197,12 +194,7 @@ fn main() {
         runtime_cv,
         letterbox_size,
         config,
-        ctx,
     } = Args::parse();
-
-    let app = AppCapabilities { pid: 0, max_threads: 8  };
-    let hw = HardwareCapabilities { available_threads: 8, max_power_uw: 125_000_000 };
-    let capabilities = Capabilities { app: &app, ctx: &ctx, hw: &hw };
 
     let cases = get_test_cases();
 
@@ -210,7 +202,7 @@ fn main() {
     println!("===========================================================");
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, decay={}, e_pref={}",
         letterbox_size, config.survival_rate, config.mutation_rate,
-        config.mutation_strength, config.mutation_rate_decay, ctx.energy_preference);
+        config.mutation_strength, config.mutation_rate_decay, config.energy_preference);
     println!("Iterations per run: {}, Runs per case: {}", NUM_ITERATIONS, runs);
     println!();
     println!("┌─────────────────────────────────┬──────────────┬──────────────┬──────────────┐");
@@ -225,7 +217,6 @@ fn main() {
         for _ in 0..runs {
             let result = run(
                 &config,
-                capabilities,
                 case,
                 energy_cv,
                 runtime_cv,

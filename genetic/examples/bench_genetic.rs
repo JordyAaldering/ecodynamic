@@ -26,9 +26,6 @@ pub struct Args {
     /// Size of the letterbox for each task.
     #[arg(short('s'), long, default_value_t = 20)]
     letterbox_size: usize,
-    /// Controller and hardware capabilities.
-    #[clap(flatten)]
-    ctx: ServerCapabilities,
     /// Genetic controller configuration.
     #[command(flatten)]
     config: GeneticConfig,
@@ -113,7 +110,6 @@ fn get_test_cases() -> Vec<TestCase> {
 fn run(
     best_score: f32,
     config: &GeneticConfig,
-    capabilities: Capabilities<'_>,
     energy_curve: Curve,
     runtime_curve: Curve,
     energy_cv: f32,
@@ -121,7 +117,8 @@ fn run(
     letterbox_size: usize,
     convergence_score_threshold: f32,
 ) -> Option<usize> {
-    let mut controller = GeneticController::new(letterbox_size, config, capabilities);
+    let (app, env) = capabilities();
+    let mut controller = GeneticController::new(letterbox_size, config, &app, &env);
     let mut letterbox = Letterbox::new(letterbox_size);
 
     let mut recent_score_error_ratios = vec![f32::INFINITY; CONVERGENCE_WINDOW];
@@ -135,7 +132,7 @@ fn run(
         let runtime = runtime_curve.eval(t, runtime_cv);
         let sample = Sample { task_id: 0, energy, runtime, usertime: None };
 
-        let score = sample.score(capabilities.ctx.energy_preference);
+        let score = sample.score(config.energy_preference);
         let score_error_ratio = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
         recent_score_error_ratios[recent_score_error_index] = score_error_ratio;
         recent_score_error_index = (recent_score_error_index + 1) % CONVERGENCE_WINDOW;
@@ -159,18 +156,13 @@ fn main() {
         energy_cv,
         runtime_cv,
         letterbox_size,
-        ctx,
         config,
     } = Args::parse();
-
-    let app = AppCapabilities { pid: 0, max_threads: 8  };
-    let hw = HardwareCapabilities { available_threads: 8, max_power_uw: 125_000_000 };
-    let capabilities = Capabilities { app: &app, ctx: &ctx, hw: &hw };
 
     let cases = get_test_cases();
 
     let convergence_score_threshold = derive_score_error_threshold(
-        ctx.energy_preference,
+        config.energy_preference,
         energy_cv,
         runtime_cv,
         CONVERGENCE_THRESHOLD_MULTIPLIER,
@@ -193,7 +185,7 @@ fn main() {
 
     for case in &cases {
         let (best_score, _, _, best_powercap) = find_optimal_powercap(
-            ctx.energy_preference,
+            config.energy_preference,
             case.energy_curve,
             case.runtime_curve,
             0.1,
@@ -209,7 +201,6 @@ fn main() {
             let converged = run(
                 best_score,
                 &config,
-                capabilities,
                 case.energy_curve,
                 case.runtime_curve,
                 energy_cv,
@@ -263,7 +254,7 @@ fn main() {
     println!();
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, e_pref={}",
         letterbox_size, config.survival_rate, config.mutation_rate,
-        config.mutation_strength, ctx.energy_preference);
+        config.mutation_strength, config.energy_preference);
     println!("Convergence: {}/{} within {:.2}% of optimal over {} runs (max {} iters)",
         CONVERGENCE_REQUIRED, CONVERGENCE_WINDOW, convergence_score_threshold * 100.0, BENCHMARK_RUNS, MAX_ITERATIONS);
 }

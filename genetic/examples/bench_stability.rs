@@ -30,9 +30,6 @@ pub struct Args {
     /// Size of the letterbox for each task.
     #[arg(short('s'), long, default_value_t = 20)]
     letterbox_size: usize,
-    /// Controller and hardware capabilities.
-    #[clap(flatten)]
-    ctx: ServerCapabilities,
     /// Genetic controller configuration.
     #[command(flatten)]
     config: GeneticConfig,
@@ -113,14 +110,14 @@ fn get_test_cases(default_energy_cv: f32, default_runtime_cv: f32) -> Vec<TestCa
 /// Run a single trial and return the number of immigration events observed.
 fn run(
     config: &GeneticConfig,
-    capabilities: Capabilities<'_>,
     energy_curve: Curve,
     runtime_curve: Curve,
     energy_cv: f32,
     runtime_cv: f32,
     letterbox_size: usize,
 ) -> usize {
-    let mut controller = GeneticController::new(letterbox_size, config, capabilities);
+    let (app, env) = capabilities();
+    let mut controller = GeneticController::new(letterbox_size, config, &app, &env);
     let mut letterbox = Letterbox::new(letterbox_size);
 
     let mut immigration_count = 0;
@@ -160,13 +157,8 @@ fn main() {
         energy_cv,
         runtime_cv,
         letterbox_size,
-        ctx,
         config,
     } = Args::parse();
-
-    let app = AppCapabilities { pid: 0, max_threads: 8  };
-    let hw = HardwareCapabilities { available_threads: 8, max_power_uw: 125_000_000 };
-    let capabilities = Capabilities { app: &app, ctx: &ctx, hw: &hw };
 
     let cases = get_test_cases(energy_cv, runtime_cv);
 
@@ -174,7 +166,7 @@ fn main() {
     println!("=========================================================");
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, e_pref={}",
         letterbox_size, config.survival_rate, config.mutation_rate,
-        config.mutation_strength, ctx.energy_preference);
+        config.mutation_strength, config.energy_preference);
     println!("Iterations per run: {}, Runs per case: {}", NUM_ITERATIONS, runs);
     println!();
     println!("┌─────────────────────────────────┬──────────────┬──────────────┬──────────────┐");
@@ -189,7 +181,6 @@ fn main() {
         for _ in 0..runs {
             let triggers = run(
                 &config,
-                capabilities,
                 case.energy_curve,
                 case.runtime_curve,
                 case.energy_cv,

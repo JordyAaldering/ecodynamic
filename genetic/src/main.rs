@@ -22,19 +22,19 @@ pub static THREAD_UTILIZATION: atomic::AtomicU16 = atomic::AtomicU16::new(0);
 pub struct Args {
     /// Exit after handling a single client.
     #[arg(long, action)]
-    pub once: bool,
+    once: bool,
     /// Idle power draw of the processor.
     #[arg(short('w'), long("idle"), default_value_t = 0.0)]
-    pub idle_power: f32,
+    idle_power: f32,
     /// Size of the letterbox/population for each task.
     #[arg(short('s'), long, default_value_t = 20)]
-    pub letterbox_size: usize,
-    /// Controller and hardware capabilities.
-    #[clap(flatten)]
-    pub ctx: ServerCapabilities,
+    letterbox_size: usize,
     /// Genetic controller configuration.
     #[command(flatten)]
-    pub config: GeneticConfig,
+    config: GeneticConfig,
+    /// Hardware capabilities, defined in a .env file or environment variables.
+    #[command(flatten)]
+    env: HardwareCapabilities,
 }
 
 fn handle_client(
@@ -42,18 +42,16 @@ fn handle_client(
     idle_power: f32,
     letterbox_size: usize,
     config: GeneticConfig,
-    ctx: ServerCapabilities,
-    hw: HardwareCapabilities,
+    env: HardwareCapabilities,
 ) -> io::Result<()> {
     let mut rdr = BufReader::new(stream.try_clone()?);
 
     // First message must be the application's capabilities
     let app = socket::accept(&mut rdr)?;
-    let capabilities = Capabilities { app: &app, ctx: &ctx, hw: &hw };
 
     let mut tasks = ApplicationContext::new(
         letterbox_size,
-        || GeneticController::new(letterbox_size, &config, capabilities),
+        || GeneticController::new(letterbox_size, &config, &app, &env),
     );
 
     let mut last_thread_count = 0;
@@ -70,7 +68,7 @@ fn handle_client(
                 THREAD_UTILIZATION.fetch_add(demand.num_threads, atomic::Ordering::Relaxed);
                 last_thread_count = demand.num_threads;
 
-                set_powercap(demand.powercap_pct, hw.max_power_uw)?;
+                set_powercap(demand.powercap_pct, env.max_power_uw)?;
 
                 socket::write(&mut stream, &demand)?;
             }
@@ -99,22 +97,6 @@ fn handle_client(
     }
 }
 
-/// Find the maximum power limit in microwatts (uW).
-fn find_max_power_uw() -> u64 {
-    let rapl = RAPL.lock().unwrap();
-
-    let max_power_uw = rapl.packages.first()
-        .and_then(|p| p.constraints.first())
-        .and_then(|c| c.max_power_uw);
-    if let Some(max_power_uw) = max_power_uw {
-        log::debug!("Max power: {max_power_uw}uW");
-        max_power_uw
-    } else {
-        log::warn!("RAPL does not provide max_power_uw; using 0uW");
-        0
-    }
-}
-
 /// Set the power limit to the specified percentage of the maximum power limit.
 fn set_powercap(powercap_pct: f32, max_power_uw: u64) -> io::Result<()> {
     let powercap = (powercap_pct * max_power_uw as f32).round() as u64;
@@ -134,20 +116,19 @@ fn reset_power_limits() -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
+    dotenvy::dotenv().ok();
+
     env_logger::init();
 
     let Args {
         once,
         idle_power,
         letterbox_size,
-        ctx,
         config,
+        env,
     } = Args::parse();
 
-    // TODO: number of available cores assumed to be 8 for now
-    let available_threads = 8;
-    let max_power_uw = find_max_power_uw();
-    let hw = HardwareCapabilities { available_threads, max_power_uw };
+    log::debug!("{env:?}");
 
     let listener = socket::open()?;
 
@@ -160,14 +141,13 @@ fn main() -> io::Result<()> {
 
     if once {
         let stream = listener.incoming().next().unwrap()?;
-        handle_client(stream, idle_power, letterbox_size, config, ctx, hw)?;
+        handle_client(stream, idle_power, letterbox_size, config, env)?;
     } else {
         for stream in listener.incoming().map_while(Result::ok) {
             let config = config.clone();
-            let ctx = ctx.clone();
-            let hw = hw.clone();
+            let env = env.clone();
             thread::spawn(move || {
-                handle_client(stream, idle_power, letterbox_size, config, ctx, hw).unwrap()
+                handle_client(stream, idle_power, letterbox_size, config, env).unwrap()
             });
         }
     }

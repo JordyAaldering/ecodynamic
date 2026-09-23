@@ -1,8 +1,6 @@
-use ecodynamic_api::Demand;
+use ecodynamic_api::{AppCapabilities, Demand};
 
-use crate::{Capabilities, knob::*};
-
-use super::gene::*;
+use crate::{HardwareCapabilities, gene::*, knob::*};
 
 #[derive(Debug)]
 pub struct Chromosome {
@@ -16,41 +14,41 @@ pub struct Chromosome {
 }
 
 impl Chromosome {
-    pub fn rand(capabilities: Capabilities) -> Self {
+    pub fn rand(app: &AppCapabilities, env: &HardwareCapabilities) -> Self {
         Self {
-            threads: capabilities.ctx.thread_control.then(|| ThreadCount::rand(capabilities.app.max_threads)),
-            pinning: capabilities.ctx.pinning_control.then(|| PinningStrategy::Free),
-            power: capabilities.ctx.power_control.then(|| Powercap::rand(capabilities.ctx.min_power, capabilities.ctx.max_power)),
+            threads: env.do_thread_control.then(|| ThreadCount::rand(app.max_threads)),
+            pinning: env.do_pinning_control.then(|| PinningStrategy::Free),
+            power: env.do_power_control.then(|| Powercap::rand(env.min_power_frac, env.max_power_frac)),
             prev_score: None,
         }
     }
 
-    pub fn lerp(capabilities: Capabilities, t: f32) -> Self {
+    pub fn lerp(app: &AppCapabilities, env: &HardwareCapabilities, t: f32) -> Self {
         Self {
-            threads: capabilities.ctx.thread_control.then(|| ThreadCount::lerp(capabilities.app.max_threads, t)),
-            pinning: capabilities.ctx.pinning_control.then(|| PinningStrategy::Free),
-            power: capabilities.ctx.power_control.then(|| Powercap::lerp(capabilities.ctx.min_power, capabilities.ctx.max_power, t)),
+            threads: env.do_thread_control.then(|| ThreadCount::lerp(app.max_threads, t)),
+            pinning: env.do_pinning_control.then(|| PinningStrategy::Free),
+            power: env.do_power_control.then(|| Powercap::lerp(env.min_power_frac, env.max_power_frac, t)),
             prev_score: None,
         }
     }
 
     /// Generate a new chromosome. If the immigration count is <= 3, each chromosome is randomly sampled.
     /// Otherwise, chromosomes are generated using an even spread over the valid search space.
-    pub fn immigrate(index: usize, count: usize, capabilities: Capabilities) -> Self {
+    pub fn immigrate(app: &AppCapabilities, env: &HardwareCapabilities, index: usize, count: usize) -> Self {
         debug_assert_ne!(count, 0);
         if count <= 3 {
-            return Chromosome::rand(capabilities);
+            return Chromosome::rand(app, env);
         }
 
         let t = index as f32 / (count - 1) as f32;
-        Chromosome::lerp(capabilities, t)
+        Chromosome::lerp(app, env, t)
     }
 
-    pub fn get_demand(&self, capabilities: Capabilities) -> Demand {
+    pub fn get_demand(&self, app: &AppCapabilities, env: &HardwareCapabilities) -> Demand {
         let num_threads = self.threads.as_ref()
-            .map_or(capabilities.app.max_threads, |gene| gene.get_num_threads());
+            .map_or(app.max_threads, |gene| gene.get_num_threads());
         let powercap_pct = self.power.as_ref()
-            .map_or(capabilities.ctx.max_power, |gene| gene.get_powercap());
+            .map_or(env.max_power_frac, |gene| gene.get_powercap());
         Demand {
             num_threads,
             powercap_pct,

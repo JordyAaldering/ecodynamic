@@ -2,8 +2,9 @@
 
 use std::{io, str::FromStr};
 
-use ecodynamic_api::Sample;
+use ecodynamic_api::{AppCapabilities, Sample};
 use ecodynamic_core::lerp;
+use genetic::HardwareCapabilities;
 use rand::distr::Distribution;
 use rand_distr::Normal;
 
@@ -200,4 +201,22 @@ pub fn derive_score_error_threshold(
     let e_noise = (e_pref * energy_cv).powi(2);
     let r_noise = ((1.0 - e_pref) * runtime_cv).powi(2);
 	threshold_multiplier * f32::sqrt(e_noise + r_noise)
+}
+
+pub fn capabilities() -> (AppCapabilities, HardwareCapabilities) {
+	let app = AppCapabilities {
+		pid: 0,
+		max_threads: 8,
+	};
+    let env = HardwareCapabilities {
+		core_count: 8,
+		thread_count: 8,
+		max_power_uw: 125_000_000,
+		min_power_frac: 0.1,
+		max_power_frac: 1.0,
+		do_thread_control: false,
+		do_pinning_control: false,
+		do_power_control: true,
+	};
+	(app, env)
 }
