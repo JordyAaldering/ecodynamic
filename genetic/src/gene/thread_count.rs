@@ -1,4 +1,4 @@
-use ecodynamic_core::lerp;
+use ecodynamic_core::*;
 
 #[derive(Debug)]
 pub struct ThreadCount {

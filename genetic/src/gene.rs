@@ -1,4 +1,10 @@
-use crate::knob::{PinningStrategy, Powercap, ThreadCount};
+mod thread_count;
+mod pinning_strategy;
+mod powercap;
+
+pub(crate) use thread_count::ThreadCount;
+pub(crate) use pinning_strategy::PinningStrategy;
+pub(crate) use powercap::Powercap;
 
 pub trait Gene {
     fn crossover(&self, other: &Self, t: f32) -> Self;

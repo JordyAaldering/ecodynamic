@@ -1,6 +1,6 @@
-use ecodynamic_api::{Properties, Demand};
+use ecodynamic_api::*;
 
-use crate::{HardwareCapabilities, gene::*, knob::*};
+use crate::*;
 
 #[derive(Debug)]
 pub struct Chromosome {

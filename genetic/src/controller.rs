@@ -2,7 +2,7 @@ use clap::Parser;
 use ecodynamic_api::*;
 use ecodynamic_core::*;
 
-use crate::{chromosome::Chromosome, *};
+use crate::*;
 
 pub struct GeneticController<'a> {
     population: Vec<Chromosome>,

@@ -1,8 +1,9 @@
 mod capabilities;
-mod chromosome;
 mod controller;
+mod chromosome;
 mod gene;
-mod knob;
 
-pub use crate::controller::*;
-pub use crate::capabilities::*;
+pub use capabilities::HardwareCapabilities;
+pub use controller::{GeneticController, GeneticConfig};
+use chromosome::Chromosome;
+use gene::*;
