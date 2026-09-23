@@ -6,13 +6,17 @@ use rapl_energy::Rapl;
 
 use genetic::*;
 
-static RAPL: LazyLock<Option<Mutex<Rapl>>> = LazyLock::new(|| {
-    let rapl = Rapl::new(false);
-    log::trace!("RAPL interface: {:?}", rapl);
-    rapl.map(Mutex::new)
+static RAPL: LazyLock<Mutex<Rapl>> = LazyLock::new(|| {
+    let rapl = Rapl::new(false).unwrap();
+    log::trace!("Instantiated RAPL: {rapl:?}");
+    Mutex::new(rapl)
 });
 
-static THREAD_UTILIZATION: atomic::AtomicU16 = atomic::AtomicU16::new(0);
+/// Global system state, shared across all clients and threads.
+pub static THREAD_UTILIZATION: atomic::AtomicU16 = atomic::AtomicU16::new(0);
+
+// /// Global system state, shared across all clients and threads.
+// pub static CURRENT_POWERCAP: atomic::AtomicU64 = atomic::AtomicU64::new(0);
 
 #[derive(Clone, Parser)]
 pub struct Args {
@@ -60,16 +64,13 @@ fn handle_client(
                 let demand = tasks.request(&request);
 
                 let (index, controller) = tasks.current(&request);
-                controller.store_state(index, State {
-                    thread_utilization: THREAD_UTILIZATION.load(atomic::Ordering::Relaxed),
-                    powercap_uw: 0,
-                });
+                controller.store_state(index, THREAD_UTILIZATION.load(atomic::Ordering::Relaxed));
 
                 // Must be run after get_demand, because the controller tracks the number of threads in use
                 THREAD_UTILIZATION.fetch_add(demand.num_threads, atomic::Ordering::Relaxed);
                 last_thread_count = demand.num_threads;
 
-                set_powercap(demand.powercap_pct, hw.max_power_uw);
+                set_powercap(demand.powercap_pct, hw.max_power_uw)?;
 
                 socket::write(&mut stream, &demand)?;
             }
@@ -98,61 +99,38 @@ fn handle_client(
     }
 }
 
+/// Find the maximum power limit in microwatts (uW).
 fn find_max_power_uw() -> u64 {
-    if let Some(rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
-        let max_power_uw = rapl.packages.first()
-            .and_then(|p| p.constraints.first())
-            .and_then(|c| c.max_power_uw);
-        if let Some(max_power_uw) = max_power_uw {
-            log::debug!("Max power: {}uW", max_power_uw);
-            max_power_uw
-        } else {
-            log::warn!("RAPL does not provide max_power_uw; using 0uW");
-            0
-        }
+    let rapl = RAPL.lock().unwrap();
+
+    let max_power_uw = rapl.packages.first()
+        .and_then(|p| p.constraints.first())
+        .and_then(|c| c.max_power_uw);
+    if let Some(max_power_uw) = max_power_uw {
+        log::debug!("Max power: {max_power_uw}uW");
+        max_power_uw
     } else {
-        log::warn!("RAPL not available; using 0uW as max power");
+        log::warn!("RAPL does not provide max_power_uw; using 0uW");
         0
     }
 }
 
-fn set_powercap(powercap_pct: f32, max_power_uw: u64) {
-    if let Some(mut rapl) = RAPL.as_ref().map(|x| x.lock().unwrap()) {
-        let powercap = (powercap_pct * max_power_uw as f32).round() as u64;
-        for package in &mut rapl.packages {
-            if package.constraints.is_empty() {
-                log::warn!("Skipping package {} without power constraints", package.name);
-                continue;
-            }
-
-            let long_term = &mut package.constraints[0];
-
-            log::trace!("Setting power limit for {} to {}uW",
-                long_term.name.as_deref().unwrap_or("<unknown>"), powercap);
-            if let Err(e) = long_term.set_power_limit_uw(powercap) {
-                log::error!("Failed to set power limit for {}: {}",
-                    long_term.name.as_deref().unwrap_or("<unknown>"), e);
-            }
-
-            if let Some(short_term) = package.constraints.get_mut(1) {
-                log::trace!("Setting power limit for {} to {}uW",
-                    short_term.name.as_deref().unwrap_or("<unknown>"), powercap);
-                if let Err(e) = short_term.set_power_limit_uw(powercap) {
-                    log::error!("Failed to set power limit for {}: {}",
-                        short_term.name.as_deref().unwrap_or("<unknown>"), e);
-                }
-            }
-        }
-    }
-}
-
-fn reset_default_power_limit() -> io::Result<()> {
-    if let Some(x) = RAPL.as_ref() {
-        if let Ok(mut rapl) = x.lock() {
-            rapl.reset_power_limits(false)?;
+/// Set the power limit to the specified percentage of the maximum power limit.
+fn set_powercap(powercap_pct: f32, max_power_uw: u64) -> io::Result<()> {
+    let powercap = (powercap_pct * max_power_uw as f32).round() as u64;
+    let mut rapl = RAPL.lock().unwrap();
+    for package in &mut rapl.packages {
+        for constraint in &mut package.constraints {
+            constraint.set_power_limit_uw(powercap)?;
         }
     }
     Ok(())
+}
+
+/// Reset the power limits to their default values.
+fn reset_power_limits() -> io::Result<()> {
+    let mut rapl = RAPL.lock().unwrap();
+    rapl.reset_power_limits(false)
 }
 
 fn main() -> io::Result<()> {
@@ -175,7 +153,7 @@ fn main() -> io::Result<()> {
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(|| {
-        reset_default_power_limit().unwrap();
+        reset_power_limits().unwrap();
         socket::close().unwrap();
         process::exit(0);
     }).unwrap();
@@ -194,6 +172,6 @@ fn main() -> io::Result<()> {
         }
     }
 
-    reset_default_power_limit()?;
+    reset_power_limits()?;
     socket::close()
 }

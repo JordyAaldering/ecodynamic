@@ -1,6 +1,6 @@
 use ecodynamic_api::Demand;
 
-use crate::{Capabilities, knob::*, State};
+use crate::{Capabilities, knob::*};
 
 use super::gene::*;
 
@@ -57,8 +57,8 @@ impl Chromosome {
         }
     }
 
-    pub fn store_state(&mut self, state: State) {
-        self.threads.as_mut().map(|gene| gene.set_utilization(state.thread_utilization));
+    pub fn store_state(&mut self, thread_utilization: u16) {
+        self.threads.as_mut().map(|gene| gene.set_utilization(thread_utilization));
     }
 
     pub fn crossover(&self, other: &Self, immigration_similarity_threshold: f32) -> Self {

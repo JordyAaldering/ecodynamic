@@ -270,10 +270,10 @@ impl<'a> Controller for GeneticController<'a> {
 }
 
 impl<'a> GeneticController<'a> {
-    pub fn store_state(&mut self, index: usize, state: State) {
+    pub fn store_state(&mut self, index: usize, thread_utilization: u16) {
         debug_assert!(index < self.population.len());
         let chromosome = &mut self.population[index];
-        chromosome.store_state(state);
+        chromosome.store_state(thread_utilization);
     }
 
     /// Instead of randomly initialized values, use an even spread over valid thread
