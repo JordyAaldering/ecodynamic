@@ -1,27 +1,11 @@
+#![allow(unused)]
+
 use std::{io, str::FromStr};
 
 use ecodynamic_api::Sample;
-use rand::{RngExt, distr::Distribution};
+use rand::distr::Distribution;
 use rand_distr::Normal;
 
-/// Curve families used to synthesize measurements.
-///
-/// Example TikZ to visualize the curves:
-/// ```tex
-/// \begin{tikzpicture}
-/// \begin{axis}[
-///   declare function={
-///     f(\x) = \x;
-///     g(\x) = 1 - \x;
-///     score(\x,\alpha) = f(\x)^\alpha * g(\x)^(1 - \alpha);
-///   },
-/// ]
-///   \addplot[domain=0:1,samples=100,color=energycolor]  {f(x)};
-///   \addplot[domain=0:1,samples=100,color=runtimecolor] {g(x)};
-///   \addplot[domain=0:1,samples=100,color=escorecolor]  {score(x,0.5)};
-/// \end{axis}
-/// \end{tikzpicture}
-/// ```
 #[derive(Clone, Copy, Debug)]
 pub enum Curve {
 	/// ```tex
@@ -95,29 +79,6 @@ impl ToString for Curve {
 }
 
 impl Curve {
-	pub fn random() -> Self {
-		let mut rng = rand::rng();
-		// Deliberately make the linear variant less likely, as linear curves have less variation between them
-		match rng.random_range(0..5) {
-			0 => Self::Linear {
-				lb: rng.random_range(0.0..=1.0),
-				ub: rng.random_range(0.0..=1.0),
-			},
-			1 | 2 => Self::Quadratic {
-				lb: rng.random_range(0.0..=1.0),
-				t_middle: rng.random_range(0.0..=1.0),
-				steepness: rng.random_range(-0.3..=3.0),
-			},
-			3 | 4 => Self::Sigmoid {
-				lb: rng.random_range(0.0..=1.0),
-				ub: rng.random_range(0.0..=1.0),
-				t_middle: rng.random_range(0.0..=1.0),
-				steepness: rng.random_range(-15.0..=15.0),
-			},
-			_ => unreachable!(),
-		}
-	}
-
 	pub fn eval(&self, t: f32, cv: f32) -> f32 {
         assert!(t >= 0.0);
 		assert!(t <= 1.0);
@@ -165,24 +126,6 @@ pub fn quartiles(mut xs: Vec<usize>) -> (usize, usize, usize) {
     }
 
     xs.sort_unstable();
-    let n = xs.len();
-    let med = median(&xs);
-    let q1 = median(&xs[..n / 2]);
-    let q3 = median(&xs[(n + 1) / 2..]);
-    (med, q1, q3)
-}
-
-pub fn quartilesf32(mut xs: Vec<f32>) -> (f32, f32, f32) {
-    fn median(xs: &[f32]) -> f32 {
-        let n = xs.len();
-        if n % 2 == 0 {
-            (xs[n / 2 - 1] + xs[n / 2]) / 2.0
-        } else {
-            xs[n / 2]
-        }
-    }
-
-    xs.sort_unstable_by(f32::total_cmp);
     let n = xs.len();
     let med = median(&xs);
     let q1 = median(&xs[..n / 2]);
