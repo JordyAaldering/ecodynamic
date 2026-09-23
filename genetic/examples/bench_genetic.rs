@@ -3,8 +3,8 @@ mod curves;
 use curves::*;
 
 use clap::Parser;
-use ecodynamic_api::{AppCapabilities, Sample};
-
+use ecodynamic_api::*;
+use ecodynamic_core::*;
 use genetic::*;
 
 const BENCHMARK_RUNS: usize = 500;
@@ -23,12 +23,15 @@ pub struct Args {
     /// Coefficient of variation for runtime measurements.
     #[arg(long, default_value_t = 0.005)]
     runtime_cv: f32,
+    /// Size of the letterbox for each task.
+    #[arg(short('s'), long, default_value_t = 20)]
+    letterbox_size: usize,
     /// Controller and hardware capabilities.
     #[clap(flatten)]
-    pub ctx: ServerCapabilities,
+    ctx: ServerCapabilities,
     /// Genetic controller configuration.
     #[command(flatten)]
-    pub config: GeneticConfig,
+    config: GeneticConfig,
 }
 
 struct TestCase {
@@ -115,26 +118,31 @@ fn run(
     runtime_curve: Curve,
     energy_cv: f32,
     runtime_cv: f32,
+    letterbox_size: usize,
     convergence_score_threshold: f32,
 ) -> Option<usize> {
-    let mut controller = GeneticController::new(&config, capabilities);
+    let mut controller = GeneticController::new(letterbox_size, config, capabilities);
+    let mut letterbox = Letterbox::new(letterbox_size);
+
     let mut recent_score_error_ratios = vec![f32::INFINITY; CONVERGENCE_WINDOW];
     let mut recent_score_error_index = 0;
 
     for iteration in 1..=MAX_ITERATIONS {
-        let demand = controller.get_demand();
+        let demand = controller.get_demand(letterbox.len());
         let t = demand.powercap_pct;
 
         let energy = energy_curve.eval(t, energy_cv);
         let runtime = runtime_curve.eval(t, runtime_cv);
-        let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
+        let sample = Sample { task_id: 0, energy, runtime, usertime: None };
 
         let score = sample.score(capabilities.ctx.energy_preference);
         let score_error_ratio = (score - best_score).abs() / best_score.abs().max(f32::EPSILON);
         recent_score_error_ratios[recent_score_error_index] = score_error_ratio;
         recent_score_error_index = (recent_score_error_index + 1) % CONVERGENCE_WINDOW;
 
-        controller.push(sample);
+        if let Some(samples) = letterbox.push(sample) {
+            controller.evolve(samples);
+        }
 
         if has_converged(&recent_score_error_ratios, convergence_score_threshold) {
             return Some(iteration);
@@ -150,6 +158,7 @@ fn main() {
     let Args {
         energy_cv,
         runtime_cv,
+        letterbox_size,
         ctx,
         config,
     } = Args::parse();
@@ -205,6 +214,7 @@ fn main() {
                 case.runtime_curve,
                 energy_cv,
                 runtime_cv,
+                letterbox_size,
                 convergence_score_threshold,
             );
 
@@ -252,7 +262,7 @@ fn main() {
     println!("└─────────────────────────────────┴──────────┴──────────┴──────────┴──────────┴────────┘");
     println!();
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, e_pref={}",
-        config.population_size, config.survival_rate, config.mutation_rate,
+        letterbox_size, config.survival_rate, config.mutation_rate,
         config.mutation_strength, ctx.energy_preference);
     println!("Convergence: {}/{} within {:.2}% of optimal over {} runs (max {} iters)",
         CONVERGENCE_REQUIRED, CONVERGENCE_WINDOW, convergence_score_threshold * 100.0, BENCHMARK_RUNS, MAX_ITERATIONS);

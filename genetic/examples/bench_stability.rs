@@ -3,8 +3,8 @@ mod curves;
 use curves::*;
 
 use clap::Parser;
-use ecodynamic_api::{AppCapabilities, Sample};
-
+use ecodynamic_api::*;
+use ecodynamic_core::*;
 use genetic::*;
 
 /// Benchmark to verify that immigration does NOT trigger under stable workloads
@@ -27,12 +27,15 @@ pub struct Args {
     /// Coefficient of variation for runtime measurements.
     #[arg(long, default_value_t = 0.005)]
     runtime_cv: f32,
+    /// Size of the letterbox for each task.
+    #[arg(short('s'), long, default_value_t = 20)]
+    letterbox_size: usize,
     /// Controller and hardware capabilities.
     #[clap(flatten)]
-    pub ctx: ServerCapabilities,
+    ctx: ServerCapabilities,
     /// Genetic controller configuration.
     #[command(flatten)]
-    pub config: GeneticConfig,
+    config: GeneticConfig,
 }
 
 struct TestCase {
@@ -115,20 +118,25 @@ fn run(
     runtime_curve: Curve,
     energy_cv: f32,
     runtime_cv: f32,
+    letterbox_size: usize,
 ) -> usize {
-    let mut controller = GeneticController::new(config, capabilities);
+    let mut controller = GeneticController::new(letterbox_size, config, capabilities);
+    let mut letterbox = Letterbox::new(letterbox_size);
+
     let mut immigration_count = 0;
     let mut prev_generation = 0;
 
     for _ in 0..NUM_ITERATIONS {
-        let demand = controller.get_demand();
+        let demand = controller.get_demand(letterbox.len());
         let t = demand.powercap_pct;
 
         let energy = energy_curve.eval(t, energy_cv);
         let runtime = runtime_curve.eval(t, runtime_cv);
-        let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
+        let sample = Sample { task_id: 0, energy, runtime, usertime: None };
 
-        controller.push(sample);
+        if let Some(samples) = letterbox.push(sample) {
+            controller.evolve(samples);
+        }
 
         // Detect immigration by checking if generation advanced and population was replaced
         // We use a simple proxy: track generation changes via the public interface
@@ -151,6 +159,7 @@ fn main() {
         runs,
         energy_cv,
         runtime_cv,
+        letterbox_size,
         ctx,
         config,
     } = Args::parse();
@@ -164,7 +173,7 @@ fn main() {
     println!("Stability Benchmark: False Positive Immigration Detection");
     println!("=========================================================");
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, e_pref={}",
-        config.population_size, config.survival_rate, config.mutation_rate,
+        letterbox_size, config.survival_rate, config.mutation_rate,
         config.mutation_strength, ctx.energy_preference);
     println!("Iterations per run: {}, Runs per case: {}", NUM_ITERATIONS, runs);
     println!();
@@ -185,6 +194,7 @@ fn main() {
                 case.runtime_curve,
                 case.energy_cv,
                 case.runtime_cv,
+                letterbox_size,
             );
 
             total_triggers += triggers;

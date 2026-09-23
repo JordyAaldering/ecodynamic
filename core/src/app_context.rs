@@ -30,7 +30,12 @@ where
         }
     }
 
-    pub fn request(&mut self, request: Request) -> Demand {
+    pub fn current(&mut self, request: &Request) -> (usize, &mut C) {
+        let (letterbox, controller) = self.context.get_mut(&request.task_id).unwrap();
+        (letterbox.len(), controller)
+    }
+
+    pub fn request(&mut self, request: &Request) -> Demand {
         let (letterbox, controller) = self.context.entry(request.task_id)
             .or_insert_with(|| {
                 log::debug!("Instantiating task {}", request.task_id);
@@ -43,7 +48,7 @@ where
     }
 
     pub fn push(&mut self, sample: Sample) {
-        let (letterbox, controller) = self.context.get_mut(&sample.region_uid)
+        let (letterbox, controller) = self.context.get_mut(&sample.task_id)
             .expect("Received sample for a task that has not yet been instantiated");
         if let Some(samples) = letterbox.push(sample) {
             controller.evolve(samples);

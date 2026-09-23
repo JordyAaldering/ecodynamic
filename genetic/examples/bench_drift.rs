@@ -3,8 +3,8 @@ mod curves;
 use curves::*;
 
 use clap::Parser;
-use ecodynamic_api::{AppCapabilities, Sample};
-
+use ecodynamic_api::*;
+use ecodynamic_core::*;
 use genetic::*;
 
 /// Benchmark to verify that the genetic algorithm can track a monotonically
@@ -28,12 +28,15 @@ pub struct Args {
     /// Coefficient of variation for runtime measurements.
     #[arg(long, default_value_t = 0.005)]
     runtime_cv: f32,
+    /// Size of the letterbox for each task.
+    #[arg(short('s'), long, default_value_t = 20)]
+    letterbox_size: usize,
     /// Controller and hardware capabilities.
     #[clap(flatten)]
-    pub ctx: ServerCapabilities,
+    ctx: ServerCapabilities,
     /// Genetic controller configuration.
     #[command(flatten)]
-    pub config: GeneticConfig,
+    config: GeneticConfig,
 }
 
 struct TestCase {
@@ -126,8 +129,11 @@ fn run(
     case: &TestCase,
     energy_cv: f32,
     runtime_cv: f32,
+    letterbox_size: usize,
 ) -> RunResult {
-    let mut controller = GeneticController::new(config, capabilities);
+    let mut controller = GeneticController::new(letterbox_size, config, capabilities);
+    let mut letterbox = Letterbox::new(letterbox_size);
+
     let mut immigration_count = 0;
     let mut tracking_errors = Vec::new();
 
@@ -137,12 +143,12 @@ fn run(
         let energy_curve = case.energy_base.at_time(progress, case.drift_amount);
         let runtime_curve = case.runtime_base.at_time(progress, case.drift_amount);
 
-        let demand = controller.get_demand();
+        let demand = controller.get_demand(letterbox.len());
         let t = demand.powercap_pct;
 
         let energy = energy_curve.eval(t, energy_cv);
         let runtime = runtime_curve.eval(t, runtime_cv);
-        let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
+        let sample = Sample { task_id: 0, energy, runtime, usertime: None };
 
         // Compute optimal score for the current (drifted) curves
         let (best_score, _, _, _) = find_optimal_powercap(
@@ -161,7 +167,9 @@ fn run(
             tracking_errors.push(score_error);
         }
 
-        controller.push(sample);
+        if let Some(samples) = letterbox.push(sample) {
+            controller.evolve(samples);
+        }
 
         if controller.immigration_was_triggered {
             immigration_count += 1;
@@ -187,6 +195,7 @@ fn main() {
         runs,
         energy_cv,
         runtime_cv,
+        letterbox_size,
         config,
         ctx,
     } = Args::parse();
@@ -200,7 +209,7 @@ fn main() {
     println!("Monotonic Drift Benchmark: Gradual Workload Shift Tracking");
     println!("===========================================================");
     println!("Configuration: pop={}, sr={}, mr={}, ms={}, decay={}, e_pref={}",
-        config.population_size, config.survival_rate, config.mutation_rate,
+        letterbox_size, config.survival_rate, config.mutation_rate,
         config.mutation_strength, config.mutation_rate_decay, ctx.energy_preference);
     println!("Iterations per run: {}, Runs per case: {}", NUM_ITERATIONS, runs);
     println!();
@@ -220,6 +229,7 @@ fn main() {
                 case,
                 energy_cv,
                 runtime_cv,
+                letterbox_size,
             );
 
             total_tracking_error += result.avg_tracking_error;

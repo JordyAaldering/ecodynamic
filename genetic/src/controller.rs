@@ -1,11 +1,10 @@
 use clap::Parser;
 use ecodynamic_api::*;
-use ecodynamic_core::{Letterbox, median};
+use ecodynamic_core::*;
 
 use crate::{chromosome::Chromosome, *};
 
 pub struct GeneticController<'a> {
-    letterbox: Letterbox,
     population: Vec<Chromosome>,
     immigration_cooldown: usize,
     sort_descending: bool,
@@ -20,9 +19,6 @@ pub struct GeneticController<'a> {
 
 #[derive(Clone, Debug, Parser)]
 pub struct GeneticConfig {
-    #[arg(short('s'), long, default_value_t = 20)]
-    pub population_size: usize,
-
     /// Enable nudging of chromosomes towards secondary preferences, such as core sharing and power limit proportional to energy preference.
     #[arg(long("nudge"))]
     pub do_nudging: bool,
@@ -64,10 +60,8 @@ pub struct GeneticConfig {
     /// This allows faster convergence when there is a wide range of good configurations,
     /// which would otherwise cause high variability in the selected chromosomes.
     ///
-    /// No survival rate decay happens by default.
-    ///
     /// Range: [0,1]
-    #[arg(long, default_value_t = 0.0)]
+    #[arg(long, default_value_t = 0.01)]
     pub survival_rate_decay: f32,
 
     /// Mutation strength: maximum magnitude of a random perturbation applied to each gene.
@@ -129,69 +123,20 @@ pub struct GeneticConfig {
     pub immigration_cooldown_generations: usize,
 }
 
-impl<'a> GeneticController<'a> {
-    /// Use the number of samples to determine the current index into the population.
-    /// The population is reset every `population_size` iterations.
-    /// In between, we want every chromosome to be applied once.
-    pub fn get_demand(&self) -> Demand {
-        let chromosome = &self.population[self.letterbox.len()];
+impl<'a> Controller for GeneticController<'a> {
+    fn get_demand(&self, index: usize) -> Demand {
+        debug_assert!(index < self.population.len());
+        let chromosome = &self.population[index];
         chromosome.get_demand(self.capabilities)
     }
 
-    pub fn store_state(&mut self, state: State) {
-        let chromosome = &mut self.population[self.letterbox.len()];
-        chromosome.store_state(state);
-    }
+    fn evolve(&mut self, samples: Vec<Sample>) {
+        let scores = self.score(samples);
 
-    pub fn push(&mut self, sample: Sample) {
-        if let Some(samples) = self.letterbox.push(sample) {
-            let scores = self.score(samples);
-            self.evolve(scores);
-        }
-    }
-
-    /// Instead of randomly initialized values, use an even spread over valid thread
-    /// counts and power limits to reduce duplication and increase the chances of
-    /// finding an optimum immediately.
-    pub fn new(config: &'a GeneticConfig, capabilities: Capabilities<'a>) -> Self {
-        let population = (0..config.population_size)
-            .map(|mut i| {
-                if config.initial_population_descending {
-                    i = config.population_size - i - 1;
-                }
-
-                let t = i as f32 / (config.population_size - 1) as f32;
-                Chromosome::lerp(capabilities, t)
-            })
-            .collect();
-
-        log::trace!("Init: {:?}", population);
-
-        Self {
-            population,
-            letterbox: Letterbox::new(config.population_size),
-            immigration_cooldown: config.immigration_cooldown_generations,
-            sort_descending: !config.initial_population_descending,
-            effective_survival_rate: config.survival_rate,
-            effective_mutation_rate: config.mutation_rate,
-            settings: config,
-            capabilities,
-            generation: 0,
-            immigration_was_triggered: false,
-        }
-    }
-
-    fn score(&self, samples: Vec<Sample>) -> Vec<f32> {
-        let alpha = self.capabilities.ctx.energy_preference;
-        samples.into_iter().map(|s| s.score(alpha)).collect()
-    }
-
-    fn evolve(&mut self, scores: Vec<f32>) {
         self.generation += 1;
         self.immigration_was_triggered = false;
 
         let GeneticConfig {
-            population_size,
             survival_rate,
             survival_rate_decay,
             immigration_rate,
@@ -204,6 +149,8 @@ impl<'a> GeneticController<'a> {
             mutation_rate_min,
             ..
         } = *self.settings;
+
+        let population_size = self.population.len();
 
         log::debug!("Generation {}: best_score={:.4}, worst_score={:.4}, median_score={:.4}",
             self.generation,
@@ -319,6 +266,49 @@ impl<'a> GeneticController<'a> {
         }
         self.sort_descending = !self.sort_descending;
         log::trace!("Evolve: {:?}", self.population);
+    }
+}
+
+impl<'a> GeneticController<'a> {
+    pub fn store_state(&mut self, index: usize, state: State) {
+        debug_assert!(index < self.population.len());
+        let chromosome = &mut self.population[index];
+        chromosome.store_state(state);
+    }
+
+    /// Instead of randomly initialized values, use an even spread over valid thread
+    /// counts and power limits to reduce duplication and increase the chances of
+    /// finding an optimum immediately.
+    pub fn new(letterbox_size: usize, config: &'a GeneticConfig, capabilities: Capabilities<'a>) -> Self {
+        let population = (0..letterbox_size)
+            .map(|mut i| {
+                if config.initial_population_descending {
+                    i = letterbox_size - i - 1;
+                }
+
+                let t = i as f32 / (letterbox_size - 1) as f32;
+                Chromosome::lerp(capabilities, t)
+            })
+            .collect();
+
+        log::trace!("Init: {:?}", population);
+
+        Self {
+            population,
+            immigration_cooldown: config.immigration_cooldown_generations,
+            sort_descending: !config.initial_population_descending,
+            effective_survival_rate: config.survival_rate,
+            effective_mutation_rate: config.mutation_rate,
+            settings: config,
+            capabilities,
+            generation: 0,
+            immigration_was_triggered: false,
+        }
+    }
+
+    fn score(&self, samples: Vec<Sample>) -> Vec<f32> {
+        let alpha = self.capabilities.ctx.energy_preference;
+        samples.into_iter().map(|s| s.score(alpha)).collect()
     }
 }
 

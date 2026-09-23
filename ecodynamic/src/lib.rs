@@ -68,7 +68,7 @@ impl<'a> Task<'a> {
 
     fn build_sample(&self, runtime: Instant, energy: Rapl) -> Sample {
         Sample {
-            region_uid: self.task,
+            task_id: self.task,
             runtime: runtime.elapsed().as_secs_f32(),
             energy: energy.elapsed().into_values().sum(),
             usertime: None,

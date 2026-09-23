@@ -3,7 +3,7 @@ mod controller;
 use std::{io::{self, BufReader}, os::unix::net::UnixStream, process, thread};
 
 use clap::Parser;
-use ecodynamic_core::{ApplicationContext, socket};
+use ecodynamic_core::*;
 
 use crate::controller::CorridorController;
 
@@ -31,7 +31,7 @@ fn handle_client(mut stream: UnixStream, letterbox_size: usize) -> io::Result<()
     loop {
         match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
-                let demand = tasks.request(request);
+                let demand = tasks.request(&request);
                 socket::write(&mut stream, &demand)?;
             }
             socket::Response::Sample(sample) => {

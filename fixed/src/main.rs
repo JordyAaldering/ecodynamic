@@ -29,7 +29,7 @@ fn handle_client(mut stream: UnixStream) -> io::Result<()> {
     loop {
         match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
-                let demand = tasks.request(request);
+                let demand = tasks.request(&request);
                 socket::write(&mut stream, &demand)?;
             }
             socket::Response::Sample(sample) => {

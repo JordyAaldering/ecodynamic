@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Sample {
     /// A unique identifier of the parallel task we are controlling.
-    pub region_uid: i32,
+    #[serde(alias = "region_uid")]
+    pub task_id: i32,
     /// Total energy consumption of the previous iteration.
     pub energy: f32,
     /// Total runtime of the previous iteration.

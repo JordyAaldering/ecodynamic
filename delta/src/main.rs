@@ -34,7 +34,7 @@ fn handle_client(mut stream: UnixStream, idle_power: f32, letterbox_size: usize)
     loop {
         match socket::read(&mut rdr)? {
             socket::Response::Request(request) => {
-                let demand = tasks.request(request);
+                let demand = tasks.request(&request);
                 socket::write(&mut stream, &demand)?;
             }
             socket::Response::Sample(mut sample) => {

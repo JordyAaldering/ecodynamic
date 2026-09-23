@@ -1,11 +1,4 @@
-use std::{
-    collections::HashMap,
-    io::{self, BufReader},
-    os::unix::net::UnixStream,
-    process,
-    sync::{LazyLock, Mutex, atomic},
-    thread,
-};
+use std::{io::{self, BufReader}, os::unix::net::UnixStream, process, sync::{LazyLock, Mutex, atomic}, thread};
 
 use clap::Parser;
 use ecodynamic_core::*;
@@ -29,6 +22,9 @@ pub struct Args {
     /// Idle power draw of the processor.
     #[arg(short('w'), long("idle"), default_value_t = 0.0)]
     pub idle_power: f32,
+    /// Size of the letterbox/population for each task.
+    #[arg(short('s'), long, default_value_t = 20)]
+    pub letterbox_size: usize,
     /// Controller and hardware capabilities.
     #[clap(flatten)]
     pub ctx: ServerCapabilities,
@@ -37,27 +33,34 @@ pub struct Args {
     pub config: GeneticConfig,
 }
 
-fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -> io::Result<()> {
-    let mut lbs: HashMap<i32, GeneticController> = HashMap::new();
+fn handle_client(
+    mut stream: UnixStream,
+    idle_power: f32,
+    letterbox_size: usize,
+    config: GeneticConfig,
+    ctx: ServerCapabilities,
+    hw: HardwareCapabilities,
+) -> io::Result<()> {
     let mut rdr = BufReader::new(stream.try_clone()?);
 
     // First message must be the application's capabilities
     let app = socket::accept(&mut rdr)?;
-    let capabilities = Capabilities { app: &app, ctx: &args.ctx, hw: &hw };
+    let capabilities = Capabilities { app: &app, ctx: &ctx, hw: &hw };
+
+    let mut tasks = ApplicationContext::new(
+        letterbox_size,
+        || GeneticController::new(letterbox_size, &config, capabilities),
+    );
 
     let mut last_thread_count = 0;
 
     loop {
         match socket::read(&mut rdr) {
             Ok(socket::Response::Request(request)) => {
-                let controller = lbs.entry(request.task_id)
-                    .or_insert_with(|| {
-                        log::debug!("Generating controller for request {}", request.task_id);
-                        GeneticController::new(&args.config, capabilities)
-                    });
+                let demand = tasks.request(&request);
 
-                let demand = controller.get_demand();
-                controller.store_state(State {
+                let (index, controller) = tasks.current(&request);
+                controller.store_state(index, State {
                     thread_utilization: THREAD_UTILIZATION.load(atomic::Ordering::Relaxed),
                     powercap_uw: 0,
                 });
@@ -77,12 +80,9 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                 last_thread_count = 0;
 
                 // Subtract idle energy
-                sample.energy -= args.idle_power * sample.runtime;
+                sample.energy -= idle_power * sample.runtime;
                 sample.energy = sample.energy.max(f32::EPSILON);
-
-                lbs.get_mut(&sample.region_uid)
-                    .expect("Received sample for a task that has not yet been instantiated")
-                    .push(sample);
+                tasks.push(sample);
             }
             Ok(socket::Response::Disconnect) => {
                 // Before exiting, ensure the thread utilization is reset
@@ -90,7 +90,7 @@ fn handle_client(mut stream: UnixStream, args: Args, hw: HardwareCapabilities) -
                 return Ok(());
             }
             Err(e) => {
-                // Before exiting, ensure the thread utilization is reset
+                // Before aborting, ensure the thread utilization is reset
                 THREAD_UTILIZATION.fetch_sub(last_thread_count, atomic::Ordering::Relaxed);
                 return Err(e)
             }
@@ -158,7 +158,13 @@ fn reset_default_power_limit() -> io::Result<()> {
 fn main() -> io::Result<()> {
     env_logger::init();
 
-    let args = Args::parse();
+    let Args {
+        once,
+        idle_power,
+        letterbox_size,
+        ctx,
+        config,
+    } = Args::parse();
 
     // TODO: number of available cores assumed to be 8 for now
     let available_threads = 8;
@@ -174,15 +180,16 @@ fn main() -> io::Result<()> {
         process::exit(0);
     }).unwrap();
 
-    if args.once {
+    if once {
         let stream = listener.incoming().next().unwrap()?;
-        handle_client(stream, args, hw)?;
+        handle_client(stream, idle_power, letterbox_size, config, ctx, hw)?;
     } else {
         for stream in listener.incoming().map_while(Result::ok) {
-            let args = args.clone();
+            let config = config.clone();
+            let ctx = ctx.clone();
             let hw = hw.clone();
             thread::spawn(move || {
-                handle_client(stream, args, hw).unwrap()
+                handle_client(stream, idle_power, letterbox_size, config, ctx, hw).unwrap()
             });
         }
     }

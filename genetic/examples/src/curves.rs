@@ -160,7 +160,7 @@ pub fn find_optimal_powercap(
 		let powercap = lerp(power_min, power_max, t);
         let energy=  energy_curve.eval(powercap, 0.0);
         let runtime = runtime_curve.eval(powercap, 0.0);
-        let sample = Sample { region_uid: 0, energy, runtime, usertime: None };
+        let sample = Sample { task_id: 0, energy, runtime, usertime: None };
 
 		let score = sample.score(e_pref);
 		if score < best_score {
