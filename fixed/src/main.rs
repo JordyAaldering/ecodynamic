@@ -53,7 +53,7 @@ fn main() -> io::Result<()> {
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(|| {
-        socket::close().unwrap();
+        let _ = socket::close();
         process::exit(0);
     }).unwrap();
 

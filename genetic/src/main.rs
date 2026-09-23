@@ -134,8 +134,8 @@ fn main() -> io::Result<()> {
 
     // Ensure the socket is closed when a control-C occurs
     ctrlc::set_handler(|| {
-        reset_power_limits().unwrap();
-        socket::close().unwrap();
+        let _ = reset_power_limits();
+        let _ = socket::close();
         process::exit(0);
     }).unwrap();
 
